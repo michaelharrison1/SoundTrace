@@ -1,41 +1,166 @@
+
 import React, { useState, useCallback, useRef } from 'react';
 import Button from './common/Button';
 import UploadIcon from './icons/UploadIcon';
-// import MusicNoteIcon from './icons/MusicNoteIcon'; // Simplied list item
 
 interface FileUploadProps {
-  onScan: (files: File[]) => void; // Changed to accept File[]
+  onScan: (files: File[]) => void;
   isLoading: boolean;
 }
+
+const MAX_ORIGINAL_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB for pre-processing
+const MAX_ORIGINAL_FILE_SIZE_MB = MAX_ORIGINAL_FILE_SIZE_BYTES / (1024 * 1024);
+const SNIPPET_DURATION_SECONDS = 20;
+const TARGET_SAMPLE_RATE = 44100; // Resample to 44.1kHz
+const TARGET_CHANNELS = 1; // Convert to Mono
+
+// Helper function to convert AudioBuffer to WAV Blob
+const audioBufferToWavBlob = (buffer: AudioBuffer): Blob => {
+  const numOfChan = buffer.numberOfChannels;
+  const length = buffer.length * numOfChan * 2 + 44; // 2 bytes per sample (16-bit)
+  const arrayBuffer = new ArrayBuffer(length);
+  const view = new DataView(arrayBuffer);
+  const channels: Float32Array[] = [];
+  let i;
+  let sample;
+  let offset = 0;
+  let pos = 0;
+
+  // Write WAV container
+  setUint32(0x46464952); // "RIFF"
+  setUint32(length - 8); // file length - 8
+  setUint32(0x45564157); // "WAVE"
+
+  // Write FMT chunk
+  setUint32(0x20746d66); // "fmt "
+  setUint32(16); // data size for PCM
+  setUint16(1); // PCM - integer samples
+  setUint16(numOfChan); // channels
+  setUint32(buffer.sampleRate); // sample rate
+  setUint32(buffer.sampleRate * 2 * numOfChan); // byte rate (SampleRate * BitsPerSample * Channels) / 8
+  setUint16(numOfChan * 2); // block align (Channels * BitsPerSample) / 8
+  setUint16(16); // 16-bit
+  // Write Data chunk
+  setUint32(0x61746164); // "data"
+  setUint32(length - pos - 4); // data chunk length
+
+  // Write interleaved PCM samples
+  for (i = 0; i < buffer.numberOfChannels; i++) {
+    channels.push(buffer.getChannelData(i));
+  }
+
+  while (pos < length) {
+    for (i = 0; i < numOfChan; i++) {
+      // Interleave channels
+      sample = Math.max(-1, Math.min(1, channels[i][offset])); // Clamp
+      sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0; // Scale to 16-bit signed int
+      view.setInt16(pos, sample, true); // Write 16-bit sample
+      pos += 2;
+    }
+    offset++; // Next source sample
+    if (offset >= buffer.length) break;
+  }
+
+  function setUint16(data: number) {
+    view.setUint16(pos, data, true);
+    pos += 2;
+  }
+
+  function setUint32(data: number) {
+    view.setUint32(pos, data, true);
+    pos += 4;
+  }
+  return new Blob([view], { type: 'audio/wav' });
+};
+
 
 const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const addFiles = (newFiles: FileList | File[]) => {
-    const filesArray = Array.from(newFiles);
-    const audioFiles = filesArray.filter(file => file.type.startsWith('audio/'));
-    
-    if (audioFiles.length !== filesArray.length) {
-      alert('Some files were not valid audio files and were not added.'); // Classic alert
+  const processFile = async (file: File): Promise<File | null> => {
+    if (!file.type.startsWith('audio/')) {
+      alert(`Skipped non-audio file: ${file.name}`);
+      return null;
+    }
+    if (file.size > MAX_ORIGINAL_FILE_SIZE_BYTES) {
+      alert(`File "${file.name}" (${formatFileSize(file.size)}) exceeds the ${MAX_ORIGINAL_FILE_SIZE_MB}MB pre-processing limit and will be skipped.`);
+      return null;
     }
 
-    setSelectedFiles(prevFiles => {
-      const updatedFiles = [...prevFiles];
-      audioFiles.forEach(newFile => {
-        if (!updatedFiles.some(existingFile => existingFile.name === newFile.name && existingFile.size === newFile.size)) {
-          updatedFiles.push(newFile);
-        }
-      });
-      return updatedFiles;
-    });
+    try {
+      const mainAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const arrayBuffer = await file.arrayBuffer();
+      const originalAudioBuffer = await mainAudioContext.decodeAudioData(arrayBuffer);
+      await mainAudioContext.close();
+
+      const durationToProcess = Math.min(originalAudioBuffer.duration, SNIPPET_DURATION_SECONDS);
+
+      const offlineCtx = new OfflineAudioContext(
+        TARGET_CHANNELS,
+        durationToProcess * TARGET_SAMPLE_RATE,
+        TARGET_SAMPLE_RATE
+      );
+
+      const sourceNode = offlineCtx.createBufferSource();
+      sourceNode.buffer = originalAudioBuffer;
+      sourceNode.connect(offlineCtx.destination);
+      sourceNode.start(0, 0, durationToProcess);
+
+      const resampledMonoBuffer = await offlineCtx.startRendering();
+
+      const wavBlob = audioBufferToWavBlob(resampledMonoBuffer);
+      const originalNameWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+      const snippetFile = new File([wavBlob], `${originalNameWithoutExtension}_${SNIPPET_DURATION_SECONDS}s_mono.wav`, { type: 'audio/wav' });
+
+      console.log(`[FileUpload.tsx processFile] Processed snippet: ${snippetFile.name}, size: ${snippetFile.size} bytes, type: ${snippetFile.type}`);
+
+      return snippetFile;
+
+    } catch (error) {
+      console.error(`[FileUpload.tsx processFile] Error processing file ${file.name}:`, error);
+      alert(`Could not process file "${file.name}". It might be corrupted or an unsupported audio format. Error: ${(error as Error).message}`);
+      return null;
+    }
   };
+
+
+  const addFiles = async (newInputFiles: FileList | File[]) => {
+    const originalFilesArray = Array.from(newInputFiles);
+    console.log('[FileUpload.tsx addFiles] Original files received:', originalFilesArray.map(f => ({ name: f.name, size: f.size, type: f.type })));
+
+    const processedSnippetPromises = originalFilesArray.map(processFile);
+    const successfullyProcessedSnippets = (await Promise.all(processedSnippetPromises)).filter(f => f !== null) as File[];
+
+    console.log('[FileUpload.tsx addFiles] Successfully processed snippets:', successfullyProcessedSnippets.map(f => ({ name: f.name, size: f.size, type: f.type })));
+
+    if (successfullyProcessedSnippets.length > 0) {
+      setSelectedFiles(prevSelectedFiles => {
+        const updatedSelectedFiles = [...prevSelectedFiles];
+        successfullyProcessedSnippets.forEach(newSnippet => {
+          if (!updatedSelectedFiles.some(existingFile => existingFile.name === newSnippet.name && existingFile.size === newSnippet.size)) {
+            updatedSelectedFiles.push(newSnippet);
+          }
+        });
+        console.log('[FileUpload.tsx addFiles] New selectedFiles state (snippets):', updatedSelectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
+        return updatedSelectedFiles;
+      });
+    } else {
+      console.log('[FileUpload.tsx addFiles] No new snippets to add. Current selectedFiles (before this operation):', selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
+      if (originalFilesArray.length > 0 && !originalFilesArray.every(f => !f.type.startsWith('audio/'))) {
+         // This case means audio files were provided but all failed processing.
+         // Alerts for individual failures are already shown in processFile.
+         // No explicit general alert here needed unless desired.
+      }
+    }
+  };
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       addFiles(event.target.files);
-      event.target.value = ''; 
+      event.target.value = '';
     }
   };
 
@@ -65,25 +190,25 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
       onScan(selectedFiles);
     }
   };
-  
+
   const openFileDialog = () => {
     fileInputRef.current?.click();
   };
 
   const handleRemoveFile = (fileToRemove: File) => {
-    setSelectedFiles(prevFiles => prevFiles.filter(file => file !== fileToRemove));
+    setSelectedFiles(prevFiles => prevFiles.filter(file => file.name !== fileToRemove.name || file.size !== fileToRemove.size));
   };
 
   const handleClearAllFiles = () => {
     setSelectedFiles([]);
   };
-  
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(0)) + ' ' + sizes[i]; // Simpler, no decimals
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(i > 1 ? 1 : 0)) + ' ' + sizes[i];
   };
 
   return (
@@ -105,7 +230,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept="audio/mpeg, audio/wav, audio/aac, .mp3, .wav, .aac"
+            accept="audio/mpeg, audio/wav, audio/aac, audio/ogg, audio/flac, .mp3, .wav, .aac, .ogg, .flac"
             className="hidden"
             multiple
           />
@@ -113,13 +238,14 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
           <p className="text-sm text-black">
             Drag & drop audio files or <span className="font-semibold underline">click here</span>.
           </p>
-          <p className="text-xs text-gray-700 mt-0.5">Supports: MP3, WAV, AAC</p>
+          <p className="text-xs text-gray-700 mt-0.5">Supports: MP3, WAV, AAC, etc. (Originals up to ${MAX_ORIGINAL_FILE_SIZE_MB}MB)</p>
+          <p className="text-xs text-black font-semibold mt-0.5">Note: Only the first ${SNIPPET_DURATION_SECONDS} seconds (mono, 44.1kHz) of each file will be scanned.</p>
         </div>
 
         {selectedFiles.length > 0 && (
           <div className="mt-3">
             <div className="flex justify-between items-center mb-1">
-              <h4 className="text-base font-normal text-black">Selected ({selectedFiles.length}):</h4>
+              <h4 className="text-base font-normal text-black">Selected Snippets ({selectedFiles.length}):</h4>
               <Button onClick={handleClearAllFiles} size="sm" className="px-2 py-0.5">
                 Clear All
               </Button>
@@ -128,7 +254,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
               {selectedFiles.map((file, index) => (
                 <div key={`${file.name}-${file.size}-${index}`} className="flex items-center justify-between p-1 bg-white hover:bg-gray-200">
                   <div className="flex items-center overflow-hidden">
-                    {/* <MusicNoteIcon className="h-4 w-4 text-black mr-1.5 flex-shrink-0" /> */}
                     <span className="text-black mr-1.5 flex-shrink-0" aria-hidden="true">♪</span>
                     <div className="truncate">
                       <p className="text-sm text-black font-normal truncate" title={file.name}>{file.name}</p>
@@ -137,11 +262,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
                   </div>
                   <button
                     onClick={() => handleRemoveFile(file)}
-                    className="ml-1 p-0.5 text-red-700 hover:text-red-500" // Simpler remove button
+                    className="ml-1 p-0.5 text-red-700 hover:text-red-500"
                     aria-label={`Remove ${file.name}`}
                     title="Remove file"
                   >
-                    {/* X icon or text */}
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
@@ -158,7 +282,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
             className="w-full mt-3"
             size="md"
           >
-            {isLoading ? 'Scanning...' : `Scan ${selectedFiles.length} File(s)`}
+            {isLoading ? 'Scanning...' : `Scan ${selectedFiles.length} Snippet(s)`}
           </Button>
         )}
       </div>
