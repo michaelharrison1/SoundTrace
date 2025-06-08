@@ -29,4 +29,3 @@ export interface ScanResult {
   scanDate: string; // ISO date string
   matches: AcrCloudMatch[];
 }
-    
