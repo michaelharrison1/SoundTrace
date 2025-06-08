@@ -4,31 +4,47 @@ import { User } from '../types';
 import { authService } from '../services/authService';
 import Button from './common/Button';
 
-interface LoginPageProps {
-  onLogin: (user: User) => void;
-  onNavigateToRegister: () => void; // New prop for navigation
+interface RegistrationPageProps {
+  onRegister: (user: User) => void; // Called on successful registration (acts like onLogin)
+  onNavigateToLogin: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) => {
+const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister, onNavigateToLogin }) => {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (username.length < 3) {
+      setError('Username must be at least 3 characters long.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const authResponse = await authService.login(username, password);
+      const authResponse = await authService.register(username, password);
+      // Assuming authResponse is { token: string, userId: string, username: string }
       localStorage.setItem('authToken', authResponse.token);
       const user: User = { id: authResponse.userId, username: authResponse.username };
       localStorage.setItem('currentUserDetails', JSON.stringify(user));
 
-      onLogin(user);
+      onRegister(user); // This will set the current user in App.tsx and change view
 
     } catch (err: any) {
-      setError(err.message || 'An unknown error occurred during login.');
+      setError(err.message || 'An unknown error occurred during registration.');
     } finally {
       setIsLoading(false);
     }
@@ -41,9 +57,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
           <div className="flex justify-center mb-4">
             <span className="text-3xl text-[#084B8A]" aria-hidden="true">♫</span>
           </div>
-          <h2 className="text-2xl font-normal text-center text-black mb-1">SoundTrace Login</h2>
+          <h2 className="text-2xl font-normal text-center text-black mb-1">Create Account</h2>
           <p className="text-sm text-center text-black mb-5">
-            Upload instrumentals, scan for uses, and track results.
+            Join SoundTrace to start scanning your instrumentals.
           </p>
 
           {error && (
@@ -54,11 +70,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="username" className="block text-sm font-normal text-black mb-0.5">
+              <label htmlFor="reg-username" className="block text-sm font-normal text-black mb-0.5">
                 Username:
               </label>
               <input
-                id="username"
+                id="reg-username"
                 name="username"
                 type="text"
                 autoComplete="username"
@@ -66,45 +82,60 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
-                placeholder="Enter username"
-                aria-label="Username"
+                placeholder="Choose a username"
+                aria-label="Choose a username"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-normal text-black mb-0.5">
+              <label htmlFor="reg-password" className="block text-sm font-normal text-black mb-0.5">
                 Password:
               </label>
               <input
-                id="password"
+                id="reg-password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
-                placeholder="Enter password"
-                aria-label="Password"
+                placeholder="Create a password (min. 6 chars)"
+                aria-label="Create a password"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="reg-confirm-password" className="block text-sm font-normal text-black mb-0.5">
+                Confirm Password:
+              </label>
+              <input
+                id="reg-confirm-password"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+                placeholder="Confirm your password"
+                aria-label="Confirm your password"
               />
             </div>
 
             <Button type="submit" variant="primary" size="md" isLoading={isLoading} className="w-full">
-              {isLoading ? 'Logging in...' : 'Login'}
+              {isLoading ? 'Creating Account...' : 'Register'}
             </Button>
           </form>
           <p className="mt-4 text-xs text-center text-black">
-            Don't have an account?{' '}
+            Already have an account?{' '}
             <button
-              onClick={onNavigateToRegister}
+              onClick={onNavigateToLogin}
               className="font-semibold text-blue-800 hover:underline focus:outline-none"
-              aria-label="Navigate to registration page"
+              aria-label="Navigate to login page"
             >
-              Register here
+              Login here
             </button>
-          </p>
-          <p className="mt-2 text-xs text-center text-blue-800">
-            Demo: user <span className="font-semibold text-black">producer</span>, pass <span className="font-semibold text-black">password123</span>
           </p>
         </div>
       </div>
@@ -112,4 +143,4 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
   );
 };
 
-export default LoginPage;
+export default RegistrationPage;

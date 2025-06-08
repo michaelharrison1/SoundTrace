@@ -1,16 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
 import LoginPage from './components/LoginPage';
+import RegistrationPage from './components/RegistrationPage'; // Import RegistrationPage
 import MainAppLayout from './components/MainAppLayout';
 import { User } from './types';
-// import { mockAuthService } from './services/mockAuthService'; // Replaced by localStorage check
+
+type AuthView = 'login' | 'register';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [authView, setAuthView] = useState<AuthView>('login'); // To toggle between login and register
 
   useEffect(() => {
-    // Check for token and user details in localStorage
     try {
       const token = localStorage.getItem('authToken');
       const userDetailsJson = localStorage.getItem('currentUserDetails');
@@ -21,23 +23,21 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error("Error reading auth data from localStorage:", error);
-      // Clear potentially corrupted data
       localStorage.removeItem('authToken');
       localStorage.removeItem('currentUserDetails');
     }
     setIsLoading(false);
   }, []);
 
-  const handleLogin = (user: User) => {
+  const handleAuthSuccess = (user: User) => { // Renamed from handleLogin for clarity
     setCurrentUser(user);
-    // Attempt to blur the currently focused element to prevent extension issues
+    setAuthView('login'); // Reset to login view for next time
     if (document.activeElement && typeof (document.activeElement as HTMLElement).blur === 'function') {
       (document.activeElement as HTMLElement).blur();
     }
   };
 
   const handleLogout = () => {
-    // Clear token and user details from localStorage
     try {
       localStorage.removeItem('authToken');
       localStorage.removeItem('currentUserDetails');
@@ -45,7 +45,6 @@ const App: React.FC = () => {
       console.error("Error clearing auth data from localStorage:", error);
     }
     setCurrentUser(null);
-    // Optionally, blur after logout too if similar issues arise
     if (document.activeElement && typeof (document.activeElement as HTMLElement).blur === 'function') {
       (document.activeElement as HTMLElement).blur();
     }
@@ -63,8 +62,16 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#C0C0C0]">
       {currentUser ? (
         <MainAppLayout user={currentUser} onLogout={handleLogout} />
+      ) : authView === 'login' ? (
+        <LoginPage
+          onLogin={handleAuthSuccess}
+          onNavigateToRegister={() => setAuthView('register')}
+        />
       ) : (
-        <LoginPage onLogin={handleLogin} />
+        <RegistrationPage
+          onRegister={handleAuthSuccess}
+          onNavigateToLogin={() => setAuthView('login')}
+        />
       )}
     </div>
   );
