@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { User } from '../types';
 import { authService } from '../services/authService';
 import Button from './common/Button';
+import ProgressBar from './common/ProgressBar'; // Import ProgressBar
 
 interface RegistrationPageProps {
   onRegister: (user: User) => void; // Called on successful registration (acts like onLogin)
@@ -36,12 +37,11 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister, onNavig
     setIsLoading(true);
     try {
       const authResponse = await authService.register(username, password);
-      // Assuming authResponse is { token: string, userId: string, username: string }
       localStorage.setItem('authToken', authResponse.token);
       const user: User = { id: authResponse.userId, username: authResponse.username };
       localStorage.setItem('currentUserDetails', JSON.stringify(user));
 
-      onRegister(user); // This will set the current user in App.tsx and change view
+      onRegister(user);
 
     } catch (err: any) {
       setError(err.message || 'An unknown error occurred during registration.');
@@ -62,7 +62,7 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister, onNavig
             Join SoundTrace to start scanning your instrumentals.
           </p>
 
-          {error && (
+          {error && !isLoading && (
             <div className="mb-3 p-2 bg-red-200 text-black border border-black text-sm">
               {error}
             </div>
@@ -84,6 +84,7 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister, onNavig
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
                 placeholder="Choose a username"
                 aria-label="Choose a username"
+                disabled={isLoading}
               />
             </div>
 
@@ -102,6 +103,7 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister, onNavig
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
                 placeholder="Create a password (min. 6 chars)"
                 aria-label="Create a password"
+                disabled={isLoading}
               />
             </div>
 
@@ -120,23 +122,38 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister, onNavig
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
                 placeholder="Confirm your password"
                 aria-label="Confirm your password"
+                disabled={isLoading}
               />
             </div>
 
-            <Button type="submit" variant="primary" size="md" isLoading={isLoading} className="w-full">
-              {isLoading ? 'Creating Account...' : 'Register'}
-            </Button>
+            {!isLoading && (
+              <Button type="submit" variant="primary" size="md" disabled={isLoading} className="w-full">
+                Register
+              </Button>
+            )}
           </form>
-          <p className="mt-4 text-xs text-center text-black">
-            Already have an account?{' '}
-            <button
-              onClick={onNavigateToLogin}
-              className="font-semibold text-blue-800 hover:underline focus:outline-none"
-              aria-label="Navigate to login page"
-            >
-              Login here
-            </button>
-          </p>
+
+          {isLoading && (
+            <div className="mt-4">
+              <ProgressBar text="Creating Account..." />
+               <p className="mt-1 text-xs text-center text-black">
+                Please wait...
+              </p>
+            </div>
+          )}
+
+          {!isLoading && (
+            <p className="mt-4 text-xs text-center text-black">
+              Already have an account?{' '}
+              <button
+                onClick={onNavigateToLogin}
+                className="font-semibold text-blue-800 hover:underline focus:outline-none"
+                aria-label="Navigate to login page"
+              >
+                Login here
+              </button>
+            </p>
+          )}
         </div>
       </div>
     </div>

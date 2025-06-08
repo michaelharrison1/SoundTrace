@@ -11,75 +11,68 @@ interface PreviousScansProps {
 }
 
 interface DisplayableTableRow {
-  isMatchRow: boolean;
+  isMatchRow: boolean; // True if this specific row represents a match
+  hasAnyMatchesInLog: boolean; // True if the parent TrackScanLog had any matches (even if this row is for status)
   logId: string;
   originalFileName: string;
   originalScanDate: string;
-
   matchDetails?: AcrCloudMatch;
-
-  statusMessage?: string;
+  statusMessage?: string; // For rows representing a log's overall status if no matches, or error
 }
 
 const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, onClearAllScans }) => {
 
   const tableRows: DisplayableTableRow[] = scanLogs.reduce((acc, log: TrackScanLog) => {
-    if (log.status === 'matches_found' && log.matches.length > 0) {
+    const hasMatches = log.matches.length > 0 && (log.status === 'matches_found' || log.status === 'partially_completed');
+
+    if (hasMatches) {
       log.matches.forEach((match: AcrCloudMatch) => {
         acc.push({
           isMatchRow: true,
+          hasAnyMatchesInLog: true,
           logId: log.logId,
           originalFileName: log.originalFileName,
           originalScanDate: log.scanDate,
           matchDetails: match,
+          statusMessage: log.status === 'partially_completed' ? "Partial Scan (some segments failed)" : undefined,
         });
       });
-    } else if (log.status === 'no_matches_found') {
+       // If partially completed also had matches, we already added them. If it didn't, it'll be handled by the 'else'
+    } else { // No matches, error, or partial with no matches
+      let message = "No Matches Found";
+      if (log.status === 'error_processing') message = "Error Processing Track";
+      else if (log.status === 'partially_completed') message = "Partial Scan (no matches found)"; // Or "Partial Scan (some segments failed)" if preferred
+
       acc.push({
         isMatchRow: false,
+        hasAnyMatchesInLog: false,
         logId: log.logId,
         originalFileName: log.originalFileName,
         originalScanDate: log.scanDate,
-        statusMessage: "No Matches Found",
+        statusMessage: message,
       });
-    } else if (log.status === 'error_processing') {
-       acc.push({
-        isMatchRow: false,
-        logId: log.logId,
-        originalFileName: log.originalFileName,
-        originalScanDate: log.scanDate,
-        statusMessage: "Error Processing Track",
-      });
-    } else if (log.status === 'partially_completed') {
-         acc.push({
-            isMatchRow: false,
-            logId: log.logId,
-            originalFileName: log.originalFileName,
-            originalScanDate: log.scanDate,
-            statusMessage: "Partial Scan (some segments failed)",
-         });
-         if (log.matches.length > 0) {
-             log.matches.forEach((match: AcrCloudMatch) => {
-                acc.push({
-                isMatchRow: true,
-                logId: log.logId,
-                originalFileName: log.originalFileName,
-                originalScanDate: log.scanDate,
-                matchDetails: match,
-                });
-            });
-         }
     }
     return acc;
   }, [] as DisplayableTableRow[]).sort((a: DisplayableTableRow, b: DisplayableTableRow) => {
+    // Group by original file first, then sort within group
+    // Rows with any matches in their log (hasAnyMatchesInLog) come before those with none.
+    if (a.hasAnyMatchesInLog && !b.hasAnyMatchesInLog) return -1;
+    if (!a.hasAnyMatchesInLog && b.hasAnyMatchesInLog) return 1;
+
+    // If both have matches or both have no matches, sort by date (newest first)
     const dateA = new Date(a.originalScanDate).getTime();
     const dateB = new Date(b.originalScanDate).getTime();
     if (dateB !== dateA) return dateB - dateA;
 
+    // Then sort by original file name
+    const fileCompare = a.originalFileName.localeCompare(b.originalFileName);
+    if (fileCompare !== 0) return fileCompare;
+
+    // Within the same file log, ensure actual match rows come before a status message row for that same log (e.g. partial scan message)
     if (a.isMatchRow && !b.isMatchRow) return -1;
     if (!a.isMatchRow && b.isMatchRow) return 1;
 
-    return a.originalFileName.localeCompare(b.originalFileName);
+    return 0;
   });
 
 
@@ -137,7 +130,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
               <tbody className="bg-white">
                 {tableRows.map((row, index) => (
                   <tr key={`${row.logId}-${row.isMatchRow ? row.matchDetails?.id : row.statusMessage}-${index}`}
-                      className={index % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-100'} ${!row.hasAnyMatchesInLog ? 'opacity-75' : ''}`}>
                     <td className="px-2 py-1 whitespace-nowrap">
                       {row.isMatchRow && row.matchDetails?.platformLinks?.spotify && (
                         <a href={row.matchDetails.platformLinks.spotify} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline mr-1" title="Spotify">SP</a>
@@ -145,10 +138,10 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
                       {row.isMatchRow && row.matchDetails?.platformLinks?.youtube && (
                         <a href={row.matchDetails.platformLinks.youtube} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline" title="YouTube">YT</a>
                       )}
-                      {!row.isMatchRow && <span className="text-gray-500">-</span>}
+                      {(!row.isMatchRow || (!row.matchDetails?.platformLinks?.spotify && !row.matchDetails?.platformLinks?.youtube)) && <span className="text-gray-500">-</span>}
                     </td>
                     <td className="px-2 py-1 whitespace-nowrap text-black" title={row.isMatchRow ? row.matchDetails?.title : row.statusMessage}>
-                      {row.isMatchRow ? row.matchDetails?.title : row.statusMessage}
+                      {row.isMatchRow ? row.matchDetails?.title : <span className="italic">{row.statusMessage}</span>}
                     </td>
                     <td className="px-2 py-1 whitespace-nowrap text-gray-700" title={row.isMatchRow ? row.matchDetails?.artist : "N/A"}>
                       {row.isMatchRow ? row.matchDetails?.artist : "N/A"}
@@ -174,6 +167,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
                     </td>
                     <td className="px-2 py-1 whitespace-nowrap text-black" title={row.originalFileName}>
                       {row.originalFileName}
+                       {row.statusMessage && row.isMatchRow && <span className="text-xs text-gray-500 italic ml-1">({row.statusMessage})</span>}
                     </td>
                     <td className="px-1 py-0.5 whitespace-nowrap text-center">
                       <Button

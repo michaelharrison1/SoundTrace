@@ -44,6 +44,17 @@
     svg {
       stroke: #000000 !important; /* Override for icons */
     }
+
+    /* Progress Bar Animation */
+    @keyframes progressBarMarqueeAnim {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); } /* Assumes the inner block container is 200% width */
+    }
+
+    .progress-bar-blocks-container {
+      width: 200%; /* Make it twice as wide as the viewable area for seamless looping */
+      animation: progressBarMarqueeAnim 1.2s linear infinite;
+    }
   </style>
 
 <script type="importmap">

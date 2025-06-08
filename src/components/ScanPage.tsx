@@ -5,6 +5,7 @@ import FileUpload from './FileUpload';
 import { acrCloudService } from '../services/acrCloudService';
 import { scanLogService } from '../services/scanLogService';
 import { generateSnippetsForFile } from '../utils/audioProcessing';
+import ProgressBar from './common/ProgressBar'; // Import ProgressBar
 
 interface ScanPageProps {
   user: User;
@@ -59,7 +60,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
       } else if (originalFiles.length > 0) {
          setScanCompletionMessage("No new tracks to scan among the selection.");
       } else {
-         // This case should be caught by the initial originalFiles.length === 0 check
          setScanCompletionMessage("No tracks selected for scanning.");
       }
       return;
@@ -159,7 +159,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
     } else {
         finalCompletionMsg = "No new tracks were processed.";
     }
-    setScanCompletionMessage(finalCompletionMsg.trim() || null); // Set to null if empty
+    setScanCompletionMessage(finalCompletionMsg.trim() || null);
 
     setIsLoading(false);
     setScanProgressMessage('');
@@ -172,11 +172,9 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
       </section>
 
       {isLoading && (
-        <div className="p-3 win95-border-outset bg-[#C0C0C0] text-center">
-          <p className="mt-1 text-base text-black font-normal">
-            {scanProgressMessage || 'Scanning...'}
-          </p>
-          <p className="text-xs text-gray-700">Please wait.</p>
+        <div className="p-3 win95-border-outset bg-[#C0C0C0]">
+          <ProgressBar text={scanProgressMessage || 'Scanning...'} className="mb-1" />
+          <p className="text-xs text-gray-700 text-center">Please wait.</p>
         </div>
       )}
 

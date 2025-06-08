@@ -6,6 +6,7 @@ import Button from './common/Button';
 import LogoutIcon from './icons/LogoutIcon';
 import ScanPage from './ScanPage';
 import DashboardViewPage from './DashboardViewPage';
+import ProgressBar from './common/ProgressBar'; // Import ProgressBar
 
 interface MainAppLayoutProps {
   user: User;
@@ -82,7 +83,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         <div className="mx-auto px-2">
           <div className="flex items-center justify-between h-8">
             <div className="flex items-center">
-              <h1 className="text-lg font-normal text-white ml-2">SoundTrace</h1> {/* Moved slightly right */}
+              <h1 className="text-lg font-normal text-white ml-2">SoundTrace</h1>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-xs text-white hidden sm:block">User: {user.username}</span>
@@ -118,19 +119,23 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
       <main className="mx-auto p-0.5 w-full flex-grow">
         <div className="bg-[#C0C0C0] p-2 h-full">
           {isLoadingScans && (
-            <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center text-black">
-              Loading scan history...
+            <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
+              <ProgressBar text="Loading scan history..." />
             </div>
           )}
-          {scanError && (
-            <div className="p-4 win95-border-outset bg-red-200 text-center text-black border border-black">
-              Error with scan history: {scanError} <Button onClick={fetchScanLogs} size="sm">Retry</Button>
+          {scanError && !isLoadingScans && ( // Only show error if not actively loading
+            <div className="p-3 win95-border-outset bg-yellow-200 text-black border border-black">
+              <p className="font-semibold text-center">Error loading scan history:</p>
+              <p className="text-center mb-1">{scanError}</p>
+              <div className="flex justify-center">
+                <Button onClick={fetchScanLogs} size="sm">Retry</Button>
+              </div>
             </div>
           )}
           {!isLoadingScans && !scanError && activeView === 'scan' && (
             <ScanPage
               user={user}
-              previousScanLogs={previousScans} // Pass previousScans here
+              previousScanLogs={previousScans}
               onNewScanLogsSaved={addMultipleScanLogsToState}
             />
           )}
@@ -146,7 +151,10 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
       </main>
 
       <footer className="py-1 px-2 text-xs text-black border-t-2 border-t-white bg-[#C0C0C0] flex justify-between items-center">
-        <span>&copy; {new Date().getFullYear()} SoundTrace</span>
+        <div>
+          <span>&copy; {new Date().getFullYear()} SoundTrace. </span>
+          <span>Powered by ACRCloud.</span>
+        </div>
         <span>Created by Michael Harrison</span>
       </footer>
     </div>

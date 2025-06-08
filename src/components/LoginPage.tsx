@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { User } from '../types';
 import { authService } from '../services/authService';
 import Button from './common/Button';
+import ProgressBar from './common/ProgressBar'; // Import ProgressBar
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
@@ -65,7 +66,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
                 Upload instrumentals, scan for uses, and track results.
               </p>
 
-              {error && (
+              {error && !isLoading && (
                 <div className="mb-3 p-2 bg-red-200 text-black border border-black text-sm">
                   {error}
                 </div>
@@ -87,6 +88,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
                     className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
                     placeholder="Enter username"
                     aria-label="Username"
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -105,31 +107,43 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
                     className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
                     placeholder="Enter password"
                     aria-label="Password"
+                    disabled={isLoading}
                   />
                 </div>
 
-                <Button type="submit" variant="primary" size="md" isLoading={isLoading} className="w-full">
-                  {isLoading ? 'Logging in...' : 'Login'}
-                </Button>
+                {!isLoading && (
+                  <Button type="submit" variant="primary" size="md" disabled={isLoading} className="w-full">
+                    Login
+                  </Button>
+                )}
               </form>
+
               {isLoading && (
-                <p className="mt-3 text-xs text-center text-black">
-                  Logging in can take up to a minute.
-                </p>
+                <div className="mt-4">
+                  <ProgressBar text="Logging in..." />
+                  <p className="mt-1 text-xs text-center text-black">
+                    Please be patient, this can take a moment.
+                  </p>
+                </div>
               )}
-              <p className="mt-4 text-xs text-center text-black">
-                Don't have an account?{' '}
-                <button
-                  onClick={onNavigateToRegister}
-                  className="font-semibold text-blue-800 hover:underline focus:outline-none"
-                  aria-label="Navigate to registration page"
-                >
-                  Register here
-                </button>
-              </p>
-              <p className="mt-2 text-xs text-center text-blue-800">
-                Demo: user <span className="font-semibold text-black">producer</span>, pass <span className="font-semibold text-black">password123</span>
-              </p>
+
+              {!isLoading && (
+                <>
+                  <p className="mt-4 text-xs text-center text-black">
+                    Don't have an account?{' '}
+                    <button
+                      onClick={onNavigateToRegister}
+                      className="font-semibold text-blue-800 hover:underline focus:outline-none"
+                      aria-label="Navigate to registration page"
+                    >
+                      Register here
+                    </button>
+                  </p>
+                  <p className="mt-2 text-xs text-center text-blue-800">
+                    Demo: user <span className="font-semibold text-black">producer</span>, pass <span className="font-semibold text-black">password123</span>
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -137,9 +151,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
 
       {/* Bottom Footer Text for Login Page */}
       <div className="text-xs text-black w-full max-w-6xl mt-auto"> {/* mt-auto pushes to bottom if content is short */}
-        <div className="flex justify-between items-center border-t-2 border-t-white bg-[#C0C0C0] py-1 px-2 win95-border-inset border-b-0 border-l-0 border-r-0">
-            <span className="flex-1 text-center">Powered by ACRCloud</span>
-            <span className="flex-1 text-right">Created by Michael Harrison</span>
+        <div className="flex justify-between items-center border-t-2 border-t-white bg-[#C0C0C0] py-1 px-2">
+            <span>Powered by ACRCloud</span>
+            <span>Created by Michael Harrison</span>
         </div>
       </div>
     </div>

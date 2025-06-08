@@ -4,6 +4,7 @@ import LoginPage from './components/LoginPage';
 import RegistrationPage from './components/RegistrationPage'; // Import RegistrationPage
 import MainAppLayout from './components/MainAppLayout';
 import { User } from './types';
+import ProgressBar from './components/common/ProgressBar'; // Import ProgressBar
 
 type AuthView = 'login' | 'register';
 
@@ -52,8 +53,10 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#C0C0C0]">
-        <div className="text-xl font-semibold text-black">Loading App...</div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#C0C0C0] p-4">
+        <div className="w-full max-w-xs">
+          <ProgressBar text="Loading App..." />
+        </div>
       </div>
     );
   }
