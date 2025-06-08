@@ -4,7 +4,7 @@ import formidable from 'formidable';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { ScanResult, AcrCloudMatch } from '../../../Downloads/soundtrace-2/src/types'; // Adjust path based on your tsconfig if needed
+import { ScanResult, AcrCloudMatch } from '../src/types'; // Corrected path
 
 // Vercel specific config to disable body parsing for formidable
 export const config = {
@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const timestamp = Math.floor(Date.now() / 1000).toString();
 
     const string_to_sign = `${http_method}\n${http_uri}\n${ACR_CLOUD_ACCESS_KEY}\n${data_type}\n${signature_version}\n${timestamp}`;
-    
+
     const signature = crypto
       .createHmac('sha1', ACR_CLOUD_ACCESS_SECRET)
       .update(string_to_sign)
@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const responseText = await acrApiResponse.text(); // Read as text first for better error diagnosis
-    
+
     if (!acrApiResponse.ok) {
         console.error(`ACRCloud API Error (${acrApiResponse.status}): ${responseText}`);
         let friendlyMessage = `ACRCloud API Error: ${acrApiResponse.status}.`;
