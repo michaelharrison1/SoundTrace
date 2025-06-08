@@ -13,7 +13,7 @@ export const config = {
   },
 };
 
-const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB, same as client-side
+const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB, applies to the incoming (potentially snippet) file
 
 // Helper function to map ACRCloud music data to AcrCloudMatch type
 const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
@@ -63,12 +63,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ message: 'No audio file uploaded.' });
     }
 
-    // Check if the file size was inherently too large for formidable (redundant if client check is robust, but good safeguard)
-    // This check is more specific to formidable's handling if a file part is too large.
-    // The Vercel 413 error typically means the *entire request body* was too large before formidable even fully parsed it.
+    console.log(`Received file: ${audioFile.originalFilename}, type: ${audioFile.mimetype}, size: ${audioFile.size}`);
+
+
     if (audioFile.size > MAX_FILE_SIZE_BYTES) {
-        // This case might not be hit if Vercel already rejected with 413.
-        // However, if the overall request was small enough but one file part was huge.
         return res.status(413).json({ message: `File "${audioFile.originalFilename}" exceeds the ${MAX_FILE_SIZE_BYTES / (1024*1024)}MB size limit.` });
     }
 
@@ -89,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const audioBuffer = fs.readFileSync(audioFile.filepath);
 
     const acrFormData = new FormData();
-    acrFormData.append('sample', new Blob([audioBuffer], { type: audioFile.mimetype || 'audio/mpeg' }), audioFile.originalFilename || 'upload.mp3');
+    acrFormData.append('sample', new Blob([audioBuffer], { type: audioFile.mimetype || 'audio/wav' }), audioFile.originalFilename || 'upload.wav');
     acrFormData.append('access_key', ACR_CLOUD_ACCESS_KEY);
     acrFormData.append('sample_bytes', audioFile.size.toString());
     acrFormData.append('timestamp', timestamp);
@@ -104,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: acrFormData,
     });
 
-    const responseText = await acrApiResponse.text(); // Read as text first for better error diagnosis
+    const responseText = await acrApiResponse.text();
 
     if (!acrApiResponse.ok) {
         console.error(`ACRCloud API Error (${acrApiResponse.status}): ${responseText}`);
@@ -124,8 +122,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const matches: AcrCloudMatch[] = acrResult.metadata?.music?.map(mapToAcrCloudMatch) || [];
       const scanResult: ScanResult = {
         scanId: `acrscan-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        instrumentalName: audioFile.originalFilename || 'Uploaded File',
-        instrumentalSize: audioFile.size,
+        instrumentalName: audioFile.originalFilename || 'Uploaded File', // This will now be snippet name
+        instrumentalSize: audioFile.size, // This will be snippet size
         scanDate: new Date().toISOString(),
         matches: matches,
       };
@@ -147,19 +145,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (error: any) {
     console.error('Error in /api/scan-track:', error);
-    // If formidable parsing error or other unexpected
-    if (error.message && error.message.includes("maxFileSize exceeded")) { // formidable specific error
+    if (error.message && error.message.includes("maxFileSize exceeded")) {
         return res.status(413).json({message: `File size limit exceeded. Max ${MAX_FILE_SIZE_BYTES / (1024*1024)}MB allowed.`});
     }
-    // Handle generic Vercel 413 or other errors that might not be caught by formidable's message
     if (error.statusCode === 413 || (error.message && error.message.toLowerCase().includes('payload too large'))) {
       return res.status(413).json({ message: `Request payload too large. Max file size is ${MAX_FILE_SIZE_BYTES / (1024*1024)}MB.`});
     }
     return res.status(500).json({ message: error.message || 'Server error during scan.' });
   } finally {
-    // formidable creates temp files, attempt to clean up if file path exists
-    // Note: Vercel's /tmp directory is ephemeral and read-only for subsequent invocations,
-    // but good practice to try cleaning if applicable and possible.
-    // Formidable might handle this itself based on options.
+    // Temp file cleanup handled by Vercel for /tmp or formidable itself
   }
 }
