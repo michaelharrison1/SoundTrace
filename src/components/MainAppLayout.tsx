@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, TrackScanLog } from '../types';
-// import useLocalStorage from '../hooks/useLocalStorage'; // Removed
-import { scanLogService } from '../services/scanLogService'; // Added
+import { scanLogService } from '../services/scanLogService';
 import Button from './common/Button';
 import LogoutIcon from './icons/LogoutIcon';
 import ScanPage from './ScanPage';
@@ -13,7 +12,6 @@ interface MainAppLayoutProps {
   onLogout: () => void;
 }
 
-// const PREVIOUS_SCANS_KEY = 'soundtrace_track_scan_logs_v2'; // Key no longer needed for localStorage
 type ActiveView = 'scan' | 'dashboard';
 
 const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
@@ -73,10 +71,6 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
      }
   };
 
-  // Callback for ScanPage to add new logs to state after successful backend save
-  const addScanLogToState = (newLog: TrackScanLog) => {
-    setPreviousScans(prevLogs => [newLog, ...prevLogs].sort((a,b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
-  };
    const addMultipleScanLogsToState = (newLogs: TrackScanLog[]) => {
     setPreviousScans(prevLogs => [...newLogs, ...prevLogs].sort((a,b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
   };
@@ -88,7 +82,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         <div className="mx-auto px-2">
           <div className="flex items-center justify-between h-8">
             <div className="flex items-center">
-              <h1 className="text-lg font-normal text-white">SoundTrace</h1>
+              <h1 className="text-lg font-normal text-white ml-2">SoundTrace</h1> {/* Moved slightly right */}
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-xs text-white hidden sm:block">User: {user.username}</span>
@@ -136,7 +130,8 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
           {!isLoadingScans && !scanError && activeView === 'scan' && (
             <ScanPage
               user={user}
-              onNewScanLogsSaved={addMultipleScanLogsToState} // Pass callback to update state
+              previousScanLogs={previousScans} // Pass previousScans here
+              onNewScanLogsSaved={addMultipleScanLogsToState}
             />
           )}
           {!isLoadingScans && !scanError && activeView === 'dashboard' && (
@@ -150,8 +145,9 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         </div>
       </main>
 
-      <footer className="py-1 px-2 text-left text-xs text-black border-t-2 border-t-white bg-[#C0C0C0]">
-        &copy; {new Date().getFullYear()} SoundTrace (Simulated App)
+      <footer className="py-1 px-2 text-xs text-black border-t-2 border-t-white bg-[#C0C0C0] flex justify-between items-center">
+        <span>&copy; {new Date().getFullYear()} SoundTrace</span>
+        <span>Created by Michael Harrison</span>
       </footer>
     </div>
   );

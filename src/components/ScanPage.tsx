@@ -3,34 +3,29 @@ import React, { useState, useCallback } from 'react';
 import { User, TrackScanLog, SnippetScanResult, AcrCloudMatch } from '../types';
 import FileUpload from './FileUpload';
 import { acrCloudService } from '../services/acrCloudService';
-import { scanLogService } from '../services/scanLogService'; // Added
+import { scanLogService } from '../services/scanLogService';
 import { generateSnippetsForFile } from '../utils/audioProcessing';
 
 interface ScanPageProps {
   user: User;
-  onNewScanLogsSaved: (newLogs: TrackScanLog[]) => void; // Callback to update MainAppLayout state
+  previousScanLogs: TrackScanLog[]; // To check for existing original file names
+  onNewScanLogsSaved: (newLogs: TrackScanLog[]) => void;
 }
 
-const ScanPage: React.FC<ScanPageProps> = ({ user, onNewScanLogsSaved }) => {
+const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLogsSaved }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [scanProgressMessage, setScanProgressMessage] = useState<string>('');
   const [scanCompletionMessage, setScanCompletionMessage] = useState<string | null>(null);
-  const [skippedFilesMessage, setSkippedFilesMessage] = useState<string | null>(null);
+  const [alreadyScannedMessage, setAlreadyScannedMessage] = useState<string | null>(null);
 
-  // Note: Duplicate checking based on `previousScans` from MainAppLayout might be complex
-  // if `previousScans` is large or fetched asynchronously.
-  // For now, the backend should ideally handle duplicate original file checks if needed,
-  // or this check could be removed/simplified from the frontend if causing issues with async data.
-  // For this iteration, we'll keep it simple and assume `previousScans` is not needed for dup check here
-  // as the backend persistence is the source of truth.
 
   const handleScan = useCallback(async (originalFiles: File[]) => {
     setIsLoading(true);
     setError(null);
     setScanCompletionMessage(null);
-    setSkippedFilesMessage(null);
-    setScanProgressMessage('');
+    setAlreadyScannedMessage(null);
+    setScanProgressMessage('Preparing tracks...');
 
     if (originalFiles.length === 0) {
       setScanCompletionMessage("No tracks selected for scanning.");
@@ -38,14 +33,46 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onNewScanLogsSaved }) => {
       return;
     }
 
+    const filesToActuallyScan: File[] = [];
+    const alreadyScannedFileNames: string[] = [];
+
+    originalFiles.forEach(originalFile => {
+      const isDuplicate = previousScanLogs.some(log => log.originalFileName === originalFile.name);
+      if (isDuplicate) {
+        alreadyScannedFileNames.push(originalFile.name);
+      } else {
+        filesToActuallyScan.push(originalFile);
+      }
+    });
+
+    if (alreadyScannedFileNames.length > 0) {
+      setAlreadyScannedMessage(
+        `The following ${alreadyScannedFileNames.length} file(s) have already been scanned and are in your dashboard: ${alreadyScannedFileNames.join(', ')}. They were not scanned again.`
+      );
+    }
+
+    if (filesToActuallyScan.length === 0) {
+      setIsLoading(false);
+      setScanProgressMessage('');
+      if (originalFiles.length > 0 && alreadyScannedFileNames.length === originalFiles.length) {
+        setScanCompletionMessage("All selected tracks have already been scanned.");
+      } else if (originalFiles.length > 0) {
+         setScanCompletionMessage("No new tracks to scan among the selection.");
+      } else {
+         // This case should be caught by the initial originalFiles.length === 0 check
+         setScanCompletionMessage("No tracks selected for scanning.");
+      }
+      return;
+    }
+
     const successfullySavedLogs: TrackScanLog[] = [];
     let processingErrorOccurred = false;
     let tracksProcessedCount = 0;
 
-    for (let i = 0; i < originalFiles.length; i++) {
-      const originalFile = originalFiles[i];
+    for (let i = 0; i < filesToActuallyScan.length; i++) {
+      const originalFile = filesToActuallyScan[i];
       tracksProcessedCount++;
-      setScanProgressMessage(`Processing track ${i + 1}/${originalFiles.length}: "${originalFile.name}"...`);
+      setScanProgressMessage(`Processing track ${i + 1}/${filesToActuallyScan.length}: "${originalFile.name}"...`);
 
       let trackMatches: AcrCloudMatch[] = [];
       let trackStatus: TrackScanLog['status'] = 'no_matches_found';
@@ -56,10 +83,8 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onNewScanLogsSaved }) => {
 
       if (!snippets || snippets.length === 0) {
         trackStatus = 'error_processing';
-        setError(prev => {
-            const newError = `Could not generate scannable segments for ${originalFile.name}.`;
-            return prev ? `${prev}\n${newError}` : newError;
-        });
+        const newError = `Could not generate scannable segments for ${originalFile.name}.`;
+        setError(prev => prev ? `${prev}\n${newError}` : newError);
         processingErrorOccurred = true;
       } else {
         for (let j = 0; j < snippets.length; j++) {
@@ -73,10 +98,8 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onNewScanLogsSaved }) => {
             snippetsScannedCount++;
           } catch (err: any) {
             console.error(`Error scanning snippet ${snippet.name} for ${originalFile.name}:`, err);
-            setError(prev => {
-                const newError = `Error scanning segment of ${originalFile.name}: ${err.message}`;
-                return prev ? `${prev}\n${newError}` : newError;
-            });
+            const newError = `Error scanning segment of ${originalFile.name}: ${err.message}`;
+            setError(prev => prev ? `${prev}\n${newError}` : newError);
             snippetErrors++;
             processingErrorOccurred = true;
           }
@@ -99,56 +122,48 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onNewScanLogsSaved }) => {
         }
       }
 
-      // Data for the new log, logId will be assigned by backend
       const logDataToSave: Omit<TrackScanLog, 'logId' | 'scanDate'> = {
         originalFileName: originalFile.name,
         originalFileSize: originalFile.size,
-        // scanDate will be set by backend or here before save if needed, but backend is better
         matches: trackMatches,
         status: trackStatus,
       };
 
       try {
         setScanProgressMessage(`Saving results for "${originalFile.name}"...`);
-        // The backend should set its own scanDate and generate a logId (_id)
         const savedLog = await scanLogService.saveScanLog(logDataToSave);
         successfullySavedLogs.push(savedLog);
       } catch (saveError: any) {
         console.error(`Failed to save scan log for ${originalFile.name}:`, saveError);
-        setError(prev => {
-            const newError = `Failed to save results for ${originalFile.name}: ${saveError.message}`;
-            return prev ? `${prev}\n${newError}` : newError;
-        });
+        const newError = `Failed to save results for ${originalFile.name}: ${saveError.message}`;
+        setError(prev => prev ? `${prev}\n${newError}` : newError);
         processingErrorOccurred = true;
       }
     }
 
     if (successfullySavedLogs.length > 0) {
-      onNewScanLogsSaved(successfullySavedLogs); // Update parent state
+      onNewScanLogsSaved(successfullySavedLogs);
     }
 
     let finalCompletionMsg = "";
     if (tracksProcessedCount > 0) {
-        finalCompletionMsg += `${tracksProcessedCount} track(s) processed. `;
-        if (successfullySavedLogs.length > 0) {
-             const foundMatchesCount = successfullySavedLogs.filter(log => log.status === 'matches_found' && log.matches.length > 0).length;
-             if (foundMatchesCount > 0) {
-                finalCompletionMsg += `${foundMatchesCount} had new matches saved. `;
-             }
+        finalCompletionMsg += `${tracksProcessedCount} new track(s) processed. `;
+        const foundMatchesCount = successfullySavedLogs.filter(log => log.status === 'matches_found' && log.matches.length > 0).length;
+        if (foundMatchesCount > 0) {
+            finalCompletionMsg += `${foundMatchesCount} had new matches saved. `;
+        } else if (successfullySavedLogs.length > 0) {
+            finalCompletionMsg += `No new matches found in the processed tracks. `;
         }
+    } else if (alreadyScannedFileNames.length === originalFiles.length && originalFiles.length > 0) {
+        // This state is handled before the loop now.
     } else {
-        finalCompletionMsg = "No tracks were selected or processed.";
+        finalCompletionMsg = "No new tracks were processed.";
     }
-    setScanCompletionMessage(finalCompletionMsg.trim());
-
-    // Skipped files message can be handled based on an initial check against backend if desired,
-    // but that adds complexity here. For now, it's removed as duplicates are more robustly handled by backend.
-    setSkippedFilesMessage(null);
-
+    setScanCompletionMessage(finalCompletionMsg.trim() || null); // Set to null if empty
 
     setIsLoading(false);
     setScanProgressMessage('');
-  }, [onNewScanLogsSaved, user]); // user might be needed if duplicate check against backend was implemented here.
+  }, [onNewScanLogsSaved, user, previousScanLogs]);
 
   return (
     <div className="space-y-3">
@@ -159,13 +174,13 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onNewScanLogsSaved }) => {
       {isLoading && (
         <div className="p-3 win95-border-outset bg-[#C0C0C0] text-center">
           <p className="mt-1 text-base text-black font-normal">
-            {scanProgressMessage || 'Initializing Scan...'}
+            {scanProgressMessage || 'Scanning...'}
           </p>
           <p className="text-xs text-gray-700">Please wait.</p>
         </div>
       )}
 
-      {!isLoading && (error || scanCompletionMessage || skippedFilesMessage) && (
+      {!isLoading && (error || scanCompletionMessage || alreadyScannedMessage) && (
         <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
             <div className="p-2 bg-[#C0C0C0] space-y-1.5">
             {scanCompletionMessage && (
@@ -174,11 +189,10 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onNewScanLogsSaved }) => {
                 <p>{scanCompletionMessage}</p>
                 </div>
             )}
-            {/* skippedFilesMessage is currently not set, but kept for potential future use */}
-            {skippedFilesMessage && (
+            {alreadyScannedMessage && (
                 <div className="p-2 bg-blue-200 text-black border border-black">
-                <p className="font-semibold">Skipped Tracks:</p>
-                <p>{skippedFilesMessage}</p>
+                <p className="font-semibold">Already Scanned:</p>
+                <p>{alreadyScannedMessage}</p>
                 </div>
             )}
             {error && (
@@ -191,7 +205,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onNewScanLogsSaved }) => {
         </div>
       )}
 
-      {!isLoading && !error && !scanCompletionMessage && !skippedFilesMessage && (
+      {!isLoading && !error && !scanCompletionMessage && !alreadyScannedMessage && (
          <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
             <span className="text-4xl text-gray-500" aria-hidden="true">♫</span>
             <h2 className="text-lg font-normal text-black mt-1">Ready to Scan?</h2>
