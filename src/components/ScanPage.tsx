@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { User, ScanResult } from '../types';
 import FileUpload from './FileUpload';
@@ -18,51 +19,49 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, setPreviousSca
   const [scanCompletionMessage, setScanCompletionMessage] = useState<string | null>(null);
   const [duplicateFilesMessage, setDuplicateFilesMessage] = useState<string | null>(null);
 
+  // Checks if a processed snippet is a duplicate of a previously scanned snippet
   const isFileDuplicate = (file: File, scans: ScanResult[]): boolean => {
     return scans.some(scan => scan.instrumentalName === file.name && scan.instrumentalSize === file.size);
   };
 
-  const handleScan = useCallback(async (files: File[]) => {
+  const handleScan = useCallback(async (filesToProcess: File[]) => { // filesToProcess are the snippets from FileUpload
     setIsLoading(true);
     setError(null);
     setScanCompletionMessage(null);
     setDuplicateFilesMessage(null);
-    setScanProgressMessage(`Preparing ${files.length} file(s)...`);
 
-    const newFilesToScan: File[] = [];
-    const duplicateFiles: string[] = [];
+    if (filesToProcess.length === 0) {
+        setScanProgressMessage('');
+        setScanCompletionMessage("No snippets selected or generated for scanning.");
+        setIsLoading(false);
+        return;
+    }
 
-    files.forEach(file => {
-      if (isFileDuplicate(file, previousScans)) {
-        duplicateFiles.push(file.name);
+    setScanProgressMessage(`Preparing ${filesToProcess.length} snippet(s)...`);
+
+    const newFilesToScan: File[] = []; // Snippets that are not duplicates
+    const duplicateFileNames: string[] = [];
+
+    filesToProcess.forEach(snippet => {
+      if (isFileDuplicate(snippet, previousScans)) {
+        duplicateFileNames.push(snippet.name);
       } else {
-        newFilesToScan.push(file);
+        newFilesToScan.push(snippet);
       }
     });
 
-    if (duplicateFiles.length > 0) {
-      setDuplicateFilesMessage(`${duplicateFiles.length} file(s) were duplicates: ${duplicateFiles.join(', ')}.`);
+    if (duplicateFileNames.length > 0) {
+      setDuplicateFilesMessage(`${duplicateFileNames.length} snippet(s) were duplicates and were not re-scanned: ${duplicateFileNames.slice(0,3).join(', ')}${duplicateFileNames.length > 3 ? '...' : ''}.`);
     }
 
-    if (newFilesToScan.length === 0 && files.length > 0) {
-        setScanCompletionMessage(duplicateFiles.length > 0 ? "No new files to scan." : "No files selected.");
+    if (newFilesToScan.length === 0) {
+        // This means all snippets passed were duplicates, or no snippets were passed initially (handled above)
+        setScanCompletionMessage(duplicateFileNames.length > 0 ? "No new snippets to scan. All were duplicates." : "No snippets available for scanning.");
         setIsLoading(false);
         setScanProgressMessage('');
-        if (duplicateFiles.length === 0 && files.length > 0) {
-            setError("Selected files are duplicates or no new files.");
-        } else {
-            setError(null);
-        }
+        // setError(null); // No error if they were just duplicates
         return;
     }
-     if (newFilesToScan.length === 0 && files.length === 0) {
-        setScanCompletionMessage("No files selected.");
-        setIsLoading(false);
-        setScanProgressMessage('');
-        setError("Please select files to scan.");
-        return;
-    }
-
 
     const batchResults: ScanResult[] = [];
     let firstError: string | null = null;
@@ -71,7 +70,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, setPreviousSca
       const file = newFilesToScan[i];
       setScanProgressMessage(`Scanning ${i + 1}/${newFilesToScan.length}: "${file.name}"...`);
       try {
-        // Use the new acrCloudService
         const result = await acrCloudService.scanWithAcrCloud(file);
         batchResults.push(result);
       } catch (err: any) {
@@ -79,19 +77,28 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, setPreviousSca
         if (!firstError) {
           firstError = `Error scanning "${file.name}": ${err.message || 'Unknown error.'}`;
         }
+        // Optionally, decide if you want to stop all scans on first error or continue
+        // For now, it continues with other files.
       }
     }
 
     if (batchResults.length > 0) {
-      setPreviousScans(prevScans => [...batchResults.slice().reverse(), ...prevScans]);
-      setScanCompletionMessage(`${batchResults.length} new scans added to dashboard.`);
+      setPreviousScans(prevScans => [...batchResults.slice().reverse(), ...prevScans]); // Add new results to the top
+      setScanCompletionMessage(`${batchResults.length} new scan result(s) added to dashboard.`);
     } else if (newFilesToScan.length > 0 && !firstError) {
-       setScanCompletionMessage("No new matches found from the uploaded files.");
+       // This case means scans were attempted for new files, but ACRCloud found no matches in any of them.
+       setScanCompletionMessage("Scans completed. No new matches found in the processed snippets.");
     }
 
 
     if (firstError) {
-        setError(firstError);
+        // If there was a completion message from successful scans, append error, otherwise set error.
+        if(scanCompletionMessage) {
+            setError(`${scanCompletionMessage} However, some scans failed: ${firstError}`);
+            setScanCompletionMessage(null); // Clear scanCompletionMessage if error is shown
+        } else {
+            setError(firstError);
+        }
     }
 
     setIsLoading(false);
@@ -106,7 +113,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, setPreviousSca
 
       {isLoading && (
         <div className="p-3 win95-border-outset bg-[#C0C0C0] text-center">
-          {/* <Spinner size="md" color="text-black" /> */}
           <p className="mt-1 text-base text-black font-normal">
             {scanProgressMessage || 'Scanning...'}
           </p>
@@ -131,7 +137,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, setPreviousSca
             )}
             {duplicateFilesMessage && (
                 <div className="p-2 bg-blue-200 text-black border border-black">
-                <p className="font-semibold">Duplicates:</p>
+                <p className="font-semibold">Note:</p>
                 <p>{duplicateFilesMessage}</p>
                 </div>
             )}
@@ -141,7 +147,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, setPreviousSca
 
       {!isLoading && !error && !scanCompletionMessage && !duplicateFilesMessage && (
          <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
-            {/* <MusicNoteIcon className="mx-auto h-12 w-12 text-gray-500 mb-2" /> */}
             <span className="text-4xl text-gray-500" aria-hidden="true">♫</span>
             <h2 className="text-lg font-normal text-black mt-1">Ready to Scan?</h2>
             <p className="text-gray-700 mt-0.5 text-sm">Upload instrumentals above to begin.</p>
