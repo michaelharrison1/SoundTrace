@@ -5,29 +5,27 @@ import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
 
 interface PreviousScansProps {
-  scanLogs: TrackScanLog[]; // Renamed from scans to scanLogs, expects TrackScanLog[]
-  onDeleteScan: (logId: string) => void; // Expects logId from TrackScanLog
+  scanLogs: TrackScanLog[];
+  onDeleteScan: (logId: string) => void;
   onClearAllScans: () => void;
 }
 
 interface DisplayableTableRow {
-  isMatchRow: boolean; // True if this row represents an actual AcrCloudMatch
-  logId: string; // ID of the parent TrackScanLog
+  isMatchRow: boolean;
+  logId: string;
   originalFileName: string;
-  originalScanDate: string; // Date of the TrackScanLog
+  originalScanDate: string;
 
-  // Fields for actual matches (if isMatchRow is true)
   matchDetails?: AcrCloudMatch;
 
-  // For rows representing a log with no matches or an error
-  statusMessage?: string; // e.g., "No Matches Found", "Error Processing"
+  statusMessage?: string;
 }
 
 const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, onClearAllScans }) => {
 
-  const tableRows: DisplayableTableRow[] = scanLogs.reduce((acc, log) => {
+  const tableRows: DisplayableTableRow[] = scanLogs.reduce((acc, log: TrackScanLog) => {
     if (log.status === 'matches_found' && log.matches.length > 0) {
-      log.matches.forEach(match => {
+      log.matches.forEach((match: AcrCloudMatch) => {
         acc.push({
           isMatchRow: true,
           logId: log.logId,
@@ -54,19 +52,18 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
       });
     } else if (log.status === 'partially_completed') {
          acc.push({
-            isMatchRow: false, // Treat as a status row first
+            isMatchRow: false,
             logId: log.logId,
             originalFileName: log.originalFileName,
             originalScanDate: log.scanDate,
             statusMessage: "Partial Scan (some segments failed)",
          });
-         // Optionally, also list any matches found during partial scan
          if (log.matches.length > 0) {
-             log.matches.forEach(match => {
+             log.matches.forEach((match: AcrCloudMatch) => {
                 acc.push({
                 isMatchRow: true,
                 logId: log.logId,
-                originalFileName: log.originalFileName, // Keep original file context
+                originalFileName: log.originalFileName,
                 originalScanDate: log.scanDate,
                 matchDetails: match,
                 });
@@ -74,17 +71,14 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
          }
     }
     return acc;
-  }, [] as DisplayableTableRow[]).sort((a, b) => {
-    // Primary sort by original scan date (most recent first)
+  }, [] as DisplayableTableRow[]).sort((a: DisplayableTableRow, b: DisplayableTableRow) => {
     const dateA = new Date(a.originalScanDate).getTime();
     const dateB = new Date(b.originalScanDate).getTime();
     if (dateB !== dateA) return dateB - dateA;
 
-    // Secondary sort: logs with actual matches first, then status messages
     if (a.isMatchRow && !b.isMatchRow) return -1;
     if (!a.isMatchRow && b.isMatchRow) return 1;
 
-    // Tertiary sort: alphabetically by original file name if dates and types are same
     return a.originalFileName.localeCompare(b.originalFileName);
   });
 
@@ -100,7 +94,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
   const innerContainerStyles = "p-2 bg-[#C0C0C0]";
 
    if (scanLogs.length === 0) {
-    // This case should be handled by DashboardViewPage
     return null;
   }
 
@@ -184,7 +177,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
                     </td>
                     <td className="px-1 py-0.5 whitespace-nowrap text-center">
                       <Button
-                        onClick={() => onDeleteScan(row.logId)} // Delete the entire log entry
+                        onClick={() => onDeleteScan(row.logId)}
                         size="sm"
                         className="p-0.5 !text-xs"
                         title={`Delete scan log for ${row.originalFileName}`}
