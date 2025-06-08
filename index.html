@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SoundTrace</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #C0C0C0; /* Windows 95 gray */
+      font-family: 'VT323', monospace;
+      color: #000000; /* Default text black */
+      font-size: 16px; /* VT323 looks better a bit larger */
+    }
+    /* Revert to browser default scrollbars */
+    ::-webkit-scrollbar {
+      all: unset;
+    }
+    * {
+      scrollbar-width: auto; /* For Firefox */
+    }
+    /* Basic 3D border styles for panels/windows */
+    .win95-border-outset {
+      border-style: solid;
+      border-width: 2px;
+      border-top-color: #FFFFFF;
+      border-left-color: #FFFFFF;
+      border-bottom-color: #808080;
+      border-right-color: #808080;
+      box-shadow: 1px 1px 0px #000000; /* Optional: slight outer shadow for pop */
+    }
+    .win95-border-inset {
+      border-style: solid;
+      border-width: 2px;
+      border-top-color: #808080;
+      border-left--color: #808080;
+      border-bottom-color: #FFFFFF;
+      border-right-color: #FFFFFF;
+    }
+    /* Ensure icons use black stroke by default if not overridden */
+    svg {
+      stroke: #000000 !important; /* Override for icons */
+    }
+  </style>
+  <!-- IMPORTMAP HAS BEEN REMOVED -- This is just an HTML comment and is fine. -->
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.1.0",
+    "react/jsx-runtime": "https://esm.sh/react@19.1.0/jsx-runtime",
+    "react/jsx-dev-runtime": "https://esm.sh/react@19.1.0/jsx-dev-runtime",
+    "react-dom": "https://esm.sh/react-dom@19.1.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.1.0/client",
+    "react-dom/": "https://esm.sh/react-dom@19.1.0/",
+    "react/": "https://esm.sh/react@19.1.0/"
+  }
+}
+</script>
+</head>
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="root"></div>
+  <!-- The build tool will process src/index.tsx and inject the final script here -- This is also fine. -->
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+</html>
