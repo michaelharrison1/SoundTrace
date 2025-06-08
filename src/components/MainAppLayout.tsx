@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
-import { User, TrackScanLog } from '../types'; // Updated to TrackScanLog
-import useLocalStorage from '../hooks/useLocalStorage';
+import React, { useState, useEffect, useCallback } from 'react';
+import { User, TrackScanLog } from '../types';
+// import useLocalStorage from '../hooks/useLocalStorage'; // Removed
+import { scanLogService } from '../services/scanLogService'; // Added
 import Button from './common/Button';
 import LogoutIcon from './icons/LogoutIcon';
 import ScanPage from './ScanPage';
@@ -12,24 +13,74 @@ interface MainAppLayoutProps {
   onLogout: () => void;
 }
 
-const PREVIOUS_SCANS_KEY = 'soundtrace_track_scan_logs_v2'; // Updated key for new structure
+// const PREVIOUS_SCANS_KEY = 'soundtrace_track_scan_logs_v2'; // Key no longer needed for localStorage
 type ActiveView = 'scan' | 'dashboard';
 
 const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
-  const [previousScans, setPreviousScans] = useLocalStorage<TrackScanLog[]>(PREVIOUS_SCANS_KEY, []);
+  const [previousScans, setPreviousScans] = useState<TrackScanLog[]>([]);
   const [activeView, setActiveView] = useState<ActiveView>('scan');
+  const [isLoadingScans, setIsLoadingScans] = useState<boolean>(false);
+  const [scanError, setScanError] = useState<string | null>(null);
 
-  const handleClearAllScans = () => {
-    if (window.confirm("Are you sure you want to delete ALL scan records? This action cannot be undone.")) {
-      setPreviousScans([]);
+  const fetchScanLogs = useCallback(async () => {
+    if (!user) return;
+    setIsLoadingScans(true);
+    setScanError(null);
+    try {
+      const logs = await scanLogService.getScanLogs();
+      setPreviousScans(logs.sort((a,b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
+    } catch (error: any) {
+      console.error("Failed to fetch scan logs:", error);
+      setScanError(error.message || "Could not load scan history.");
+    } finally {
+      setIsLoadingScans(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchScanLogs();
+  }, [fetchScanLogs]);
+
+  const handleClearAllScans = async () => {
+    if (window.confirm("Are you sure you want to delete ALL scan records from the server? This action cannot be undone.")) {
+      setIsLoadingScans(true);
+      setScanError(null);
+      try {
+        await scanLogService.clearAllScanLogs();
+        setPreviousScans([]);
+      } catch (error: any) {
+        console.error("Failed to clear all scan logs:", error);
+        setScanError(error.message || "Could not clear scan history.");
+      } finally {
+        setIsLoadingScans(false);
+      }
     }
   };
 
-  const handleDeleteScan = (logIdToDelete: string) => { // Expects logId from TrackScanLog
-     if (window.confirm("Are you sure you want to delete this scan record and all its associated matches?")) {
-        setPreviousScans(prevScans => prevScans.filter(log => log.logId !== logIdToDelete));
+  const handleDeleteScan = async (logIdToDelete: string) => {
+     if (window.confirm("Are you sure you want to delete this scan record and all its associated matches from the server?")) {
+        setIsLoadingScans(true);
+        setScanError(null);
+        try {
+          await scanLogService.deleteScanLog(logIdToDelete);
+          setPreviousScans(prevScans => prevScans.filter(log => log.logId !== logIdToDelete));
+        } catch (error: any) {
+          console.error(`Failed to delete scan log ${logIdToDelete}:`, error);
+          setScanError(error.message || `Could not delete scan log.`);
+        } finally {
+          setIsLoadingScans(false);
+        }
      }
   };
+
+  // Callback for ScanPage to add new logs to state after successful backend save
+  const addScanLogToState = (newLog: TrackScanLog) => {
+    setPreviousScans(prevLogs => [newLog, ...prevLogs].sort((a,b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
+  };
+   const addMultipleScanLogsToState = (newLogs: TrackScanLog[]) => {
+    setPreviousScans(prevLogs => [...newLogs, ...prevLogs].sort((a,b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
+  };
+
 
   return (
     <div className="min-h-screen bg-[#C0C0C0] flex flex-col">
@@ -65,24 +116,33 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
               size="sm"
               className={`px-3 py-0.5 ${activeView === 'dashboard' ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' : 'win95-border-outset'}`}
             >
-              Dashboard ({previousScans.length}) {/* Count of TrackScanLog entries */}
+              Dashboard ({previousScans.length})
             </Button>
           </nav>
       </header>
 
       <main className="mx-auto p-0.5 w-full flex-grow">
         <div className="bg-[#C0C0C0] p-2 h-full">
-          {activeView === 'scan' && (
+          {isLoadingScans && (
+            <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center text-black">
+              Loading scan history...
+            </div>
+          )}
+          {scanError && (
+            <div className="p-4 win95-border-outset bg-red-200 text-center text-black border border-black">
+              Error with scan history: {scanError} <Button onClick={fetchScanLogs} size="sm">Retry</Button>
+            </div>
+          )}
+          {!isLoadingScans && !scanError && activeView === 'scan' && (
             <ScanPage
               user={user}
-              previousScans={previousScans}
-              setPreviousScans={setPreviousScans}
+              onNewScanLogsSaved={addMultipleScanLogsToState} // Pass callback to update state
             />
           )}
-          {activeView === 'dashboard' && (
+          {!isLoadingScans && !scanError && activeView === 'dashboard' && (
             <DashboardViewPage
               user={user}
-              previousScans={previousScans} // Pass TrackScanLog[]
+              previousScans={previousScans}
               onDeleteScan={handleDeleteScan}
               onClearAllScans={handleClearAllScans}
             />
