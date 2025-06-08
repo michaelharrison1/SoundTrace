@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { User, ScanResult } from '../types';
 import FileUpload from './FileUpload';
-import { acrCloudService } from '../services/acrCloudService'; // Updated import
+import { acrCloudService } from '../services/acrCloudService'; // Corrected: Use actual service
 // import Spinner from './common/Spinner'; // Using simple text for loading
 // import MusicNoteIcon from './icons/MusicNoteIcon'; // Using text/simpler icon
 
