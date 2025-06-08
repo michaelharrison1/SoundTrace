@@ -116,6 +116,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
       const originalNameWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
       const snippetFile = new File([wavBlob], `${originalNameWithoutExtension}_${SNIPPET_DURATION_SECONDS}s_mono.wav`, { type: 'audio/wav' });
 
+      // DIAGNOSTIC LOG
+      console.log(`Processed snippet: ${snippetFile.name}, size: ${snippetFile.size} bytes`);
+
       return snippetFile;
 
     } catch (error) {
