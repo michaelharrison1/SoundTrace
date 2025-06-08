@@ -1,5 +1,4 @@
 
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import formidable from 'formidable';
 import crypto from 'crypto';
@@ -18,6 +17,9 @@ const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB, applies to the incoming (po
 
 // Helper function to map ACRCloud music data to AcrCloudMatch type
 const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
+  // Extract the primary Spotify artist ID if available
+  const spotifyArtistId = track.external_metadata?.spotify?.artists?.[0]?.id;
+
   return {
     id: track.acrid,
     title: track.title || 'Unknown Title',
@@ -25,6 +27,7 @@ const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
     album: track.album?.name || 'Unknown Album',
     releaseDate: track.release_date || 'N/A',
     matchConfidence: track.score || 0,
+    spotifyArtistId: spotifyArtistId, // Include the extracted artist ID
     platformLinks: {
       spotify: track.external_metadata?.spotify?.track?.id
         ? `https://open.spotify.com/track/${track.external_metadata.spotify.track.id}`
@@ -33,9 +36,9 @@ const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
         ? `https://www.youtube.com/watch?v=${track.external_metadata.youtube.vid}`
         : undefined,
     },
-    streamCounts: {
-      spotify: undefined,
-      youtube: undefined,
+    streamCounts: { // These would typically come from another API, not directly from ACRCloud
+      spotify: undefined, // Placeholder
+      youtube: undefined, // Placeholder
     },
   };
 };

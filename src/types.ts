@@ -20,6 +20,7 @@ export interface AcrCloudMatch {
     youtube?: number;
   };
   matchConfidence: number; // 0-100
+  spotifyArtistId?: string; // Added for Spotify artist ID
 }
 
 // Represents the result from the backend for a single snippet

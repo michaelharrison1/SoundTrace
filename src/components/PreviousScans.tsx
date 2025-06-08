@@ -3,6 +3,7 @@ import React from 'react';
 import { TrackScanLog, AcrCloudMatch } from '../types'; // Uses TrackScanLog
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
+import ArtistFollowers from './common/ArtistFollowers'; // Import the new component
 
 interface PreviousScansProps {
   scanLogs: TrackScanLog[];
@@ -41,7 +42,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
     } else { // No matches, error, or partial with no matches
       let message = "No Matches Found";
       if (log.status === 'error_processing') message = "Error Processing Track";
-      else if (log.status === 'partially_completed') message = "Partial Scan (no matches found)"; // Or "Partial Scan (some segments failed)" if preferred
+      else if (log.status === 'partially_completed') message = "Partial Scan (no matches found)";
 
       acc.push({
         isMatchRow: false,
@@ -54,21 +55,16 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
     }
     return acc;
   }, [] as DisplayableTableRow[]).sort((a: DisplayableTableRow, b: DisplayableTableRow) => {
-    // Group by original file first, then sort within group
-    // Rows with any matches in their log (hasAnyMatchesInLog) come before those with none.
     if (a.hasAnyMatchesInLog && !b.hasAnyMatchesInLog) return -1;
     if (!a.hasAnyMatchesInLog && b.hasAnyMatchesInLog) return 1;
 
-    // If both have matches or both have no matches, sort by date (newest first)
     const dateA = new Date(a.originalScanDate).getTime();
     const dateB = new Date(b.originalScanDate).getTime();
     if (dateB !== dateA) return dateB - dateA;
 
-    // Then sort by original file name
     const fileCompare = a.originalFileName.localeCompare(b.originalFileName);
     if (fileCompare !== 0) return fileCompare;
 
-    // Within the same file log, ensure actual match rows come before a status message row for that same log (e.g. partial scan message)
     if (a.isMatchRow && !b.isMatchRow) return -1;
     if (!a.isMatchRow && b.isMatchRow) return 1;
 
@@ -113,18 +109,31 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
            <p className="text-black text-center py-2 text-sm">No scan history to display.</p>
         ) : (
           <div className="overflow-x-auto win95-border-inset bg-white">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm" style={{tableLayout: 'fixed'}}>
+              <colgroup>
+                <col style={{ width: '60px' }} /> {/* Links */}
+                <col style={{ width: '20%' }} /> {/* Title / Status */}
+                <col style={{ width: '15%' }} /> {/* Artist */}
+                <col style={{ width: '100px' }} /> {/* Followers */}
+                <col style={{ width: '15%' }} /> {/* Album */}
+                <col style={{ width: '100px' }} /> {/* Released */}
+                <col style={{ width: '60px' }} />  {/* Conf. */}
+                <col style={{ width: '100px' }} /> {/* Streams */}
+                <col style={{ width: '15%' }} /> {/* Original Upload */}
+                <col style={{ width: '60px' }} />  {/* Action */}
+              </colgroup>
               <thead className="bg-[#C0C0C0] border-b-2 border-b-[#808080]">
                 <tr>
-                  <th scope="col" className="px-2 py-1 text-left font-normal text-black">Links</th>
-                  <th scope="col" className="px-2 py-1 text-left font-normal text-black">Song Title / Status</th>
-                  <th scope="col" className="px-2 py-1 text-left font-normal text-black">Artist</th>
-                  <th scope="col" className="px-2 py-1 text-left font-normal text-black">Album</th>
-                  <th scope="col" className="px-2 py-1 text-left font-normal text-black">Released</th>
-                  <th scope="col" className="px-2 py-1 text-left font-normal text-black">Conf.</th>
-                  <th scope="col" className="px-2 py-1 text-left font-normal text-black">Streams (S/Y)</th>
-                  <th scope="col" className="px-2 py-1 text-left font-normal text-black">Original Upload</th>
-                  <th scope="col" className="px-1 py-1 text-center font-normal text-black">Action</th>
+                  <th scope="col" className="px-2 py-1 text-left font-normal text-black truncate">Links</th>
+                  <th scope="col" className="px-2 py-1 text-left font-normal text-black truncate">Song Title / Status</th>
+                  <th scope="col" className="px-2 py-1 text-left font-normal text-black truncate">Artist</th>
+                  <th scope="col" className="px-2 py-1 text-left font-normal text-black truncate">Followers</th>
+                  <th scope="col" className="px-2 py-1 text-left font-normal text-black truncate">Album</th>
+                  <th scope="col" className="px-2 py-1 text-left font-normal text-black truncate">Released</th>
+                  <th scope="col" className="px-2 py-1 text-left font-normal text-black truncate">Conf.</th>
+                  <th scope="col" className="px-2 py-1 text-left font-normal text-black truncate">Streams (S/Y)</th>
+                  <th scope="col" className="px-2 py-1 text-left font-normal text-black truncate">Original Upload</th>
+                  <th scope="col" className="px-1 py-1 text-center font-normal text-black truncate">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -140,13 +149,16 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
                       )}
                       {(!row.isMatchRow || (!row.matchDetails?.platformLinks?.spotify && !row.matchDetails?.platformLinks?.youtube)) && <span className="text-gray-500">-</span>}
                     </td>
-                    <td className="px-2 py-1 whitespace-nowrap text-black" title={row.isMatchRow ? row.matchDetails?.title : row.statusMessage}>
+                    <td className="px-2 py-1 text-black truncate" title={row.isMatchRow ? row.matchDetails?.title : row.statusMessage}>
                       {row.isMatchRow ? row.matchDetails?.title : <span className="italic">{row.statusMessage}</span>}
                     </td>
-                    <td className="px-2 py-1 whitespace-nowrap text-gray-700" title={row.isMatchRow ? row.matchDetails?.artist : "N/A"}>
+                    <td className="px-2 py-1 text-gray-700 truncate" title={row.isMatchRow ? row.matchDetails?.artist : "N/A"}>
                       {row.isMatchRow ? row.matchDetails?.artist : "N/A"}
                     </td>
-                    <td className="px-2 py-1 whitespace-nowrap text-gray-700" title={row.isMatchRow ? row.matchDetails?.album : "N/A"}>
+                    <td className="px-2 py-1 text-gray-700 truncate">
+                      {row.isMatchRow ? <ArtistFollowers artistId={row.matchDetails?.spotifyArtistId} /> : "N/A"}
+                    </td>
+                    <td className="px-2 py-1 text-gray-700 truncate" title={row.isMatchRow ? row.matchDetails?.album : "N/A"}>
                       {row.isMatchRow ? row.matchDetails?.album : "N/A"}
                     </td>
                     <td className="px-2 py-1 whitespace-nowrap text-gray-700">
@@ -165,7 +177,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, onDeleteScan, o
                     <td className="px-2 py-1 whitespace-nowrap text-gray-700">
                       {row.isMatchRow ? `${formatStreams(row.matchDetails?.streamCounts?.spotify)}/${formatStreams(row.matchDetails?.streamCounts?.youtube)}` : "N/A"}
                     </td>
-                    <td className="px-2 py-1 whitespace-nowrap text-black" title={row.originalFileName}>
+                    <td className="px-2 py-1 text-black truncate" title={row.originalFileName}>
                       {row.originalFileName}
                        {row.statusMessage && row.isMatchRow && <span className="text-xs text-gray-500 italic ml-1">({row.statusMessage})</span>}
                     </td>
