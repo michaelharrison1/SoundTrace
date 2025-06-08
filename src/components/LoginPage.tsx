@@ -1,8 +1,8 @@
+
 import React, { useState } from 'react';
 import { User } from '../types';
-import { mockAuthService } from '../services/mockAuthService';
+import { authService } from '../services/authService'; // Import the new authService
 import Button from './common/Button';
-// import MusicNoteIcon from './icons/MusicNoteIcon'; // Icon might look out of place
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
@@ -19,14 +19,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setError(null);
     setIsLoading(true);
     try {
-      const user = await mockAuthService.login(username, password);
-      if (user) {
-        onLogin(user);
-      } else {
-        setError('Login failed. Please try again.');
-      }
+      const authResponse = await authService.login(username, password);
+      // Assuming authResponse is { token: string, userId: string, username: string }
+      // Store token and user details in localStorage
+      localStorage.setItem('authToken', authResponse.token);
+      const user: User = { id: authResponse.userId, username: authResponse.username };
+      localStorage.setItem('currentUserDetails', JSON.stringify(user));
+
+      onLogin(user);
+
     } catch (err: any) {
-      setError(err.message || 'An unknown error occurred.');
+      setError(err.message || 'An unknown error occurred during login.');
     } finally {
       setIsLoading(false);
     }
@@ -37,15 +40,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       <div className="bg-[#C0C0C0] p-0.5 win95-border-outset w-full max-w-sm">
         <div className="bg-[#C0C0C0] p-4 border-2 border-transparent"> {/* Inner padding */}
           <div className="flex justify-center mb-4">
-            {/* Standard icons might not fit the aesthetic well. Consider pixel art or simpler text. */}
-            {/* <MusicNoteIcon className="h-12 w-12 text-black" /> */}
-            <span className="text-3xl text-[#084B8A]" aria-hidden="true">♫</span> 
+            <span className="text-3xl text-[#084B8A]" aria-hidden="true">♫</span>
           </div>
           <h2 className="text-2xl font-normal text-center text-black mb-1">SoundTrace Login</h2>
           <p className="text-sm text-center text-black mb-5">
             Upload instrumentals, scan for uses, and track results.
           </p>
-          
+
           {error && (
             <div className="mb-3 p-2 bg-red-200 text-black border border-black text-sm">
               {error}
@@ -66,7 +67,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
-                placeholder="producer"
+                placeholder="Enter username"
+                aria-label="Username"
               />
             </div>
 
@@ -83,15 +85,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
-                placeholder="password123"
+                placeholder="Enter password"
+                aria-label="Password"
               />
             </div>
-            
+
             <Button type="submit" variant="primary" size="md" isLoading={isLoading} className="w-full">
-              Login
+              {isLoading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
-          <p className="mt-4 text-xs text-center text-blue-800"> {/* Changed text color here */}
+          {/*
+            Keeping the demo credentials hint might be useful for your backend testing,
+            but consider removing it for a "real" application.
+          */}
+          <p className="mt-4 text-xs text-center text-blue-800">
             Demo: user <span className="font-semibold text-black">producer</span>, pass <span className="font-semibold text-black">password123</span>
           </p>
         </div>
