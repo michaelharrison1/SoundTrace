@@ -11,11 +11,13 @@ interface FileUploadProps {
 const MAX_ORIGINAL_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB for pre-processing
 const MAX_ORIGINAL_FILE_SIZE_MB = MAX_ORIGINAL_FILE_SIZE_BYTES / (1024 * 1024);
 const SNIPPET_DURATION_SECONDS = 20;
+const TARGET_SAMPLE_RATE = 44100; // Resample to 44.1kHz
+const TARGET_CHANNELS = 1; // Convert to Mono
 
 // Helper function to convert AudioBuffer to WAV Blob
 const audioBufferToWavBlob = (buffer: AudioBuffer): Blob => {
   const numOfChan = buffer.numberOfChannels;
-  const length = buffer.length * numOfChan * 2 + 44; // 2 bytes per sample
+  const length = buffer.length * numOfChan * 2 + 44; // 2 bytes per sample (16-bit)
   const arrayBuffer = new ArrayBuffer(length);
   const view = new DataView(arrayBuffer);
   const channels: Float32Array[] = [];
@@ -31,12 +33,12 @@ const audioBufferToWavBlob = (buffer: AudioBuffer): Blob => {
 
   // Write FMT chunk
   setUint32(0x20746d66); // "fmt "
-  setUint32(16); // data size
+  setUint32(16); // data size for PCM
   setUint16(1); // PCM - integer samples
   setUint16(numOfChan); // channels
   setUint32(buffer.sampleRate); // sample rate
-  setUint32(buffer.sampleRate * 2 * numOfChan); // byte rate
-  setUint16(numOfChan * 2); // block align
+  setUint32(buffer.sampleRate * 2 * numOfChan); // byte rate (SampleRate * BitsPerSample * Channels) / 8
+  setUint16(numOfChan * 2); // block align (Channels * BitsPerSample) / 8
   setUint16(16); // 16-bit
   // Write Data chunk
   setUint32(0x61746164); // "data"
@@ -56,7 +58,7 @@ const audioBufferToWavBlob = (buffer: AudioBuffer): Blob => {
       pos += 2;
     }
     offset++; // Next source sample
-    if (offset >= buffer.length) break; // Check to avoid reading past buffer length
+    if (offset >= buffer.length) break;
   }
 
   function setUint16(data: number) {
@@ -76,14 +78,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-
-  const getAudioContext = (): AudioContext => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    return audioContextRef.current;
-  };
+  // No need for audioContextRef here as OfflineAudioContext is created per file
 
   const processFile = async (file: File): Promise<File | null> => {
     if (!file.type.startsWith('audio/')) {
@@ -96,28 +91,30 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
     }
 
     try {
-      const audioCtx = getAudioContext();
+      const mainAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const arrayBuffer = await file.arrayBuffer();
-      const originalAudioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+      const originalAudioBuffer = await mainAudioContext.decodeAudioData(arrayBuffer);
+      await mainAudioContext.close(); // Close context after decoding
 
-      const sampleRate = originalAudioBuffer.sampleRate;
-      const maxFrames = SNIPPET_DURATION_SECONDS * sampleRate;
-      const actualFrames = Math.min(originalAudioBuffer.length, maxFrames);
+      const durationToProcess = Math.min(originalAudioBuffer.duration, SNIPPET_DURATION_SECONDS);
 
-      const snippetBuffer = audioCtx.createBuffer(
-        originalAudioBuffer.numberOfChannels,
-        actualFrames,
-        sampleRate
+      // Create OfflineAudioContext for resampling and mono conversion
+      const offlineCtx = new OfflineAudioContext(
+        TARGET_CHANNELS,
+        durationToProcess * TARGET_SAMPLE_RATE,
+        TARGET_SAMPLE_RATE
       );
 
-      for (let i = 0; i < originalAudioBuffer.numberOfChannels; i++) {
-        const channelData = originalAudioBuffer.getChannelData(i);
-        snippetBuffer.copyToChannel(channelData.slice(0, actualFrames), i);
-      }
+      const sourceNode = offlineCtx.createBufferSource();
+      sourceNode.buffer = originalAudioBuffer;
+      sourceNode.connect(offlineCtx.destination);
+      sourceNode.start(0, 0, durationToProcess); // Start from beginning, play for durationToProcess
 
-      const wavBlob = audioBufferToWavBlob(snippetBuffer);
+      const resampledMonoBuffer = await offlineCtx.startRendering();
+
+      const wavBlob = audioBufferToWavBlob(resampledMonoBuffer);
       const originalNameWithoutExtension = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-      const snippetFile = new File([wavBlob], `${originalNameWithoutExtension}_snippet.wav`, { type: 'audio/wav' });
+      const snippetFile = new File([wavBlob], `${originalNameWithoutExtension}_${SNIPPET_DURATION_SECONDS}s_mono.wav`, { type: 'audio/wav' });
 
       return snippetFile;
 
@@ -150,7 +147,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
-      addFiles(event.target.files); // addFiles is now async
+      addFiles(event.target.files);
       event.target.value = '';
     }
   };
@@ -160,9 +157,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
     event.stopPropagation();
     setDragOver(false);
     if (event.dataTransfer.files) {
-      addFiles(event.dataTransfer.files); // addFiles is now async
+      addFiles(event.dataTransfer.files);
     }
-  }, []);
+  }, []); // Empty dependency array is fine as addFiles recreates needed resources or uses refs
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -179,7 +176,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
   const handleScanClick = () => {
     if (selectedFiles.length > 0) {
       onScan(selectedFiles);
-       // setSelectedFiles([]); // Optionally clear files after initiating scan
     }
   };
 
@@ -231,7 +227,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
             Drag & drop audio files or <span className="font-semibold underline">click here</span>.
           </p>
           <p className="text-xs text-gray-700 mt-0.5">Supports: MP3, WAV, AAC, etc. (Originals up to ${MAX_ORIGINAL_FILE_SIZE_MB}MB)</p>
-          <p className="text-xs text-black font-semibold mt-0.5">Note: Only the first ${SNIPPET_DURATION_SECONDS} seconds of each file will be scanned.</p>
+          <p className="text-xs text-black font-semibold mt-0.5">Note: Only the first ${SNIPPET_DURATION_SECONDS} seconds (mono, 44.1kHz) of each file will be scanned.</p>
         </div>
 
         {selectedFiles.length > 0 && (
