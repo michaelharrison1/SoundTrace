@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { User, ScanResult } from '../types';
 import FileUpload from './FileUpload';
-import { mockAcrCloudService } from '../services/mockAcrCloudService';
+import { acrCloudService } from '../services/acrCloudService'; // Updated import
 // import Spinner from './common/Spinner'; // Using simple text for loading
 // import MusicNoteIcon from './icons/MusicNoteIcon'; // Using text/simpler icon
 
@@ -71,28 +71,29 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, setPreviousSca
       const file = newFilesToScan[i];
       setScanProgressMessage(`Scanning ${i + 1}/${newFilesToScan.length}: "${file.name}"...`);
       try {
-        const result = await mockAcrCloudService.scanInstrumental(file);
+        // Use the new acrCloudService
+        const result = await acrCloudService.scanWithAcrCloud(file);
         batchResults.push(result);
       } catch (err: any) {
         console.error(`Error scanning ${file.name}:`, err);
         if (!firstError) {
-          firstError = `Error "${file.name}": ${err.message || 'Unknown error.'}`;
+          firstError = `Error scanning "${file.name}": ${err.message || 'Unknown error.'}`;
         }
       }
     }
-    
+
     if (batchResults.length > 0) {
       setPreviousScans(prevScans => [...batchResults.slice().reverse(), ...prevScans]);
       setScanCompletionMessage(`${batchResults.length} new scans added to dashboard.`);
     } else if (newFilesToScan.length > 0 && !firstError) {
-       setScanCompletionMessage("No new matches found.");
+       setScanCompletionMessage("No new matches found from the uploaded files.");
     }
 
 
     if (firstError) {
         setError(firstError);
     }
-    
+
     setIsLoading(false);
     setScanProgressMessage('');
   }, [previousScans, setPreviousScans]);
@@ -137,7 +138,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, setPreviousSca
             </div>
         </div>
       )}
-      
+
       {!isLoading && !error && !scanCompletionMessage && !duplicateFilesMessage && (
          <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
             {/* <MusicNoteIcon className="mx-auto h-12 w-12 text-gray-500 mb-2" /> */}
