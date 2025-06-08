@@ -1,10 +1,11 @@
 
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import formidable from 'formidable';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { ScanResult, AcrCloudMatch } from '../src/types'; // Corrected path
+import { SnippetScanResult, AcrCloudMatch } from '../src/types'; // Corrected path and type
 
 // Vercel specific config to disable body parsing for formidable
 export const config = {
@@ -31,9 +32,8 @@ const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
       youtube: track.external_metadata?.youtube?.vid
         ? `https://www.youtube.com/watch?v=${track.external_metadata.youtube.vid}`
         : undefined,
-      // appleMusic: undefined, // ACRCloud response structure for Apple Music not shown in example
     },
-    streamCounts: { // Not directly available from ACRCloud's basic identification
+    streamCounts: {
       spotify: undefined,
       youtube: undefined,
     },
@@ -120,21 +120,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (acrResult.status?.code === 0) { // Success
       const matches: AcrCloudMatch[] = acrResult.metadata?.music?.map(mapToAcrCloudMatch) || [];
-      const scanResult: ScanResult = {
+      const scanResult: SnippetScanResult = { // Changed to SnippetScanResult
         scanId: `acrscan-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        instrumentalName: audioFile.originalFilename || 'Uploaded File', // This will now be snippet name
-        instrumentalSize: audioFile.size, // This will be snippet size
+        instrumentalName: audioFile.originalFilename || 'Uploaded File',
+        instrumentalSize: audioFile.size,
         scanDate: new Date().toISOString(),
         matches: matches,
       };
       return res.status(200).json(scanResult);
     } else if (acrResult.status?.code === 1001) { // No result
-        const scanResult: ScanResult = {
+        const scanResult: SnippetScanResult = { // Changed to SnippetScanResult
             scanId: `acrscan-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             instrumentalName: audioFile.originalFilename || 'Uploaded File',
             instrumentalSize: audioFile.size,
             scanDate: new Date().toISOString(),
-            matches: [],
+            matches: [], // No matches
         };
         return res.status(200).json(scanResult);
     }

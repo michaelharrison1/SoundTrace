@@ -1,27 +1,22 @@
-import { ScanResult } from '../types';
 
-const ACR_CLOUD_BACKEND_ENDPOINT = '/api/scan-track'; // Example backend endpoint
+import { SnippetScanResult } from '../types'; // Updated to SnippetScanResult
+
+const ACR_CLOUD_BACKEND_ENDPOINT = '/api/scan-track';
 
 export const acrCloudService = {
-  scanWithAcrCloud: async (file: File): Promise<ScanResult> => {
-    // DIAGNOSTIC LOG
-    console.log(`[acrCloudService] Attempting to scan: ${file.name}, size: ${file.size}, type: ${file.type}`);
+  scanWithAcrCloud: async (file: File): Promise<SnippetScanResult> => { // file is a snippet
+    console.log(`[acrCloudService] Attempting to scan snippet: ${file.name}, size: ${file.size}, type: ${file.type}`);
 
     const formData = new FormData();
-    formData.append('audioFile', file, file.name); // 'audioFile' is the key your backend expects
+    formData.append('audioFile', file, file.name); // Send snippet with its generated name
 
     try {
       const response = await fetch(ACR_CLOUD_BACKEND_ENDPOINT, {
         method: 'POST',
         body: formData,
-        // Add any necessary headers here, e.g., for authentication if your backend requires it
-        // headers: {
-        //   'Authorization': `Bearer ${your_auth_token_if_needed}`,
-        // },
       });
 
       if (!response.ok) {
-        // Try to parse error message from backend if available
         let errorMessage = `Error scanning file: ${response.status} ${response.statusText}`;
         try {
           const errorData = await response.json();
@@ -34,11 +29,10 @@ export const acrCloudService = {
         throw new Error(errorMessage);
       }
 
-      const result: ScanResult = await response.json();
+      const result: SnippetScanResult = await response.json(); // Backend returns SnippetScanResult
       return result;
     } catch (error: any) {
       console.error('Error in scanWithAcrCloud:', error);
-      // Re-throw the error so it can be caught by the UI
       throw new Error(error.message || 'An unexpected error occurred while communicating with the server.');
     }
   },
