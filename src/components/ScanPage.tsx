@@ -16,7 +16,7 @@ interface ScanPageProps {
 const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLogsSaved }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [_scanProgressMessage, setScanProgressMessageInternal] = useState<string>(''); // Internal state for detailed progress
+  const [scanProgressMessage, setScanProgressMessage] = useState<string>('');
   const [scanCompletionMessage, setScanCompletionMessage] = useState<string | null>(null);
   const [alreadyScannedMessage, setAlreadyScannedMessage] = useState<string | null>(null);
 
@@ -26,7 +26,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
     setError(null);
     setScanCompletionMessage(null);
     setAlreadyScannedMessage(null);
-    setScanProgressMessageInternal('Preparing tracks...');
+    setScanProgressMessage('Preparing tracks...');
 
     if (originalFiles.length === 0) {
       setScanCompletionMessage("No tracks selected for scanning.");
@@ -54,7 +54,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
 
     if (filesToActuallyScan.length === 0) {
       setIsLoading(false);
-      setScanProgressMessageInternal('');
+      setScanProgressMessage('');
       if (originalFiles.length > 0 && alreadyScannedFileNames.length === originalFiles.length) {
         setScanCompletionMessage("All selected tracks have already been scanned.");
       } else if (originalFiles.length > 0) {
@@ -66,13 +66,13 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
     }
 
     const successfullySavedLogs: TrackScanLog[] = [];
-    // let processingErrorOccurred = false; // This variable was unused, removed.
+    let processingErrorOccurred = false;
     let tracksProcessedCount = 0;
 
     for (let i = 0; i < filesToActuallyScan.length; i++) {
       const originalFile = filesToActuallyScan[i];
       tracksProcessedCount++;
-      setScanProgressMessageInternal(`Processing track ${i + 1}/${filesToActuallyScan.length}: "${originalFile.name}"...`);
+      setScanProgressMessage(`Processing track ${i + 1}/${filesToActuallyScan.length}: "${originalFile.name}"...`);
 
       let trackMatches: AcrCloudMatch[] = [];
       let trackStatus: TrackScanLog['status'] = 'no_matches_found';
@@ -85,11 +85,11 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
         trackStatus = 'error_processing';
         const newError = `Could not generate scannable segments for ${originalFile.name}.`;
         setError(prev => prev ? `${prev}\n${newError}` : newError);
-        // processingErrorOccurred = true; // This variable was unused
+        processingErrorOccurred = true;
       } else {
         for (let j = 0; j < snippets.length; j++) {
           const snippet = snippets[j];
-          setScanProgressMessageInternal(`Scanning segment ${j + 1}/${snippets.length} of "${originalFile.name}"...`);
+          setScanProgressMessage(`Scanning segment ${j + 1}/${snippets.length} of "${originalFile.name}"...`);
           try {
             const snippetScanResult: SnippetScanResult = await acrCloudService.scanWithAcrCloud(snippet);
             if (snippetScanResult.matches && snippetScanResult.matches.length > 0) {
@@ -101,7 +101,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
             const newError = `Error scanning segment of ${originalFile.name}: ${err.message}`;
             setError(prev => prev ? `${prev}\n${newError}` : newError);
             snippetErrors++;
-            // processingErrorOccurred = true; // This variable was unused
+            processingErrorOccurred = true;
           }
         }
 
@@ -130,14 +130,14 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
       };
 
       try {
-        setScanProgressMessageInternal(`Saving results for "${originalFile.name}"...`);
+        setScanProgressMessage(`Saving results for "${originalFile.name}"...`);
         const savedLog = await scanLogService.saveScanLog(logDataToSave);
         successfullySavedLogs.push(savedLog);
       } catch (saveError: any) {
         console.error(`Failed to save scan log for ${originalFile.name}:`, saveError);
         const newError = `Failed to save results for ${originalFile.name}: ${saveError.message}`;
         setError(prev => prev ? `${prev}\n${newError}` : newError);
-        // processingErrorOccurred = true; // This variable was unused
+        processingErrorOccurred = true;
       }
     }
 
@@ -162,7 +162,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
     setScanCompletionMessage(finalCompletionMsg.trim() || null);
 
     setIsLoading(false);
-    setScanProgressMessageInternal('');
+    setScanProgressMessage('');
   }, [onNewScanLogsSaved, user, previousScanLogs]);
 
   return (
@@ -173,9 +173,8 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
 
       {isLoading && (
         <div className="p-3 win95-border-outset bg-[#C0C0C0]">
-          {/* ProgressBar is displayed without text. _scanProgressMessage state is updated for internal logic but not passed to ProgressBar's text prop. */}
-          <ProgressBar className="mb-1" />
-          {/* Removed: <p className="text-xs text-gray-700 text-center">Please wait.</p> and text from ProgressBar */}
+          <ProgressBar text={scanProgressMessage || 'Scanning...'} className="mb-1" />
+          <p className="text-xs text-gray-700 text-center">Please wait.</p>
         </div>
       )}
 
