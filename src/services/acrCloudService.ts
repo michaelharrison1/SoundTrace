@@ -4,6 +4,9 @@ const ACR_CLOUD_BACKEND_ENDPOINT = '/api/scan-track'; // Example backend endpoin
 
 export const acrCloudService = {
   scanWithAcrCloud: async (file: File): Promise<ScanResult> => {
+    // DIAGNOSTIC LOG
+    console.log(`[acrCloudService] Attempting to scan: ${file.name}, size: ${file.size}, type: ${file.type}`);
+
     const formData = new FormData();
     formData.append('audioFile', file, file.name); // 'audioFile' is the key your backend expects
 
