@@ -1,19 +1,10 @@
 
 import { User } from '../types';
 
-// IMPORTANT: Replace this with your actual Render backend URL
+// IMPORTANT: This has been set to your actual Render backend URL.
 const BACKEND_URL = 'https://soundtracebackend.onrender.com';
-// Example: const BACKEND_URL = 'https://my-auth-backend-123.onrender.com';
 
-if (BACKEND_URL === 'https://soundtracebackend.onrender.com') {
-  console.warn(
-    'Please update YOUR_RENDER_BACKEND_URL in src/services/authService.ts with your actual Render backend URL.'
-  );
-  alert(
-    'Development Warning: Backend URL is not configured. Login will fail. See src/services/authService.ts'
-  );
-}
-
+// The original warning block for placeholder URL has been removed as it's now set.
 
 interface LoginResponse {
   token: string;
@@ -24,7 +15,7 @@ interface LoginResponse {
 
 export const authService = {
   login: async (username: string, password: string): Promise<LoginResponse> => {
-    if (!BACKEND_URL || BACKEND_URL === 'YOUR_RENDER_BACKEND_URL') {
+    if (!BACKEND_URL) { // Simplified check: ensures BACKEND_URL is not empty
       throw new Error('Backend URL is not configured. Cannot log in.');
     }
 
