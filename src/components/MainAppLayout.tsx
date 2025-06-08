@@ -80,17 +80,17 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
   return (
     <div className="min-h-screen bg-[#C0C0C0] flex flex-col">
       <header className="bg-[#084B8A] sticky top-0 z-50 border-b-2 border-b-black">
-        <div className="mx-auto px-2">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between h-8">
             <div className="flex items-center">
-              <h1 className="text-lg font-normal text-white ml-2">SoundTrace</h1>
+              <h1 className="text-lg font-normal text-white">SoundTrace</h1>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-xs text-white hidden sm:block">User: {user.username}</span>
               <Button
                 onClick={onLogout}
                 size="sm"
-                className="px-2 py-0.5 !bg-[#C0C0C0] !text-black !border-t-white !border-l-white !border-b-[#808080] !border-r-[#808080] !shadow-[1px_1px_0px_#000000] active:!shadow-[0px_0px_0px_#000000] active:!border-t-[#808080] active:!border-l-[#808080] active:!border-b-white active:!border-r-white"
+                className="px-2 py-px !bg-[#C0C0C0] !text-black !border-t-white !border-l-white !border-b-[#808080] !border-r-[#808080] !shadow-[1px_1px_0px_#000000] active:!shadow-[0px_0px_0px_#000000] active:!border-t-[#808080] active:!border-l-[#808080] active:!border-b-white active:!border-r-white"
                 icon={<LogoutIcon className="w-3 h-3" />}
               >
                 Logout
@@ -98,22 +98,26 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
             </div>
           </div>
         </div>
-        <nav className="flex justify-start space-x-0.5 p-1 bg-[#C0C0C0] border-t-2 border-[#DFDFDF]">
-            <Button
-              onClick={() => setActiveView('scan')}
-              size="sm"
-              className={`px-3 py-0.5 ${activeView === 'scan' ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' : 'win95-border-outset'}`}
-            >
-              Scan Tracks
-            </Button>
-            <Button
-              onClick={() => setActiveView('dashboard')}
-              size="sm"
-              className={`px-3 py-0.5 ${activeView === 'dashboard' ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' : 'win95-border-outset'}`}
-            >
-              Dashboard ({previousScans.length})
-            </Button>
-          </nav>
+        <nav className="bg-[#C0C0C0] border-t-2 border-[#DFDFDF]">
+          <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+            <div className="flex justify-start space-x-0.5 p-1">
+                <Button
+                  onClick={() => setActiveView('scan')}
+                  size="sm"
+                  className={`px-3 py-0.5 ${activeView === 'scan' ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' : 'win95-border-outset'}`}
+                >
+                  Scan Tracks
+                </Button>
+                <Button
+                  onClick={() => setActiveView('dashboard')}
+                  size="sm"
+                  className={`px-3 py-0.5 ${activeView === 'dashboard' ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' : 'win95-border-outset'}`}
+                >
+                  Dashboard ({previousScans.length})
+                </Button>
+            </div>
+          </div>
+        </nav>
       </header>
 
       <main className="mx-auto p-0.5 w-full flex-grow">
@@ -123,7 +127,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
               <ProgressBar text="Loading scan history..." />
             </div>
           )}
-          {scanError && !isLoadingScans && ( // Only show error if not actively loading
+          {scanError && !isLoadingScans && (
             <div className="p-3 win95-border-outset bg-yellow-200 text-black border border-black">
               <p className="font-semibold text-center">Error loading scan history:</p>
               <p className="text-center mb-1">{scanError}</p>
@@ -150,12 +154,14 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         </div>
       </main>
 
-      <footer className="py-1 px-2 text-xs text-black border-t-2 border-t-white bg-[#C0C0C0] flex justify-between items-center">
-        <div>
-          <span>&copy; {new Date().getFullYear()} SoundTrace. </span>
-          <span>Powered by ACRCloud.</span>
+      <footer className="py-1 text-xs text-black border-t-2 border-t-white bg-[#C0C0C0]">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 flex justify-between items-center">
+            <div>
+              <span>&copy; {new Date().getFullYear()} SoundTrace. </span>
+              <span>Powered by ACRCloud.</span>
+            </div>
+            <span>Created by Michael Harrison</span>
         </div>
-        <span>Created by Michael Harrison</span>
       </footer>
     </div>
   );
