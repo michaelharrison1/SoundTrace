@@ -10,7 +10,7 @@ interface FileUploadProps {
 
 const MAX_ORIGINAL_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB for pre-processing
 const MAX_ORIGINAL_FILE_SIZE_MB = MAX_ORIGINAL_FILE_SIZE_BYTES / (1024 * 1024);
-const SNIPPET_DURATION_SECONDS = 40;
+const SNIPPET_DURATION_SECONDS = 20;
 
 // Helper function to convert AudioBuffer to WAV Blob
 const audioBufferToWavBlob = (buffer: AudioBuffer): Blob => {
