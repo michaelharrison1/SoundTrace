@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef } from 'react';
 import Button from './common/Button';
 import UploadIcon from './icons/UploadIcon';
@@ -8,6 +9,9 @@ interface FileUploadProps {
   isLoading: boolean;
 }
 
+const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB
+const MAX_FILE_SIZE_MB = MAX_FILE_SIZE_BYTES / (1024 * 1024);
+
 const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState<boolean>(false);
@@ -15,27 +19,50 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
 
   const addFiles = (newFiles: FileList | File[]) => {
     const filesArray = Array.from(newFiles);
-    const audioFiles = filesArray.filter(file => file.type.startsWith('audio/'));
-    
-    if (audioFiles.length !== filesArray.length) {
-      alert('Some files were not valid audio files and were not added.'); // Classic alert
+    const validAudioFiles: File[] = [];
+    const oversizedFileNames: string[] = [];
+    const nonAudioFileNames: string[] = [];
+
+    filesArray.forEach(file => {
+      if (!file.type.startsWith('audio/')) {
+        nonAudioFileNames.push(file.name);
+      } else if (file.size > MAX_FILE_SIZE_BYTES) {
+        oversizedFileNames.push(file.name);
+      } else {
+        validAudioFiles.push(file);
+      }
+    });
+
+    const alertMessages: string[] = [];
+    if (nonAudioFileNames.length > 0) {
+      alertMessages.push(`Some files were not valid audio files and were not added: ${nonAudioFileNames.join(', ')}.`);
+    }
+    if (oversizedFileNames.length > 0) {
+      alertMessages.push(`The following files exceed the ${MAX_FILE_SIZE_MB}MB size limit and were not added: ${oversizedFileNames.join(', ')}.`);
     }
 
-    setSelectedFiles(prevFiles => {
-      const updatedFiles = [...prevFiles];
-      audioFiles.forEach(newFile => {
-        if (!updatedFiles.some(existingFile => existingFile.name === newFile.name && existingFile.size === newFile.size)) {
-          updatedFiles.push(newFile);
-        }
+    if (alertMessages.length > 0) {
+      alert(alertMessages.join('\n')); // Classic alert
+    }
+
+    if (validAudioFiles.length > 0) {
+      setSelectedFiles(prevFiles => {
+        const updatedFiles = [...prevFiles];
+        validAudioFiles.forEach(newFile => {
+          // Avoid adding duplicates if they somehow get selected again
+          if (!updatedFiles.some(existingFile => existingFile.name === newFile.name && existingFile.size === newFile.size && existingFile.lastModified === newFile.lastModified)) {
+            updatedFiles.push(newFile);
+          }
+        });
+        return updatedFiles;
       });
-      return updatedFiles;
-    });
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       addFiles(event.target.files);
-      event.target.value = ''; 
+      event.target.value = '';
     }
   };
 
@@ -65,7 +92,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
       onScan(selectedFiles);
     }
   };
-  
+
   const openFileDialog = () => {
     fileInputRef.current?.click();
   };
@@ -77,13 +104,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
   const handleClearAllFiles = () => {
     setSelectedFiles([]);
   };
-  
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(0)) + ' ' + sizes[i]; // Simpler, no decimals
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(i > 1 ? 1 : 0)) + ' ' + sizes[i]; // Show decimal for MB
   };
 
   return (
@@ -113,7 +140,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
           <p className="text-sm text-black">
             Drag & drop audio files or <span className="font-semibold underline">click here</span>.
           </p>
-          <p className="text-xs text-gray-700 mt-0.5">Supports: MP3, WAV, AAC</p>
+          <p className="text-xs text-gray-700 mt-0.5">Supports: MP3, WAV, AAC (Max: ${MAX_FILE_SIZE_MB}MB)</p>
         </div>
 
         {selectedFiles.length > 0 && (
@@ -126,7 +153,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
             </div>
             <div className="max-h-48 overflow-y-auto win95-border-inset bg-white p-1 space-y-0.5">
               {selectedFiles.map((file, index) => (
-                <div key={`${file.name}-${file.size}-${index}`} className="flex items-center justify-between p-1 bg-white hover:bg-gray-200">
+                <div key={`${file.name}-${file.size}-${file.lastModified}-${index}`} className="flex items-center justify-between p-1 bg-white hover:bg-gray-200">
                   <div className="flex items-center overflow-hidden">
                     {/* <MusicNoteIcon className="h-4 w-4 text-black mr-1.5 flex-shrink-0" /> */}
                     <span className="text-black mr-1.5 flex-shrink-0" aria-hidden="true">♪</span>

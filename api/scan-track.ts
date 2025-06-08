@@ -13,6 +13,8 @@ export const config = {
   },
 };
 
+const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB, same as client-side
+
 // Helper function to map ACRCloud music data to AcrCloudMatch type
 const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
   return {
@@ -51,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ message: 'Server configuration error for audio scanning.' });
   }
 
-  const form = formidable({});
+  const form = formidable({ maxFileSize: MAX_FILE_SIZE_BYTES });
 
   try {
     const [fields, files] = await form.parse(req);
@@ -60,6 +62,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!audioFile) {
       return res.status(400).json({ message: 'No audio file uploaded.' });
     }
+
+    // Check if the file size was inherently too large for formidable (redundant if client check is robust, but good safeguard)
+    // This check is more specific to formidable's handling if a file part is too large.
+    // The Vercel 413 error typically means the *entire request body* was too large before formidable even fully parsed it.
+    if (audioFile.size > MAX_FILE_SIZE_BYTES) {
+        // This case might not be hit if Vercel already rejected with 413.
+        // However, if the overall request was small enough but one file part was huge.
+        return res.status(413).json({ message: `File "${audioFile.originalFilename}" exceeds the ${MAX_FILE_SIZE_BYTES / (1024*1024)}MB size limit.` });
+    }
+
 
     const http_method = 'POST';
     const http_uri = '/v1/identify';
@@ -136,8 +148,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: any) {
     console.error('Error in /api/scan-track:', error);
     // If formidable parsing error or other unexpected
-    if (error.message.includes("maxFileSize exceeded")) {
-        return res.status(413).json({message: "File size limit exceeded."});
+    if (error.message && error.message.includes("maxFileSize exceeded")) { // formidable specific error
+        return res.status(413).json({message: `File size limit exceeded. Max ${MAX_FILE_SIZE_BYTES / (1024*1024)}MB allowed.`});
+    }
+    // Handle generic Vercel 413 or other errors that might not be caught by formidable's message
+    if (error.statusCode === 413 || (error.message && error.message.toLowerCase().includes('payload too large'))) {
+      return res.status(413).json({ message: `Request payload too large. Max file size is ${MAX_FILE_SIZE_BYTES / (1024*1024)}MB.`});
     }
     return res.status(500).json({ message: error.message || 'Server error during scan.' });
   } finally {
