@@ -21,6 +21,7 @@ export interface AcrCloudMatch {
   };
   matchConfidence: number; // 0-100
   spotifyArtistId?: string; // Added for Spotify artist ID
+  spotifyTrackId?: string; // Added for Spotify track ID
 }
 
 // Represents the result from the backend for a single snippet
@@ -68,3 +69,9 @@ export interface SpotifyFollowerCancelled {
 }
 
 export type SpotifyFollowerResult = SpotifyFollowerSuccess | SpotifyFollowerError | SpotifyFollowerLoading | SpotifyFollowerCancelled;
+
+export interface SpotifyTrackDetails {
+  previewUrl: string | null;
+  trackName: string;
+  artistName: string;
+}

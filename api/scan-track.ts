@@ -19,6 +19,7 @@ const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB, applies to the incoming (po
 const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
   // Extract the primary Spotify artist ID if available
   const spotifyArtistId = track.external_metadata?.spotify?.artists?.[0]?.id;
+  const spotifyTrackId = track.external_metadata?.spotify?.track?.id; // Extract Spotify track ID
 
   return {
     id: track.acrid,
@@ -27,10 +28,11 @@ const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
     album: track.album?.name || 'Unknown Album',
     releaseDate: track.release_date || 'N/A',
     matchConfidence: track.score || 0,
-    spotifyArtistId: spotifyArtistId, // Include the extracted artist ID
+    spotifyArtistId: spotifyArtistId,
+    spotifyTrackId: spotifyTrackId, // Include the extracted track ID
     platformLinks: {
-      spotify: track.external_metadata?.spotify?.track?.id
-        ? `https://open.spotify.com/track/${track.external_metadata.spotify.track.id}`
+      spotify: spotifyTrackId
+        ? `https://open.spotify.com/track/${spotifyTrackId}`
         : undefined,
       youtube: track.external_metadata?.youtube?.vid
         ? `https://www.youtube.com/watch?v=${track.external_metadata.youtube.vid}`
