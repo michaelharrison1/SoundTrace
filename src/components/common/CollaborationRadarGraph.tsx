@@ -16,7 +16,7 @@ interface ArtistPair {
   commonBeats: number;
 }
 
-const CollaborationRadarGrap: React.FC<CollaborationRadarGraphProps> = ({ scanLogs }) => {
+const CollaborationRadarGraph: React.FC<CollaborationRadarGraphProps> = ({ scanLogs }) => {
   const collaborationData = useMemo(() => {
     const beatToArtistsMap: CollaborationData = {};
     scanLogs.forEach(log => {
@@ -105,4 +105,4 @@ const CollaborationRadarGrap: React.FC<CollaborationRadarGraphProps> = ({ scanLo
   );
 };
 
-export default CollaborationRadarGrap;
+export default CollaborationRadarGraph;
