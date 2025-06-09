@@ -9,11 +9,11 @@ import ProgressBar from './common/ProgressBar'; // Import ProgressBar
 
 interface ScanPageProps {
   user: User;
-  previousScanLogs: TrackScanLog[]; // To check for existing original file names
+  previousScans: TrackScanLog[]; // To check for existing original file names
   onNewScanLogsSaved: (newLogs: TrackScanLog[]) => void;
 }
 
-const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLogsSaved }) => {
+const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsSaved }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [scanProgressMessage, setScanProgressMessage] = useState<string>('');
@@ -38,7 +38,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
     const alreadyScannedFileNames: string[] = [];
 
     originalFiles.forEach(originalFile => {
-      const isDuplicate = previousScanLogs.some(log => log.originalFileName === originalFile.name);
+      const isDuplicate = previousScans.some(log => log.originalFileName === originalFile.name);
       if (isDuplicate) {
         alreadyScannedFileNames.push(originalFile.name);
       } else {
@@ -163,7 +163,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScanLogs, onNewScanLo
 
     setIsLoading(false);
     setScanProgressMessage('');
-  }, [onNewScanLogsSaved, user, previousScanLogs]);
+  }, [onNewScanLogsSaved, user, previousScans]);
 
   return (
     <div className="space-y-3">

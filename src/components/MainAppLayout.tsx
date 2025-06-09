@@ -30,11 +30,20 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
       setPreviousScans(logs.sort((a,b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
     } catch (error: any) {
       console.error("Failed to fetch scan logs:", error);
-      setScanError(error.message || "Could not load scan history.");
+
+      const isAuthError = (error.status === 401 || error.status === 403) ||
+                          (typeof error.message === 'string' && error.message.toLowerCase().includes('token is not valid'));
+
+      if (isAuthError) {
+        console.warn("Authentication error during scan log fetch. Logging out.", error.message);
+        onLogout();
+      } else {
+        setScanError(error.message || "Could not load scan history.");
+      }
     } finally {
       setIsLoadingScans(false);
     }
-  }, [user]);
+  }, [user, onLogout]);
 
   useEffect(() => {
     fetchScanLogs();
@@ -105,12 +114,12 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
       </nav>
 
       {/* Main Content Area for MainAppLayout - already has p-2 from App.tsx's main > div */}
-      {isLoadingScans && (
+      {isLoadingScans && !scanError && ( // Show loading only if no specific error has been set by non-auth failure
         <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
           <ProgressBar text="Loading scan history..." />
         </div>
       )}
-      {scanError && !isLoadingScans && (
+      {scanError && !isLoadingScans && ( // Show error if loading finished and error exists (and it wasn't an auth error that triggered logout)
         <div className="p-3 win95-border-outset bg-yellow-200 text-black border border-black mb-2">
           <p className="font-semibold text-center">Error loading scan history:</p>
           <p className="text-center mb-1">{scanError}</p>
@@ -122,7 +131,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
       {!isLoadingScans && !scanError && activeView === 'scan' && (
         <ScanPage
           user={user}
-          previousScanLogs={previousScans}
+          previousScans={previousScans}
           onNewScanLogsSaved={addMultipleScanLogsToState}
         />
       )}
