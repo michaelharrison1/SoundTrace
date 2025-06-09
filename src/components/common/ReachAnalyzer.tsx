@@ -66,7 +66,7 @@ interface BarConfig {
 
 const calculateBarConfig = (followers: number | null | undefined, level: number): BarConfig => {
   let baseUnit = 1000;
-  if (level > 1) baseUnit = 1000 * Math.pow(1.5, level - 1); // Example: level 2 = 1.5k, level 3 = 2.25k
+  if (level > 1) baseUnit = 1000 * Math.pow(1.5, level - 1);
   baseUnit = Math.max(100, Math.round(baseUnit / 100) * 100);
 
   let barUnit = baseUnit;
@@ -114,11 +114,11 @@ const PopularityBar: React.FC<{ score: number | null | undefined }> = ({ score }
 
 const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   totalFollowers,
-  isLoading: isLoadingTotalFollowers, // This is now overall loading for dashboard data
+  isLoading: isLoadingTotalFollowers,
   error: totalFollowersError,
   scanLogs,
   followerResults,
-  historicalFollowerData // Received from DashboardViewPage
+  historicalFollowerData
 }) => {
   const [activeMonitorTab, setActiveMonitorTab] = useState<MonitorTab>('reach');
   const [lineProgress, setLineProgress] = useState(0);
@@ -149,13 +149,13 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
     let flashes = 0;
     const flashInterval = setInterval(() => {
         flashes++;
-        if (flashes >= 6) { // Simple animation: 6 flashes
+        if (flashes >= 6) {
             clearInterval(flashInterval);
             const newLevel = currentLevel + 1;
             setCurrentLevel(newLevel);
             setIsLevelingUp(false);
             setLineProgress(0);
-            setReachBarConfig(calculateBarConfig(totalFollowers, newLevel)); // Recalculate bar config for new level
+            setReachBarConfig(calculateBarConfig(totalFollowers, newLevel));
         }
     }, 200);
   };
@@ -187,8 +187,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
   const formatFollowersDisplay = (count: number | null | undefined): string => {
     if (isLoadingTotalFollowers && typeof count === 'undefined') return "Loading...";
-    if (typeof count === 'undefined') return "Loading..."; // Should be covered by isLoading, but defensive
-    if (count === null) return "N/A"; // Error or no data
+    if (typeof count === 'undefined') return "Loading...";
+    if (count === null) return "N/A";
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
     return count.toString();
@@ -286,10 +286,9 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   const toggleExpandBeat = (beatName: string) => setExpandedBeat(prev => prev === beatName ? null : beatName);
 
    const renderTimeBasedReachGraph = () => {
-        // Use historicalFollowerData prop directly
         const dataToDisplay = historicalFollowerData.slice(-60);
 
-        if (isLoadingTotalFollowers && dataToDisplay.length === 0) { // Show loading if dashboard is loading and no history yet
+        if (isLoadingTotalFollowers && dataToDisplay.length === 0) {
             return <div className="my-4"><ProgressBar text="Loading time-based reach data..." /></div>;
         }
         if (dataToDisplay.length === 0) {
@@ -305,36 +304,40 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
         return (
             <div className="mt-4">
-                <h4 className="text-base font-semibold text-black mb-1 text-center">📊 Time-Based Reach Graph</h4>
+                <h4 className="text-base font-semibold text-black mb-1 text-center">Time-Based Reach Graph</h4>
                 <p className="text-xs text-gray-600 text-center mb-2">Track follower growth over time (last {dataToDisplay.length} records)</p>
-                <div className="win95-border-inset bg-gray-700 p-2 h-48 flex items-end overflow-x-auto" style={{gap: `${gapBetweenBars}%`}}>
-                    {dataToDisplay.map((snapshot) => {
-                        const barHeight = maxFollowersInPeriod > 0 ? (snapshot.cumulativeFollowers / maxFollowersInPeriod) * 95 : 0; // Use 95% to leave space for date label
-                        const formattedDate = new Date(snapshot.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                        return (
-                            <div
-                                key={snapshot.date}
-                                className="flex-shrink-0 win95-border-outset bg-green-400 hover:bg-green-300 relative group"
-                                style={{ width: `${barWidthPercentage}%`, height: `${Math.max(5, barHeight)}%`, minWidth: '15px' }} // Ensure min height for visibility
-                                title={`${formattedDate}: ${formatFollowersDisplay(snapshot.cumulativeFollowers)} followers`}
-                            >
-                               <span className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 text-[8px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                   {formattedDate}
-                               </span>
-                            </div>
-                        );
-                    })}
+                 <div className={`p-0.5 ${isLevelingUp ? 'animate-pulse !border-yellow-400' : currentLevel > 1 ? LEVEL_COLORS[Math.min(currentLevel -1, LEVEL_COLORS.length -1)] || 'border-transparent' : 'border-transparent'} border-2`}>
+                    <div className="win95-border-inset bg-gray-700 p-2 h-48 flex items-end overflow-x-auto" style={{gap: `${gapBetweenBars}%`}}>
+                        {dataToDisplay.map((snapshot) => {
+                            const barHeight = maxFollowersInPeriod > 0 ? (snapshot.cumulativeFollowers / maxFollowersInPeriod) * 95 : 0;
+                            const formattedDate = new Date(snapshot.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                            return (
+                                <div
+                                    key={snapshot.date}
+                                    className="flex-shrink-0 win95-border-outset bg-green-400 hover:bg-green-300 relative group"
+                                    style={{ width: `${barWidthPercentage}%`, height: `${Math.max(5, barHeight)}%`, minWidth: '15px' }}
+                                    title={`${formattedDate}: ${formatFollowersDisplay(snapshot.cumulativeFollowers)} followers`}
+                                >
+                                <span className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs text-gray-100 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-70 px-1 rounded-sm">
+                                    {formattedDate}
+                                </span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         );
     };
+
+  const currentLevelCRTBorderClass = isLevelingUp ? 'animate-pulse !border-yellow-400' : currentLevel > 1 ? LEVEL_COLORS[Math.min(currentLevel -1, LEVEL_COLORS.length -1)] || 'border-transparent' : 'border-transparent';
 
   const renderTabContent = () => {
     if (activeMonitorTab === 'reach') {
       return (
         <>
           <h4 className="text-base font-semibold text-black mb-1 text-center">Estimated Spotify Follower Reach</h4>
-          {isLoadingTotalFollowers && typeof totalFollowers === 'undefined' ? ( // Show loading only if totalFollowers is truly undefined (initial load)
+          {isLoadingTotalFollowers && typeof totalFollowers === 'undefined' ? (
             <div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Calculating reach..." /></div>
           ) : totalFollowersError ? (
             <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center flex-grow"><p>Error: {totalFollowersError}</p></div>
@@ -354,36 +357,38 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               )}
               {isLevelingUp && <ProgressBar text="Leveling Up! Please Wait..." className="my-1"/>}
 
-              <div
-                className="performance-chart-area win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32"
-                style={{ backgroundColor: CHART_BACKGROUND_COLOR, backgroundImage: `linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px), linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px)`, backgroundSize: "10px 10px" }}
-                role="img"
-                aria-label={`Performance chart. Current total follower reach: ${displayTotalReachValue}. ${reachBarConfig.unitLabel ? 'Each bar segment represents ' + reachBarConfig.unitLabel + ' followers.' : ''}`}
-              >
-                <div className="flex w-full h-full items-end">
-                  {[...Array(MAX_BAR_SLOTS)].map((_, i) => {
-                    const barIsActive = levelUpAvailable || (lineProgress * MAX_BAR_SLOTS > i && i < reachBarConfig.numberOfBarsToActivate && (totalFollowers ?? 0) > 0);
-                    const barHeight = barIsActive ? '100%' : '0%';
-                    return (
-                      <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
-                        <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>
-                        {((totalFollowers ?? 0) > 0 || levelUpAvailable) && (
-                          <div
-                            className="active-bar-fill relative win95-border-outset"
-                            style={{ backgroundColor: barIsActive ? ACTIVE_BAR_COLOR : 'transparent', height: barHeight, width: '80%', transition: 'height 0.1s linear', boxShadow: barIsActive ? `0 0 3px ${ACTIVE_BAR_COLOR}, 0 0 6px ${ACTIVE_BAR_COLOR}` : 'none' }}
-                          ></div>
-                        )}
-                      </div>
-                    );
-                  })}
+              <div className={`p-0.5 ${currentLevelCRTBorderClass} border-2`}>
+                <div
+                  className="performance-chart-area win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32"
+                  style={{ backgroundColor: CHART_BACKGROUND_COLOR, backgroundImage: `linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px), linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px)`, backgroundSize: "10px 10px" }}
+                  role="img"
+                  aria-label={`Performance chart. Current total follower reach: ${displayTotalReachValue}. ${reachBarConfig.unitLabel ? 'Each bar segment represents ' + reachBarConfig.unitLabel + ' followers.' : ''}`}
+                >
+                  <div className="flex w-full h-full items-end">
+                    {[...Array(MAX_BAR_SLOTS)].map((_, i) => {
+                      const barIsActive = levelUpAvailable || (lineProgress * MAX_BAR_SLOTS > i && i < reachBarConfig.numberOfBarsToActivate && (totalFollowers ?? 0) > 0);
+                      const barHeight = barIsActive ? '100%' : '0%';
+                      return (
+                        <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
+                          <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>
+                          {((totalFollowers ?? 0) > 0 || levelUpAvailable) && (
+                            <div
+                              className="active-bar-fill relative win95-border-outset"
+                              style={{ backgroundColor: barIsActive ? ACTIVE_BAR_COLOR : 'transparent', height: barHeight, width: '80%', transition: 'height 0.1s linear', boxShadow: barIsActive ? `0 0 3px ${ACTIVE_BAR_COLOR}, 0 0 6px ${ACTIVE_BAR_COLOR}` : 'none' }}
+                            ></div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {((totalFollowers ?? 0) > 0 && !isLoadingTotalFollowers && !totalFollowersError && !levelUpAvailable && !isLevelingUp) && (
+                      <div
+                        className="progress-line absolute top-0 bottom-0"
+                        style={{ left: `${lineProgress * 100}%`, width: '3px', boxShadow: `0 0 5px 1px ${ACTIVE_BAR_COLOR}, 0 0 10px 2px ${ACTIVE_BAR_COLOR}`, transform: 'translateX(-1.5px)', backgroundColor: ACTIVE_BAR_COLOR }}
+                        aria-hidden="true"
+                      ></div>
+                  )}
                 </div>
-                {((totalFollowers ?? 0) > 0 && !isLoadingTotalFollowers && !totalFollowersError && !levelUpAvailable && !isLevelingUp) && (
-                    <div
-                      className="progress-line absolute top-0 bottom-0"
-                      style={{ left: `${lineProgress * 100}%`, width: '3px', boxShadow: `0 0 5px 1px ${ACTIVE_BAR_COLOR}, 0 0 10px 2px ${ACTIVE_BAR_COLOR}`, transform: 'translateX(-1.5px)', backgroundColor: ACTIVE_BAR_COLOR }}
-                      aria-hidden="true"
-                    ></div>
-                )}
               </div>
               <p className="text-xs text-gray-700 mt-2 text-center">
                 {reachBarConfig.unitLabel ? `Bars represent: ${reachBarConfig.unitLabel} followers each.` : ""}
@@ -437,7 +442,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
       if (sortedBeatData.length === 0) return <p className="text-center text-gray-700 py-8">No beats have been scanned yet.</p>;
       return (
         <div className="beat-stats flex flex-col h-full">
-          <h4 className="text-base font-semibold text-black mb-2 text-center">Beat Statistics</h4>
+          <h4 className="text-base font-semibold text-black mb-2 text-center">Beat Matches</h4>
           <div className="overflow-auto win95-border-inset bg-white flex-grow p-0.5">
             <table className="min-w-full text-sm" style={{ tableLayout: 'fixed' }}>
               <colgroup><col style={{ width: '70%' }} /><col style={{ width: '30%' }} /></colgroup>
@@ -480,10 +485,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
     </td>
   );
 
-  const currentLevelBorderClass = LEVEL_COLORS[Math.min(currentLevel -1, LEVEL_COLORS.length -1)] || 'border-transparent';
-
   return (
-    <div className={`win95-border-outset bg-[#C0C0C0] mb-4 text-black border-4 ${isLevelingUp ? 'animate-pulse border-yellow-400' : currentLevelBorderClass}`}>
+    <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black">
       <div className="title-bar flex items-center justify-between bg-[#000080] text-white px-1 py-0.5 h-6 select-none">
         <div className="flex items-center"><FakeWindowIcon /><span className="font-bold text-sm">Reach Analyzer</span></div>
         <div className="flex space-x-0.5">
@@ -531,3 +534,4 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   );
 };
 export default ReachAnalyzer;
+
