@@ -125,10 +125,38 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
   }, [checkSpotifyStatus]);
 
 
-  // Effect for Spotify Web Playback SDK Initialization
+  // SDK Loader
+  useEffect(() => {
+    // Ensure the global callback is defined.
+    // This will be called by the Spotify SDK script once it's loaded and initialized.
+    if (!window.onSpotifyWebPlaybackSDKReady) {
+        window.onSpotifyWebPlaybackSDKReady = () => {
+        console.log("Spotify SDK is ready via onSpotifyWebPlaybackSDKReady global callback.");
+        setIsSdkReady(true);
+        };
+    }
+
+    // If the Spotify SDK (window.Spotify) is already available, it means the script has loaded.
+    // We can then set our SDK ready state to true.
+    // This handles cases where the script loads before this effect runs or due to HMR.
+    if (window.Spotify) {
+        console.log("Spotify SDK (window.Spotify) already available on effect run.");
+        setIsSdkReady(true);
+    }
+
+    // Check if the script tag itself is present, for debugging.
+    const script = document.querySelector('script[src="https://sdk.scdn.co/spotify-player.js"]');
+    if (!script) {
+        console.error("Spotify SDK script tag not found in document. Please ensure it's in index.html and has the 'defer' attribute.");
+    }
+  }, []);
+
+
+  // Effect for Spotify Web Playback SDK Initialization (depends on isSdkReady and user auth)
   useEffect(() => {
     if (!isSpotifyConnected || !spotifyUser?.accessToken || !isSdkReady) {
       if (player) {
+        console.log("Disconnecting player because SDK not ready or user not connected/authed.");
         player.disconnect();
         setPlayer(null);
         setIsPlayerReady(false);
@@ -136,29 +164,29 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
       return;
     }
 
-    if (player) return; // Player already initialized
+    if (player) { // Player already initialized
+        console.log("Player already initialized. Skipping re-initialization.");
+        return;
+    }
 
-    console.log("Spotify connected, user token available. Initializing Spotify Player SDK...");
+    console.log("Spotify connected, user token available, SDK ready. Initializing Spotify Player SDK instance...");
     const spotifyPlayerInstance = new window.Spotify.Player({
       name: 'SoundTrace Player',
       getOAuthToken: async (cb: (token: string) => void) => {
-        // Check if current token is expired or needs refresh
         if (spotifyUser && new Date(spotifyUser.expiresAt) < new Date(Date.now() - 5 * 60 * 1000)) { // 5 min buffer
           console.log("Spotify SDK requesting token, current one is expired or nearing expiry. Refreshing...");
           const newAccessToken = await refreshAccessToken();
           if (newAccessToken) {
             cb(newAccessToken);
           } else {
-            // Handle failure to refresh, perhaps by disconnecting
-            console.error("SDK: Failed to refresh token for playback.");
-            // cb(''); // Provide empty token or handle error
-            disconnectSpotify(); // Force disconnect if token cannot be refreshed
+            console.error("SDK: Failed to refresh token for playback. Disconnecting.");
+            disconnectSpotify();
           }
-        } else if (spotifyUser) {
+        } else if (spotifyUser?.accessToken) {
           cb(spotifyUser.accessToken);
         } else {
-           console.warn("SDK: No Spotify user or access token available for getOAuthToken.");
-           // cb(''); // Should not happen if isSpotifyConnected is true
+           console.warn("SDK: No Spotify user or access token available for getOAuthToken. This should not happen if connected.");
+           disconnectSpotify(); // Force disconnect if token is unexpectedly missing
         }
       },
       volume: 0.5
@@ -176,12 +204,13 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
     spotifyPlayerInstance.addListener('player_state_changed', (state: Spotify.PlaybackState | null) => {
        if (!state) {
         setIsActive(false);
-        // setCurrentState(null); // Keep last state for a bit?
         console.warn("Spotify player_state_changed: state is null.");
+        // Consider if currentPlayingTrackInfo should be cleared or kept
+        // setCurrentPlayingTrackInfo(null);
         return;
       }
-      setCurrentState(state as SpotifyPlayerState); // Cast, as our type is a subset
-      setIsActive(true); // If we get a state, player is active on this device.
+      setCurrentState(state as SpotifyPlayerState);
+      setIsActive(true);
       const currentTrack = state.track_window.current_track;
       if (currentTrack) {
         setCurrentPlayingTrackInfo({
@@ -190,8 +219,11 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
           artist: currentTrack.artists.map((a: Spotify.Artist) => a.name).join(', '),
           uri: currentTrack.uri,
         });
+      } else {
+        // If no current track in state, perhaps clear local currentPlayingTrackInfo
+        // setCurrentPlayingTrackInfo(null);
       }
-      setIsLoadingPlayback(false); // Assume loading ends when state changes
+      setIsLoadingPlayback(false);
       setPlaybackError(null);
     });
 
@@ -201,9 +233,11 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
             console.error(`Spotify SDK Error - ${errorType}:`, e.message);
             setPlaybackError(e.message);
             if (errorType === 'authentication_error') {
-                // Token might be invalid, try to refresh or disconnect
                 console.log("Authentication error with SDK, attempting to refresh token or disconnect.");
                 refreshAccessToken().catch(() => disconnectSpotify());
+            }
+             if (errorType === 'account_error' && (e.message.includes('premium') || e.message.includes('Premium'))) {
+                setPlaybackError('Spotify Premium is required for playback control via this app.');
             }
             setIsLoadingPlayback(false);
         });
@@ -231,29 +265,13 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
   }, [isSpotifyConnected, spotifyUser, isSdkReady, player, refreshAccessToken, disconnectSpotify]);
 
 
-  // SDK Loader
-  useEffect(() => {
-    if (window.Spotify) {
-      setIsSdkReady(true);
-      return;
-    }
-    window.onSpotifyWebPlaybackSDKReady = () => {
-      console.log("Spotify SDK is ready via onSpotifyWebPlaybackSDKReady global callback.");
-      setIsSdkReady(true);
-    };
-    // If the script is already loaded but onSpotifyWebPlaybackSDKReady hasn't fired (e.g. due to race condition or script error)
-    // this won't re-trigger. Ensure the script tag for Spotify SDK exists in index.html.
-    const script = document.querySelector('script[src="https://sdk.scdn.co/spotify-player.js"]');
-    if (script && window.Spotify) { // If script tag exists and Spotify global is already there
-        setIsSdkReady(true);
-    }
-
-  }, []);
-
   const playTrack = useCallback(async (trackUri: string, spotifyTrackId?: string, initialTrackName: string = 'Track', initialArtistName: string = 'Artist') => {
     if (!player || !deviceId || !isPlayerReady || !spotifyUser?.accessToken) {
-      console.warn('Spotify Player not ready or no access token.', { player, deviceId, isPlayerReady, tokenExists: !!spotifyUser?.accessToken });
+      console.warn('Spotify Player not ready or no access token.', { playerExists: !!player, deviceId, isPlayerReady, tokenExists: !!spotifyUser?.accessToken });
       setPlaybackError('Spotify Player is not connected or ready.');
+      if (!isSpotifyConnected) {
+        setPlaybackError('Connect to Spotify first to enable playback.');
+      }
       return;
     }
 
@@ -262,15 +280,16 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
     setPlaybackError(null);
 
     try {
-      // Activating element ensures SDK's iframe is ready for playback commands
       await player.activateElement();
 
-      const currentAccessToken = (spotifyUser && new Date(spotifyUser.expiresAt) < new Date(Date.now() - 60 * 1000))
-        ? await refreshAccessToken()
-        : spotifyUser?.accessToken;
-
-      if (!currentAccessToken) {
-        throw new Error("Spotify access token is unavailable after refresh attempt.");
+      let currentAccessToken = spotifyUser.accessToken;
+      if (new Date(spotifyUser.expiresAt) < new Date(Date.now() - 60 * 1000)) { // 1 min buffer
+        console.log("Access token for playback is stale, refreshing first...");
+        const refreshedToken = await refreshAccessToken();
+        if (!refreshedToken) {
+          throw new Error("Spotify access token is unavailable after refresh attempt.");
+        }
+        currentAccessToken = refreshedToken;
       }
 
       const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
@@ -286,14 +305,16 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
         const errorData = await response.json().catch(() => ({ message: `Failed to play track. Status: ${response.status}` }));
         console.error('Spotify API Play Error:', errorData);
         let specificError = errorData.message || `Failed to play track (Status: ${response.statusText})`;
-        if (errorData.error?.reason === 'PREMIUM_REQUIRED') specificError = 'Spotify Premium is required for playback.';
-        else if (errorData.error?.message) specificError = `Spotify Error: ${errorData.error.message}`;
+        if (errorData.error?.reason === 'PREMIUM_REQUIRED' || (errorData.error?.message && errorData.error.message.toLowerCase().includes('premium required'))) {
+            specificError = 'Spotify Premium is required for playback.';
+        } else if (errorData.error?.message) {
+            specificError = `Spotify Error: ${errorData.error.message}`;
+        }
         setPlaybackError(specificError);
         setIsLoadingPlayback(false);
         return;
       }
       // Playback successfully initiated, player_state_changed event will handle UI updates.
-      // No need to setIsLoadingPlayback(false) here, player_state_changed will do it.
     } catch (err: any) {
       console.error('Error in playTrack function:', err);
       setPlaybackError(err.message || 'Could not start playback.');
@@ -311,7 +332,6 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
     currentPlayingTrackInfo,
     isLoadingPlayback,
     playbackError,
-    // New additions for OAuth flow
     isSpotifyConnected,
     spotifyUser,
     isLoadingSpotifyAuth,
@@ -325,7 +345,6 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
   return <SpotifyContext.Provider value={value}>{children}</SpotifyContext.Provider>;
 };
 
-// Component to handle the redirect from backend after Spotify OAuth
 export const SpotifyCallbackReceiver: React.FC = () => {
   const { checkSpotifyStatus } = useSpotifyPlayer();
   const [message, setMessage] = useState("Processing Spotify login...");
@@ -336,28 +355,36 @@ export const SpotifyCallbackReceiver: React.FC = () => {
     const errorMsg = params.get('message');
 
     if (status === 'success') {
-      setMessage("Spotify connected successfully! Redirecting...");
+      setMessage("Spotify connected successfully! Redirecting to your dashboard...");
       checkSpotifyStatus(true).then(() => {
-         window.location.replace(window.location.pathname.split('/spotify-callback-receiver')[0] || '/'); // Redirect to home/dashboard
+         // Redirect to the base path of the application
+         window.location.replace(window.location.origin + (window.location.pathname.split('/spotify-callback-receiver')[0] || '/'));
       });
     } else {
-      setMessage(`Spotify connection failed: ${errorMsg || 'Unknown error'}. Please try again.`);
-      // Optionally redirect to login or show a button to retry
-      // For now, just displays message. User might need to manually navigate or retry.
-      // setTimeout(() => window.location.replace('/'), 5000); // Redirect after a delay
+      let displayError = 'Unknown error occurred during Spotify connection.';
+      if (errorMsg) {
+        if (errorMsg.toLowerCase().includes('statemismatch')) displayError = "Login session expired or was invalid. Please try connecting to Spotify again.";
+        else if (errorMsg.toLowerCase().includes('accessdenied')) displayError = "Spotify connection was denied. Please try again and approve access.";
+        else if (errorMsg.toLowerCase().includes('missingverifier')) displayError = "A technical issue occurred (missing verifier). Please try again.";
+        else displayError = `Spotify connection failed: ${errorMsg}. Please try again.`;
+      }
+      setMessage(displayError);
+      // Consider automatically redirecting or offering a more prominent retry button.
+      // setTimeout(() => window.location.replace(window.location.origin + (window.location.pathname.split('/spotify-callback-receiver')[0] || '/')), 7000);
     }
   }, [checkSpotifyStatus]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#C0C0C0] p-4">
-      <div className="win95-border-outset bg-[#C0C0C0] p-4 text-center">
-        <p className="text-black mb-2">{message}</p>
-        {message.includes("failed") && (
+      <div className="win95-border-outset bg-[#C0C0C0] p-6 text-center shadow-lg max-w-md">
+        <h2 className="text-xl font-normal text-black mb-3">Spotify Connection</h2>
+        <p className="text-black mb-4 text-sm">{message}</p>
+        {(message.includes("failed") || message.includes("expired") || message.includes("denied") || message.includes("issue occurred")) && (
             <button
-                onClick={() => window.location.replace(window.location.pathname.split('/spotify-callback-receiver')[0] || '/')}
-                className="px-3 py-1 text-base bg-[#C0C0C0] text-black border-2 border-t-white border-l-white border-b-[#808080] border-r-[#808080] shadow-[1px_1px_0px_#000000]"
+                onClick={() => window.location.replace(window.location.origin + (window.location.pathname.split('/spotify-callback-receiver')[0] || '/'))}
+                className="px-4 py-1.5 text-base bg-[#C0C0C0] text-black border-2 border-t-white border-l-white border-b-[#808080] border-r-[#808080] shadow-[1px_1px_0px_#000000] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] active:border-t-[#808080] active:border-l-[#808080] active:border-b-white active:border-r-white"
             >
-                Go to App
+                Return to App
             </button>
         )}
       </div>
