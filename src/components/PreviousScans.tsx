@@ -429,7 +429,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
       </div>
       {currentPlayingInfo && (
         <AudioPlayer
-            key={currentPlayingInfo.trackId} // Corrected: Use currentPlayingInfo.trackId directly
+            key={currentPlayingInfo.trackId}
             src={currentPlayingInfo.previewUrl}
             trackTitle={currentPlayingInfo.trackName}
             trackArtist={currentPlayingInfo.artistName}
