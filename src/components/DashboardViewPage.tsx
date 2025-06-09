@@ -1,21 +1,20 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, TrackScanLog, AcrCloudMatch } from '../types'; // Updated to TrackScanLog
+import { User, TrackScanLog, AcrCloudMatch } from '../types';
 import PreviousScans from './PreviousScans';
-import FollowerReachGraph from './common/FollowerReachGraph.tsx'; // New import
+import FollowerReachGraph from './common/FollowerReachGraph';
 
 interface DashboardViewPageProps {
   user: User;
-  previousScans: TrackScanLog[]; // Expects TrackScanLog[]
-  onDeleteScan: (logId: string) => void; // Expects logId from TrackScanLog
+  previousScans: TrackScanLog[];
+  onDeleteScan: (logId: string) => void;
   onClearAllScans: () => void;
 }
 
-// Define explicit types for Spotify API call outcomes
 interface SpotifyFollowerSuccess {
   status: 'success';
   artistId: string;
-  followers: number | undefined; // Followers can be a number or undefined if not available
+  followers: number | undefined;
 }
 
 interface SpotifyFollowerError {
@@ -79,7 +78,6 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
               return { status: 'error', artistId, reason: errorBody.message || `Status ${response.status}` };
             }
             const data = await response.json();
-            // Ensure followers is a number or undefined
             const followersData = typeof data.followers === 'number' ? data.followers : undefined;
             return { status: 'success', artistId, followers: followersData };
           })
@@ -97,39 +95,30 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
       results.forEach(result => {
         if (result.status === 'fulfilled' && result.value) {
             const resValue: SpotifyFollowerResult = result.value;
-
             if (resValue.status === 'success') {
-                // resValue is SpotifyFollowerSuccess, resValue.followers is number | undefined
                 if (typeof resValue.followers === 'number') {
                     sum += resValue.followers;
                     successfulFetches++;
                 } else {
-                    // Successfully fetched from API, but followers count wasn't a number (e.g. missing or null from Spotify)
                     console.warn(`Followers data undefined or not a number for artist ${resValue.artistId}`);
-                    // Optionally count this as an error or a specific type of non-success.
-                    // For now, let's treat it as if data wasn't available for this artist's sum.
-                    // errorsEncountered++; // Or a different counter
                 }
             } else if (resValue.status === 'error') {
                 errorsEncountered++;
             }
-            // 'cancelled' status is implicitly handled by not matching 'success' or 'error'
         } else if (result.status === 'rejected') {
             console.error("A follower fetch promise was unexpectedly rejected:", result.reason);
             errorsEncountered++;
         }
       });
 
-
       if (isMounted) {
         setTotalFollowers(sum);
         if (errorsEncountered > 0 && successfulFetches === 0 && uniqueArtistIds.length > 0) {
             setFollowerFetchError("Could not load follower data for any artist.");
-            setTotalFollowers(null);
+            setTotalFollowers(null); // Explicitly set to null on complete failure
         } else if (errorsEncountered > 0) {
              setFollowerFetchError("Could not load data for some artists. Total may be incomplete.");
         } else if (successfulFetches === 0 && uniqueArtistIds.length > 0 && errorsEncountered === 0) {
-            // This case means all fetches were successful but returned no follower numbers (e.g. all were undefined)
             setFollowerFetchError(null);
         } else {
             setFollowerFetchError(null);
@@ -143,7 +132,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   }, [uniqueArtistIds]);
 
 
-  if (previousScans.length === 0) {
+  if (previousScans.length === 0 && !isFollowerLoading) { // Also check if not loading follower data for this message
     return (
       <div className={containerStyles}>
         <span className="text-4xl text-gray-500" aria-hidden="true">♫</span>

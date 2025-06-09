@@ -3,14 +3,14 @@ import React, { useState } from 'react';
 import { User } from '../types';
 import { authService } from '../services/authService';
 import Button from './common/Button';
-import ProgressBar from './common/ProgressBar'; // Import ProgressBar
+import ProgressBar from './common/ProgressBar';
 
 interface RegistrationPageProps {
-  onRegister: (user: User) => void; // Called on successful registration (acts like onLogin)
-  onNavigateToLogin: () => void;
+  onRegister: (user: User) => void;
+  // onNavigateToLogin prop is removed as navigation is handled by global App header
 }
 
-const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister, onNavigateToLogin }) => {
+const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister }) => {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -40,9 +40,7 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister, onNavig
       localStorage.setItem('authToken', authResponse.token);
       const user: User = { id: authResponse.userId, username: authResponse.username };
       localStorage.setItem('currentUserDetails', JSON.stringify(user));
-
       onRegister(user);
-
     } catch (err: any) {
       setError(err.message || 'An unknown error occurred during registration.');
     } finally {
@@ -51,110 +49,97 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister, onNavig
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#C0C0C0] p-2">
-      <div className="bg-[#C0C0C0] p-0.5 win95-border-outset w-full max-w-sm">
-        <div className="bg-[#C0C0C0] p-4 border-2 border-transparent">
-          <div className="flex justify-center mb-4">
-            <span className="text-3xl text-[#084B8A]" aria-hidden="true">♫</span>
+    // This component is now just the form part for the right column
+    <div className="bg-[#C0C0C0] p-0.5 win95-border-outset w-full h-full flex flex-col">
+      <div className="bg-[#C0C0C0] p-4 border-2 border-transparent h-full flex flex-col justify-center flex-grow">
+        <div className="flex justify-center mb-4">
+          <span className="text-3xl text-[#084B8A]" aria-hidden="true">♫</span>
+        </div>
+        <h2 className="text-2xl font-normal text-center text-black mb-1">Create Account</h2>
+        <p className="text-sm text-center text-black mb-5">
+          Join SoundTrace to start scanning your instrumentals.
+        </p>
+
+        {error && !isLoading && (
+          <div className="mb-3 p-2 bg-red-200 text-black border border-black text-sm">
+            {error}
           </div>
-          <h2 className="text-2xl font-normal text-center text-black mb-1">Create Account</h2>
-          <p className="text-sm text-center text-black mb-5">
-            Join SoundTrace to start scanning your instrumentals.
-          </p>
+        )}
 
-          {error && !isLoading && (
-            <div className="mb-3 p-2 bg-red-200 text-black border border-black text-sm">
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="reg-username" className="block text-sm font-normal text-black mb-0.5">
+              Username:
+            </label>
+            <input
+              id="reg-username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+              placeholder="Choose a username"
+              aria-label="Choose a username"
+              disabled={isLoading}
+            />
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="reg-username" className="block text-sm font-normal text-black mb-0.5">
-                Username:
-              </label>
-              <input
-                id="reg-username"
-                name="username"
-                type="text"
-                autoComplete="username"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
-                placeholder="Choose a username"
-                aria-label="Choose a username"
-                disabled={isLoading}
-              />
-            </div>
+          <div>
+            <label htmlFor="reg-password" className="block text-sm font-normal text-black mb-0.5">
+              Password:
+            </label>
+            <input
+              id="reg-password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+              placeholder="Create a password (min. 6 chars)"
+              aria-label="Create a password"
+              disabled={isLoading}
+            />
+          </div>
 
-            <div>
-              <label htmlFor="reg-password" className="block text-sm font-normal text-black mb-0.5">
-                Password:
-              </label>
-              <input
-                id="reg-password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
-                placeholder="Create a password (min. 6 chars)"
-                aria-label="Create a password"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="reg-confirm-password" className="block text-sm font-normal text-black mb-0.5">
-                Confirm Password:
-              </label>
-              <input
-                id="reg-confirm-password"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
-                placeholder="Confirm your password"
-                aria-label="Confirm your password"
-                disabled={isLoading}
-              />
-            </div>
-
-            {!isLoading && (
-              <Button type="submit" variant="primary" size="md" disabled={isLoading} className="w-full">
-                Register
-              </Button>
-            )}
-          </form>
-
-          {isLoading && (
-            <div className="mt-4">
-              <ProgressBar text="Creating Account..." />
-               <p className="mt-1 text-xs text-center text-black">
-                Please wait...
-              </p>
-            </div>
-          )}
+          <div>
+            <label htmlFor="reg-confirm-password" className="block text-sm font-normal text-black mb-0.5">
+              Confirm Password:
+            </label>
+            <input
+              id="reg-confirm-password"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+              placeholder="Confirm your password"
+              aria-label="Confirm your password"
+              disabled={isLoading}
+            />
+          </div>
 
           {!isLoading && (
-            <p className="mt-4 text-xs text-center text-black">
-              Already have an account?{' '}
-              <button
-                onClick={onNavigateToLogin}
-                className="font-semibold text-blue-800 hover:underline focus:outline-none"
-                aria-label="Navigate to login page"
-              >
-                Login here
-              </button>
-            </p>
+            <Button type="submit" variant="primary" size="md" disabled={isLoading} className="w-full">
+              Register
+            </Button>
           )}
-        </div>
+        </form>
+
+        {isLoading && (
+          <div className="mt-4">
+            <ProgressBar text="Creating Account..." />
+            <p className="mt-1 text-xs text-center text-black">
+              Please wait...
+            </p>
+          </div>
+        )}
+        {/* Navigation to login is now in the global header in App.tsx */}
       </div>
     </div>
   );

@@ -55,6 +55,30 @@
       width: 200%; /* Make it twice as wide as the viewable area for seamless looping */
       animation: progressBarMarqueeAnim 1.2s linear infinite;
     }
+
+    /* Follower Reach Graph Animation */
+    @keyframes pulseBar {
+      0%, 100% { transform: scaleY(0.2); }
+      50% { transform: scaleY(1); }
+    }
+
+    .graph-bar {
+      display: inline-block;
+      width: 10px; /* Width of each bar */
+      margin: 0 2px; /* Spacing between bars */
+      animation-name: pulseBar;
+      animation-duration: 1.5s;
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+      transform-origin: bottom; /* Animation scales from the bottom */
+      /* Retro border for bars */
+      border-style: solid;
+      border-width: 1px; /* Thinner border for small bars */
+      border-top-color: #FFFFFF;
+      border-left-color: #FFFFFF;
+      border-bottom-color: #555555; /* Darker bottom/right for depth */
+      border-right-color: #555555;
+    }
   </style>
 
 <script type="importmap">
@@ -72,6 +96,7 @@
     "crypto": "https://esm.sh/crypto@^1.0.1",
     "fs": "https://esm.sh/fs@^0.0.1-security",
     "path": "https://esm.sh/path@^0.12.7",
+    "buffer": "https://esm.sh/buffer@^6.0.3",
     "@eslint/js": "https://esm.sh/@eslint/js@^9.28.0",
     "globals": "https://esm.sh/globals@^16.2.0",
     "eslint-plugin-react-hooks": "https://esm.sh/eslint-plugin-react-hooks@^5.2.0",
