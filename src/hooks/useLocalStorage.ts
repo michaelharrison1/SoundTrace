@@ -39,9 +39,10 @@
 // This hook is no longer used for previousScans in MainAppLayout.
 // It can be fully removed if not used by any other component.
 // For now, making it an empty export to avoid breaking imports if any.
+import React from 'react'; // Added React import for useState
+
 export default function useLocalStorage<T,>(key: string, initialValue: T | (() => T)): [T, React.Dispatch<React.SetStateAction<T>>] {
     console.warn("useLocalStorage is deprecated in this project for core scan data. Data is now fetched from backend.");
     const [state, setState] = React.useState(typeof initialValue === 'function' ? (initialValue as () => T)() : initialValue);
     return [state, setState];
 }
-import React from 'react'; // Added React import for useState

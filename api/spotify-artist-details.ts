@@ -1,5 +1,6 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { Buffer } from 'buffer'; // Import Buffer
 
 interface SpotifyTokenResponse {
   access_token: string;
