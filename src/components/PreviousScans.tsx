@@ -201,7 +201,11 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
       setExportMessage({type: 'success', text: `Playlist "${finalPlaylistName}" created! ${trackUrisToExport.length} track(s) added. View it on Spotify.`});
       // Optionally open the playlist URL: window.open(result.playlistUrl, '_blank');
     } else {
-      setExportMessage({type: 'error', text: result.error || "Failed to export playlist. Please try again."});
+      let errorMessage = result.error || "Failed to export playlist. Please try again.";
+      if (result.error && (result.error.toLowerCase().includes('insufficient client scope') || result.error.toLowerCase().includes('forbidden'))) {
+        errorMessage = "Error: SoundTrace doesn't have permission to create playlists. Please disconnect and reconnect Spotify in the header to grant access, then try again.";
+      }
+      setExportMessage({type: 'error', text: errorMessage});
     }
   };
 
