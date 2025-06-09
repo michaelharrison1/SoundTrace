@@ -13,6 +13,9 @@ const PIXEL_LINE_COLOR = '#34D399'; // Emerald-400 for a nice green
 const CHART_BACKGROUND_COLOR = '#262626'; // neutral-800, dark gray
 const GRID_COLOR = 'rgba(128, 128, 128, 0.2)'; // Lighter gray for grid lines
 const CHART_HEIGHT_PX = 128; // Corresponds to h-32 in Tailwind (1 unit = 4px)
+const SCANNER_COLOR_CENTER = 'rgba(110, 231, 183, 0.7)'; // Brighter green for scanner center (emerald-400 @ 70%)
+const SCANNER_WIDTH_PX = 8;
+const SCANNER_SWEEP_DURATION_MS = 3000; // Duration for one full sweep
 
 const FakeWindowIcon: React.FC = () => (
   <div className="w-4 h-4 bg-gray-300 border border-t-white border-l-white border-r-gray-500 border-b-gray-500 inline-flex items-center justify-center mr-1 align-middle">
@@ -22,17 +25,22 @@ const FakeWindowIcon: React.FC = () => (
 
 const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollowers, isLoading, error }) => {
   const [chartData, setChartData] = useState<number[]>(() => Array(VISIBLE_DATA_POINTS).fill(0));
-  const [currentMaxFollowers, setCurrentMaxFollowers] = useState<number>(1000); // Initial sensible default
+  const [currentMaxFollowers, setCurrentMaxFollowers] = useState<number>(1000);
+  const [scannerPosition, setScannerPosition] = useState<number>(0);
+  const animationFrameId = useRef<number | null>(null);
+  const lastTimestamp = useRef<number>(0);
+  const chartAreaRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     if (!isLoading && !error && typeof totalFollowers === 'number') {
       setChartData(prevData => {
         const newData = [...prevData];
-        newData.shift(); // Remove the oldest point
-        newData.push(totalFollowers); // Add the new point
+        newData.shift();
+        newData.push(totalFollowers);
         return newData;
       });
-    } else if (!isLoading && !error && totalFollowers === null) { // Handle explicit null (N/A) as 0 for chart
+    } else if (!isLoading && !error && totalFollowers === null) {
        setChartData(prevData => {
         const newData = [...prevData];
         newData.shift();
@@ -40,16 +48,61 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
         return newData;
       });
     }
-    // If loading or error, chartData remains as is, letting the loading/error UI take over.
-    // If totalFollowers is undefined (initial loading), chartData also remains, waiting for first valid number.
-
   }, [totalFollowers, isLoading, error]);
 
   useEffect(() => {
-    // Update currentMaxFollowers based on the current chartData
     const maxInChart = Math.max(...chartData.filter(v => typeof v === 'number'));
-    setCurrentMaxFollowers(Math.max(1000, maxInChart)); // Ensure a minimum scaling factor, e.g., 1000 followers
+    setCurrentMaxFollowers(Math.max(1000, maxInChart));
   }, [chartData]);
+
+  useEffect(() => {
+    const animateScanner = (timestamp: number) => {
+      if (!chartAreaRef.current) {
+        animationFrameId.current = requestAnimationFrame(animateScanner);
+        return;
+      }
+      if (lastTimestamp.current === 0) {
+        lastTimestamp.current = timestamp;
+      }
+
+      const deltaTime = timestamp - lastTimestamp.current;
+      lastTimestamp.current = timestamp;
+
+      const chartWidth = chartAreaRef.current.offsetWidth;
+      if (chartWidth === 0) { // Chart not visible or laid out yet
+        animationFrameId.current = requestAnimationFrame(animateScanner);
+        return;
+      }
+
+      setScannerPosition(prevPosition => {
+        let newPosition = prevPosition + (deltaTime / SCANNER_SWEEP_DURATION_MS) * chartWidth;
+        if (newPosition > chartWidth) {
+          newPosition = 0; // Reset sweep
+        }
+        return newPosition;
+      });
+
+      animationFrameId.current = requestAnimationFrame(animateScanner);
+    };
+
+    if (!isLoading && !error) {
+      lastTimestamp.current = 0; // Reset timestamp for smooth restart
+      animationFrameId.current = requestAnimationFrame(animateScanner);
+    } else {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+        animationFrameId.current = null;
+      }
+      setScannerPosition(0); // Reset scanner when not active
+    }
+
+    return () => {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+    };
+  }, [isLoading, error]);
+
 
   const formatFollowersDisplay = (count: number | null | undefined): string => {
     if (isLoading && typeof count === 'undefined') return "Loading...";
@@ -63,8 +116,8 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
 
   const calculatePixelHeight = (value: number, max: number, chartHeight: number): number => {
     if (value <= 0) return 0;
-    const proportion = value / Math.max(1, max); // Avoid division by zero if max is 0
-    return Math.max(2, proportion * chartHeight); // Ensure minimum 2px height for visibility
+    const proportion = value / Math.max(1, max);
+    return Math.max(2, proportion * chartHeight);
   };
 
   return (
@@ -121,6 +174,7 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
             <>
               <p className="text-3xl text-black font-bold my-3 text-center">{displayValue}</p>
               <div
+                ref={chartAreaRef}
                 className="pixel-chart-area win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32" // h-32 = 128px
                 style={{
                   backgroundColor: CHART_BACKGROUND_COLOR,
@@ -133,25 +187,41 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
                 role="img"
                 aria-label={`Follower chart representing ${displayValue} followers`}
               >
+                {/* Data lines */}
                 {chartData.map((value, i) => {
-                  const pixelHeight = calculatePixelHeight(value, currentMaxFollowers, CHART_HEIGHT_PX - 4); // -4 for padding
+                  const pixelHeight = calculatePixelHeight(value, currentMaxFollowers, CHART_HEIGHT_PX - 4); // -4 for internal padding of chart area
                   return (
                     <div
                       key={i}
-                      className="chart-column flex-1 h-full relative" // Each column takes equal width
+                      className="chart-column flex-1 h-full relative"
                     >
                       <div
-                        className="pixel-line absolute bottom-0 left-[1px] right-[1px]" // Small gap between lines
+                        className="pixel-line absolute bottom-0 left-[1px] right-[1px]"
                         style={{
                           backgroundColor: PIXEL_LINE_COLOR,
                           height: `${pixelHeight}px`,
                           transition: 'height 0.3s ease-out',
-                           boxShadow: pixelHeight > 0 ? `0 0 2px ${PIXEL_LINE_COLOR}, 0 0 5px ${PIXEL_LINE_COLOR}`: 'none', // Add a subtle glow
+                           boxShadow: pixelHeight > 0 ? `0 0 2px ${PIXEL_LINE_COLOR}, 0 0 5px ${PIXEL_LINE_COLOR}`: 'none',
                         }}
                       ></div>
                     </div>
                   );
                 })}
+                {/* Scanner Element */}
+                {!isLoading && !error && chartAreaRef.current && (
+                  <div
+                    className="scanner-bar absolute top-0 bottom-0"
+                    style={{
+                      width: `${SCANNER_WIDTH_PX}px`,
+                      left: `${scannerPosition - SCANNER_WIDTH_PX / 2}px`, // Center the scanner bar on its position
+                      // transform: `translateX(${scannerPosition}px)`, // Using left for simplicity with current setup
+                      backgroundImage: `linear-gradient(to right, transparent, ${SCANNER_COLOR_CENTER} 30%, ${SCANNER_COLOR_CENTER} 70%, transparent)`,
+                      boxShadow: `0 0 8px ${SCANNER_COLOR_CENTER}`,
+                      opacity: 0.75,
+                    }}
+                    aria-hidden="true"
+                  ></div>
+                )}
               </div>
               <p className="text-xs text-gray-700 mt-2 text-center">Chart scrolls right to left. Max visual representation at {formatFollowersDisplay(currentMaxFollowers)}.</p>
             </>
