@@ -356,7 +356,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                   } else if (row.isMatchRow && row.matchDetails?.spotifyArtistId) {
                      isArtistFollowerLoading = true;
                   }
-                  const isCurrentlyPlayingThisRow = currentPlayingInfo?.trackId === row.spotifyTrackIdToPlay && currentPlayingInfo.rowIndex === index;
+                  const isCurrentlyPlayingThisRow = currentPlayingInfo?.trackId === row.spotifyTrackIdToPlay && currentPlayingInfo?.rowIndex === index;
 
                   return (
                     <tr
