@@ -1,7 +1,8 @@
 
 import { User } from '../types';
 
-const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'https://soundtracebackend.onrender.com';
+// Ensure VITE_API_BASE_URL is set in your environment for production.
+const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.soundtrace.uk';
 
 
 interface LoginResponse {

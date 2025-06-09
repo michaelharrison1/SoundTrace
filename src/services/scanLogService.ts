@@ -1,7 +1,8 @@
 
 import { TrackScanLog } from '../types';
 
-const BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'https://soundtracebackend.onrender.com'}/api/scanlogs`;
+// Ensure VITE_API_BASE_URL is set in your environment for production.
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'https://api.soundtrace.uk'}/api/scanlogs`;
 
 const getAuthToken = (): string | null => {
   try {

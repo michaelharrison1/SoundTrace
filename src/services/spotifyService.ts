@@ -1,7 +1,8 @@
 
 // Service to interact with your backend's Spotify auth endpoints
 
-const API_BASE_URL_ROOT = import.meta.env.VITE_API_BASE_URL || 'https://soundtracebackend.onrender.com';
+// Ensure VITE_API_BASE_URL is set in your environment for production.
+const API_BASE_URL_ROOT = import.meta.env.VITE_API_BASE_URL || 'https://api.soundtrace.uk';
 const SPOTIFY_AUTH_ENDPOINT = `${API_BASE_URL_ROOT}/api/auth/spotify`;
 
 

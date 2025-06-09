@@ -46,7 +46,8 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
 
   const soundTraceAuthToken = localStorage.getItem('authToken'); // Main app auth token
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://soundtracebackend.onrender.com'; // Use Vite env var
+  // Ensure VITE_API_BASE_URL is set in your environment for production.
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.soundtrace.uk';
 
 
   const initiateSpotifyLogin = () => {
