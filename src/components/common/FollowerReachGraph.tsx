@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import ProgressBar from './ProgressBar'; // For loading state inside the content area
 
 interface FollowerReachMonitorProps {
@@ -8,14 +8,11 @@ interface FollowerReachMonitorProps {
   error?: string | null;
 }
 
-const VISIBLE_DATA_POINTS = 60; // Number of columns visible on the chart
-const PIXEL_LINE_COLOR = '#34D399'; // Emerald-400 for a nice green
+const MAX_BAR_SLOTS = 30; // Number of physical bar slots visible on the chart
+const BAR_COLORS = ['#008080', '#000080', '#800080', '#808000', '#008000']; // Teal, Dark Blue, Purple, Olive, Dark Green
 const CHART_BACKGROUND_COLOR = '#262626'; // neutral-800, dark gray
-const GRID_COLOR = 'rgba(128, 128, 128, 0.2)'; // Lighter gray for grid lines
-const CHART_HEIGHT_PX = 128; // Corresponds to h-32 in Tailwind (1 unit = 4px)
-const SCANNER_COLOR_CENTER = 'rgba(110, 231, 183, 0.7)'; // Brighter green for scanner center (emerald-400 @ 70%)
-const SCANNER_WIDTH_PX = 8;
-const SCANNER_SWEEP_DURATION_MS = 3000; // Duration for one full sweep
+const GRID_COLOR = 'rgba(128, 128, 128, 0.2)';
+const LINE_ANIMATION_DURATION_MS = 2500; // Duration for the line to sweep across
 
 const FakeWindowIcon: React.FC = () => (
   <div className="w-4 h-4 bg-gray-300 border border-t-white border-l-white border-r-gray-500 border-b-gray-500 inline-flex items-center justify-center mr-1 align-middle">
@@ -23,102 +20,101 @@ const FakeWindowIcon: React.FC = () => (
   </div>
 );
 
-const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollowers, isLoading, error }) => {
-  const [chartData, setChartData] = useState<number[]>(() => Array(VISIBLE_DATA_POINTS).fill(0));
-  const [currentMaxFollowers, setCurrentMaxFollowers] = useState<number>(1000);
-  const [scannerPosition, setScannerPosition] = useState<number>(0);
-  const animationFrameId = useRef<number | null>(null);
-  const lastTimestamp = useRef<number>(0);
-  const chartAreaRef = useRef<HTMLDivElement>(null);
+interface BarConfig {
+  barUnit: number;
+  numberOfBarsToActivate: number;
+  unitLabel: string;
+}
 
+const calculateBarConfig = (followers: number | null | undefined): BarConfig => {
+  let barUnit = 1000;
+  let unitLabel = '1K';
+
+  if (typeof followers !== 'number' || followers === null || followers <= 0) {
+    return { barUnit: 0, numberOfBarsToActivate: 0, unitLabel: '' };
+  }
+
+  if (followers < 10000) {
+    barUnit = 1000;
+    unitLabel = '1K';
+  } else if (followers < 100000) {
+    barUnit = 10000;
+    unitLabel = '10K';
+  } else if (followers < 1000000) {
+    barUnit = 100000;
+    unitLabel = '100K';
+  } else {
+    barUnit = 1000000;
+    unitLabel = '1M';
+  }
+
+  const calculatedBars = Math.ceil(followers / barUnit);
+  // Ensure at least one bar if followers > 0, but not exceeding MAX_BAR_SLOTS visually driven by activation
+  const numberOfBarsToActivate = Math.max(1, calculatedBars);
+
+  return { barUnit, numberOfBarsToActivate, unitLabel };
+};
+
+
+const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollowers, isLoading, error }) => {
+  const [lineProgress, setLineProgress] = useState(0); // 0 to 1
+  const [barConfig, setBarConfig] = useState<BarConfig>(calculateBarConfig(totalFollowers));
+  const animationFrameId = useRef<number | null>(null);
+  const animationStartTime = useRef<number>(0);
+
+  useEffect(() => {
+    setBarConfig(calculateBarConfig(totalFollowers));
+  }, [totalFollowers]);
+
+  const animateLine = useCallback((timestamp: number) => {
+    if (animationStartTime.current === 0) {
+      animationStartTime.current = timestamp;
+    }
+    const elapsedTime = timestamp - animationStartTime.current;
+    const progress = Math.min(elapsedTime / LINE_ANIMATION_DURATION_MS, 1);
+    setLineProgress(progress);
+
+    if (progress < 1) {
+      animationFrameId.current = requestAnimationFrame(animateLine);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !error && typeof totalFollowers === 'number') {
-      setChartData(prevData => {
-        const newData = [...prevData];
-        newData.shift();
-        newData.push(totalFollowers);
-        return newData;
-      });
-    } else if (!isLoading && !error && totalFollowers === null) {
-       setChartData(prevData => {
-        const newData = [...prevData];
-        newData.shift();
-        newData.push(0);
-        return newData;
-      });
-    }
-  }, [totalFollowers, isLoading, error]);
-
-  useEffect(() => {
-    const maxInChart = Math.max(...chartData.filter(v => typeof v === 'number'));
-    setCurrentMaxFollowers(Math.max(1000, maxInChart));
-  }, [chartData]);
-
-  useEffect(() => {
-    const animateScanner = (timestamp: number) => {
-      if (!chartAreaRef.current) {
-        animationFrameId.current = requestAnimationFrame(animateScanner);
-        return;
+      animationStartTime.current = 0; // Reset animation
+      setLineProgress(0);
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
       }
-      if (lastTimestamp.current === 0) {
-        lastTimestamp.current = timestamp;
-      }
-
-      const deltaTime = timestamp - lastTimestamp.current;
-      lastTimestamp.current = timestamp;
-
-      const chartWidth = chartAreaRef.current.offsetWidth;
-      if (chartWidth === 0) { // Chart not visible or laid out yet
-        animationFrameId.current = requestAnimationFrame(animateScanner);
-        return;
-      }
-
-      setScannerPosition(prevPosition => {
-        let newPosition = prevPosition + (deltaTime / SCANNER_SWEEP_DURATION_MS) * chartWidth;
-        if (newPosition > chartWidth) {
-          newPosition = 0; // Reset sweep
-        }
-        return newPosition;
-      });
-
-      animationFrameId.current = requestAnimationFrame(animateScanner);
-    };
-
-    if (!isLoading && !error) {
-      lastTimestamp.current = 0; // Reset timestamp for smooth restart
-      animationFrameId.current = requestAnimationFrame(animateScanner);
+      animationFrameId.current = requestAnimationFrame(animateLine);
     } else {
+      // Stop animation if loading or error
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
         animationFrameId.current = null;
       }
-      setScannerPosition(0); // Reset scanner when not active
+       // Reset progress if loading or error, or no followers
+      if (isLoading || error || typeof totalFollowers !== 'number' || totalFollowers <= 0) {
+        setLineProgress(0);
+      }
     }
-
     return () => {
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
     };
-  }, [isLoading, error]);
+  }, [isLoading, error, totalFollowers, animateLine]);
 
 
   const formatFollowersDisplay = (count: number | null | undefined): string => {
     if (isLoading && typeof count === 'undefined') return "Loading...";
-    if (typeof count === 'undefined') return "Loading...";
+    if (typeof count === 'undefined') return "Loading..."; // Still loading but no specific value yet
     if (count === null) return "N/A";
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
     return count.toString();
   };
   const displayValue = formatFollowersDisplay(totalFollowers);
-
-  const calculatePixelHeight = (value: number, max: number, chartHeight: number): number => {
-    if (value <= 0) return 0;
-    const proportion = value / Math.max(1, max);
-    return Math.max(2, proportion * chartHeight);
-  };
 
   return (
     <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black">
@@ -174,8 +170,7 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
             <>
               <p className="text-3xl text-black font-bold my-3 text-center">{displayValue}</p>
               <div
-                ref={chartAreaRef}
-                className="pixel-chart-area win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32" // h-32 = 128px
+                className="performance-chart-area win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32" // h-32 = 128px
                 style={{
                   backgroundColor: CHART_BACKGROUND_COLOR,
                   backgroundImage: `
@@ -185,45 +180,57 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
                   backgroundSize: "10px 10px"
                 }}
                 role="img"
-                aria-label={`Follower chart representing ${displayValue} followers`}
+                aria-label={`Performance chart. Current total follower reach: ${displayValue}. ${barConfig.unitLabel ? 'Each bar segment represents ' + barConfig.unitLabel + ' followers.' : ''}`}
               >
-                {/* Data lines */}
-                {chartData.map((value, i) => {
-                  const pixelHeight = calculatePixelHeight(value, currentMaxFollowers, CHART_HEIGHT_PX - 4); // -4 for internal padding of chart area
-                  return (
-                    <div
-                      key={i}
-                      className="chart-column flex-1 h-full relative"
-                    >
+                {/* Bars Area */}
+                <div className="flex w-full h-full items-end">
+                  {[...Array(MAX_BAR_SLOTS)].map((_, i) => {
+                    const barIsActive = lineProgress * MAX_BAR_SLOTS > i && i < barConfig.numberOfBarsToActivate && (totalFollowers ?? 0) > 0;
+                    const barHeight = barIsActive ? '100%' : '0%';
+                    const barColor = barIsActive ? BAR_COLORS[i % BAR_COLORS.length] : 'transparent';
+
+                    return (
                       <div
-                        className="pixel-line absolute bottom-0 left-[1px] right-[1px]"
-                        style={{
-                          backgroundColor: PIXEL_LINE_COLOR,
-                          height: `${pixelHeight}px`,
-                          transition: 'height 0.3s ease-out',
-                           boxShadow: pixelHeight > 0 ? `0 0 2px ${PIXEL_LINE_COLOR}, 0 0 5px ${PIXEL_LINE_COLOR}`: 'none',
-                        }}
-                      ></div>
-                    </div>
-                  );
-                })}
-                {/* Scanner Element */}
-                {!isLoading && !error && chartAreaRef.current && (
-                  <div
-                    className="scanner-bar absolute top-0 bottom-0"
+                        key={i}
+                        className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center"
+                      >
+                        {/* Background/Placeholder for the bar slot */}
+                        <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>
+                        {/* Active bar fill */}
+                        { (totalFollowers ?? 0) > 0 && ( /* Only show active bar if there are followers */
+                          <div
+                            className="active-bar-fill relative win95-border-outset"
+                            style={{
+                              backgroundColor: barColor,
+                              height: barHeight,
+                              width: '80%', // Make bars slightly thinner than slot
+                              transition: 'height 0.1s linear', // Fast rise
+                              boxShadow: barIsActive ? `0 0 3px ${barColor}, 0 0 6px ${barColor}` : 'none',
+                            }}
+                          ></div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Green Progress Line Overlay */}
+                { (totalFollowers ?? 0) > 0 && !isLoading && !error && (
+                    <div
+                    className="progress-line absolute top-0 bottom-0 bg-green-400"
                     style={{
-                      width: `${SCANNER_WIDTH_PX}px`,
-                      left: `${scannerPosition - SCANNER_WIDTH_PX / 2}px`, // Center the scanner bar on its position
-                      // transform: `translateX(${scannerPosition}px)`, // Using left for simplicity with current setup
-                      backgroundImage: `linear-gradient(to right, transparent, ${SCANNER_COLOR_CENTER} 30%, ${SCANNER_COLOR_CENTER} 70%, transparent)`,
-                      boxShadow: `0 0 8px ${SCANNER_COLOR_CENTER}`,
-                      opacity: 0.75,
+                        left: `${lineProgress * 100}%`,
+                        width: '3px', // Thickness of the line
+                        boxShadow: '0 0 5px 1px #34D399, 0 0 10px 2px #34D399', // Glow effect
+                        transform: 'translateX(-1.5px)', // Center the line
                     }}
                     aria-hidden="true"
-                  ></div>
+                    ></div>
                 )}
               </div>
-              <p className="text-xs text-gray-700 mt-2 text-center">Chart scrolls right to left. Max visual representation at {formatFollowersDisplay(currentMaxFollowers)}.</p>
+              <p className="text-xs text-gray-700 mt-2 text-center">
+                {barConfig.unitLabel ? `Bars represent: ${barConfig.unitLabel} followers.` : "No follower data to display."}
+                {' '}Max visual bars: {MAX_BAR_SLOTS}.
+              </p>
             </>
           )}
         </div>
@@ -245,3 +252,4 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
   );
 };
 export default FollowerReachMonitor;
+
