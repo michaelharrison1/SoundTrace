@@ -1,7 +1,8 @@
 
 import { User } from '../types';
 
-const BACKEND_URL = 'https://soundtracebackend.onrender.com';
+const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'https://soundtracebackend.onrender.com';
+
 
 interface LoginResponse {
   token: string;
@@ -62,5 +63,33 @@ export const authService = {
     });
 
     return handleAuthApiResponse(response);
+  },
+
+  logout: async (): Promise<void> => {
+    const token = localStorage.getItem('authToken');
+    if (!BACKEND_URL) {
+      console.warn('Backend URL not configured. Cannot call logout endpoint.');
+      return;
+    }
+    // No need to check for token here as the cookie is the primary concern for this call
+    // The authMiddleware on the backend will handle if the user is not authenticated via cookie/header
+
+    try {
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) { // Send token if available, for authMiddleware consistency, though cookie is main target
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers,
+      });
+      if (!response.ok) {
+        // Log error but don't prevent client-side logout operations
+        const errorBody = await response.text().catch(()=>'Could not read error response body');
+        console.error('Backend logout call failed:', response.status, errorBody);
+      }
+    } catch (error) {
+      console.error('Error calling backend logout:', error);
+    }
   },
 };

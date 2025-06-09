@@ -45,7 +45,7 @@ export const spotifyService = {
 
   disconnect: async (): Promise<any> => {
     const response = await fetchWithAuth(`${SPOTIFY_AUTH_ENDPOINT}/disconnect`, { method: 'POST' });
-    if (response.status === 204) {
+    if (response.status === 204 || response.headers.get("content-length") === "0") { // Check for empty response body
       return { message: 'Successfully disconnected from Spotify on backend.' };
     }
     return response.json();

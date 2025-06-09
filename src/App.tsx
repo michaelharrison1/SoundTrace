@@ -8,6 +8,7 @@ import Button from './components/common/Button';
 import LogoutIcon from './components/icons/LogoutIcon';
 import ProgressBar from './components/common/ProgressBar';
 import { SpotifyProvider, useSpotifyPlayer, SpotifyCallbackReceiver } from './contexts/SpotifyContext';
+import { authService } from './services/authService'; // Import authService
 
 type AuthView = 'login' | 'register';
 
@@ -87,6 +88,11 @@ const AppContent: React.FC = () => {
       // This catch is for errors if spotifyDisconnect hook call itself fails, which is unlikely
       console.error("Error calling spotifyDisconnect function (non-critical):", error);
     }
+
+    // Call backend logout to clear HTTPOnly cookie
+    await authService.logout().catch(err => {
+        console.error("Error calling backend logout (non-critical):", err);
+    });
 
     try {
       localStorage.removeItem('authToken');
