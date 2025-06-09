@@ -26,9 +26,15 @@ const FollowerReachGraph: React.FC<FollowerReachGraphProps> = ({ totalFollowers,
   // Max possible followers for styling the bar, e.g., 10 million for 100%
   // This helps give a sense of scale to the bar.
   const MAX_REACH_FOR_BAR = 10000000; // 10 Million
-  const barPercentage = (totalFollowers && totalFollowers > 0 && !isLoading && !error)
+
+  // Calculate barPercentage safely
+  const barPercentage = (typeof totalFollowers === 'number' && totalFollowers > 0 && !isLoading && !error)
     ? Math.min((totalFollowers / MAX_REACH_FOR_BAR) * 100, 100)
     : 0;
+
+  const barTitle = (typeof totalFollowers === 'number' && totalFollowers > 0)
+    ? `Approximately ${totalFollowers.toLocaleString()} followers`
+    : "Follower data unavailable";
 
   return (
     <div className={containerStyles}>
@@ -46,8 +52,8 @@ const FollowerReachGraph: React.FC<FollowerReachGraphProps> = ({ totalFollowers,
             <div className="text-3xl text-[#084B8A] font-bold text-center my-2">
               {displayValue}
             </div>
-            <div className="h-6 bg-white win95-border-inset p-0.5 my-1" title={ totalFollowers !== null && totalFollowers > 0 ? `Approximately ${totalFollowers.toLocaleString()} followers` : "Follower data unavailable"}>
-              {totalFollowers !== null && totalFollowers > 0 && (
+            <div className="h-6 bg-white win95-border-inset p-0.5 my-1" title={barTitle}>
+              {barPercentage > 0 && (
                 <div
                   className="h-full bg-[#084B8A] win95-border-outset flex items-center justify-center"
                   style={{ width: `${barPercentage}%` }}
@@ -56,11 +62,11 @@ const FollowerReachGraph: React.FC<FollowerReachGraphProps> = ({ totalFollowers,
                    {/* <span className="text-white text-xs px-1 truncate">{formatFollowersDisplay(totalFollowers)}</span> */}
                 </div>
               )}
-              { (totalFollowers === 0 || totalFollowers === null) && barPercentage === 0 &&
+              {barPercentage === 0 && (
                  <div className="h-full flex items-center justify-center text-xs text-gray-500">
                     No follower data available or total is zero.
                  </div>
-              }
+              )}
             </div>
             <p className="text-xs text-gray-700 text-center">
               Combined Spotify followers from unique artists found in scans.
