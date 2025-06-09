@@ -15,6 +15,7 @@ interface ReachAnalyzerProps {
 }
 
 const MAX_BAR_SLOTS = 30;
+// const ACTIVE_BAR_COLOR = '#34D399'; // Emerald-400 - Now dynamic
 const CHART_BACKGROUND_COLOR = '#262626'; // Neutral-800
 const GRID_COLOR = 'rgba(128, 128, 128, 0.2)';
 const LINE_ANIMATION_DURATION_MS = 3750;
@@ -51,7 +52,7 @@ interface ArtistLeaderboardEntry {
   isFollowersLoading: boolean;
   followersError?: string;
   followerBarPercent: number;
-  mostRecentMatchDate: string | null;
+  mostRecentMatchDate: string | null; // This should be the release date of the artist's most recent track that used the beat
   spotifyPopularity: number | null | undefined;
   genres: string[] | undefined;
   key: string;
@@ -124,7 +125,7 @@ const PopularityBar: React.FC<{ score: number | null | undefined }> = ({ score }
   );
 };
 
-const ARTIST_LEVEL_THRESHOLDS = [100, 500, 1000, 5000, 10000];
+const ARTIST_LEVEL_THRESHOLDS = [100, 500, 1000, 5000, 10000]; // Artists needed for next level
 
 const calculateArtistLevel = (artistCount: number): number => {
     let level = 1;
@@ -173,16 +174,19 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
     if (!levelUpAvailable) return;
     setIsLevelingUp(true);
     setLevelUpAvailable(false);
+    // Simple visual cue for leveling up - can be expanded
     let flashes = 0;
     const flashInterval = setInterval(() => {
         flashes++;
+        // Update CRT border to pulse yellow during leveling up.
+        // This is handled by isLevelingUp state and currentLevelCRTBorderClass
         if (flashes >= 6) {
             clearInterval(flashInterval);
             const newLevel = currentLevel + 1;
             setCurrentLevel(newLevel);
             setIsLevelingUp(false);
-            setLineProgress(0);
-            setReachBarConfig(calculateBarConfig(totalFollowers, newLevel));
+            setLineProgress(0); // Reset line progress for new level
+            setReachBarConfig(calculateBarConfig(totalFollowers, newLevel)); // Recalculate bar config for new level
         }
     }, 200);
   };
@@ -238,6 +242,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         if (!artistMap.has(artistKey)) artistMap.set(artistKey, { name: match.artist, id: match.spotifyArtistId, matches: [], scanDates: [] });
         const artistEntry = artistMap.get(artistKey)!;
         artistEntry.matches.push(match);
+        // Use match release date instead of scan date for "Most Recent Match"
+        // The sorting/aggregation of this specific date per artist will happen later
       });
     });
     const processedData: Omit<ArtistLeaderboardEntry, 'followerBarPercent' | 'key'>[] = [];
@@ -254,7 +260,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
       if(data.matches.length > 0){
           const validDates = data.matches
               .map(m => m.releaseDate ? new Date(m.releaseDate).getTime() : 0)
-              .filter(ts => ts > 0 && !isNaN(ts));
+              .filter(ts => ts > 0 && !isNaN(ts)); // Ensure valid, non-zero timestamps
           if(validDates.length > 0) {
             mostRecentMatchedReleaseDate = new Date(Math.max(...validDates)).toLocaleDateString();
           }
@@ -341,7 +347,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
             <div className="mt-4">
                 <h4 className="text-base font-semibold text-black mb-1 text-center">Time-Based Reach Graph</h4>
                 <p className="text-xs text-gray-600 text-center mb-2">Track follower growth over time (last {dataToDisplay.length} records), updates daily.</p>
-                 <div className={`p-0.5 ${isLevelingUp ? 'animate-pulse !border-yellow-400' : 'border-transparent'} border-2`}>
+                 <div className={`p-0.5 ${isLevelingUp ? 'animate-pulse !border-yellow-400' : 'border-transparent'} border-2`}> {/* Border only for leveling up */}
                     <div className="win95-border-inset bg-gray-700 p-2 h-48 flex items-end overflow-x-auto" style={{gap: `${gapBetweenBars}%`}}>
                         {dataToDisplay.map((snapshot) => {
                             const barHeight = maxFollowersInPeriod > 0 ? (snapshot.cumulativeFollowers / maxFollowersInPeriod) * 95 : 0;
@@ -349,17 +355,11 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                             return (
                                 <div
                                     key={snapshot.date}
-                                    className="flex-shrink-0 win95-border-outset hover:opacity-80 relative group"
-                                    style={{
-                                        width: `${barWidthPercentage}%`,
-                                        height: `${Math.max(5, barHeight)}%`,
-                                        minWidth: '15px',
-                                        backgroundColor: activeBarAndLineColor, // Use the level-based color
-                                        boxShadow: `0 0 2px ${activeBarAndLineColor}, 0 0 4px ${activeBarAndLineColor}`,
-                                     }}
+                                    className="flex-shrink-0 win95-border-outset bg-green-400 hover:bg-green-300 relative group"
+                                    style={{ width: `${barWidthPercentage}%`, height: `${Math.max(5, barHeight)}%`, minWidth: '15px' }}
                                     title={`${formattedDate}: ${formatFollowersDisplay(snapshot.cumulativeFollowers)} followers`}
                                 >
-                                <span className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs text-gray-100 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-70 px-1.5 py-0.5 rounded-sm win95-border-outset border-gray-500">
+                                <span className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs text-gray-100 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-70 px-1 py-0.5 rounded-sm">
                                     {formattedDate}
                                 </span>
                                 </div>
@@ -372,7 +372,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
     };
 
   const crtElementBaseClass = "win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32";
-  const crtLevelingUpClass = isLevelingUp ? "animate-pulse !border-yellow-400 border-2" : "border-transparent border-0";
+  const crtLevelingUpClass = isLevelingUp ? "animate-pulse !border-yellow-400 border-2" : "border-transparent border-0"; // For the temporary flash during level up.
 
   const renderTabContent = () => {
     if (activeMonitorTab === 'reach') {
@@ -400,7 +400,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               )}
               {isLevelingUp && <ProgressBar text="Leveling Up! Please Wait..." className="my-1"/>}
 
-              <div className={`p-0.5 ${crtLevelingUpClass}`}>
+              <div className={`p-0.5 ${crtLevelingUpClass}`}> {/* Only apply pulse border during leveling up animation */}
                 <div
                   className={crtElementBaseClass}
                   style={{ backgroundColor: CHART_BACKGROUND_COLOR, backgroundImage: `linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px), linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px)`, backgroundSize: "10px 10px" }}
