@@ -43,7 +43,7 @@ export interface TrackScanLog {
   status: 'matches_found' | 'no_matches_found' | 'error_processing' | 'partially_completed';
 }
 
-// Types for Spotify Follower Data Fetching moved from DashboardViewPage.tsx
+// Types for Spotify Follower Data Fetching
 export interface SpotifyFollowerSuccess {
   status: 'success';
   artistId: string;
@@ -86,22 +86,8 @@ export interface SpotifyUserInfo {
   expiresAt: string;
 }
 
-// Removed SpotifyPlayerState as in-app playback is removed.
-
 export interface SpotifyPlayerContextType {
-  // Playback related properties removed
-  // player: Spotify.Player | null;
-  // deviceId: string | null;
-  // isActive: boolean;
-  // currentState: SpotifyPlayerState | null;
-  // playTrack: (trackUri: string, spotifyTrackId?: string, initialTrackName?: string, initialArtistName?: string) => Promise<void>;
-  // currentPlayingTrackInfo: { trackId: string | null; name: string; artist: string; uri: string } | null;
-  // isLoadingPlayback: boolean;
-  // playbackError: string | null;
-
-  isReady: boolean; // Now signifies Spotify authentication readiness
-
-  // Spotify auth and connection status
+  isReady: boolean;
   isSpotifyConnected: boolean;
   spotifyUser: SpotifyUserInfo | null;
   isLoadingSpotifyAuth: boolean;
@@ -113,12 +99,16 @@ export interface SpotifyPlayerContextType {
   createPlaylistAndAddTracks: (playlistName: string, trackUris: string[], description?: string) => Promise<{playlistUrl?: string; error?: string}>;
 }
 
-// Spotify Playlist creation response type
 export interface SpotifyPlaylist {
   id: string;
   name: string;
   external_urls: {
     spotify: string;
   };
-  // other properties as needed
+}
+
+// For Time-Based Reach Graph
+export interface FollowerSnapshot {
+    date: string; // YYYY-MM-DD
+    cumulativeFollowers: number;
 }

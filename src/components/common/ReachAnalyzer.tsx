@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import ProgressBar from './ProgressBar';
-import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult } from '../../types';
+import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, FollowerSnapshot } from '../../types';
 import ArtistFollowers from './ArtistFollowers';
-import CollaborationRadarGrap from './CollaborationRadarGrap.tsx'; // New component
+import CollaborationRadarGraph from './CollaborationRadarGraph';
 
 interface ReachAnalyzerProps {
   totalFollowers: number | null | undefined;
@@ -11,6 +11,7 @@ interface ReachAnalyzerProps {
   error?: string | null;
   scanLogs: TrackScanLog[];
   followerResults: Map<string, SpotifyFollowerResult>;
+  historicalFollowerData: FollowerSnapshot[];
 }
 
 const MAX_BAR_SLOTS = 30;
@@ -20,18 +21,10 @@ const GRID_COLOR = 'rgba(128, 128, 128, 0.2)';
 const LINE_ANIMATION_DURATION_MS = 3750;
 
 const LEVEL_COLORS = [
-  'border-transparent', // Level 1 (no special border or use main component border)
-  'border-blue-500',    // Level 2
-  'border-purple-500',  // Level 3
-  'border-pink-500',    // Level 4
-  'border-red-500',     // Level 5
-  'border-orange-500',  // Level 6
-  'border-yellow-500',  // Level 7
-  'border-lime-500',    // Level 8
-  'border-emerald-500', // Level 9
-  'border-cyan-500',    // Level 10
+  'border-transparent', 'border-blue-500', 'border-purple-500', 'border-pink-500',
+  'border-red-500', 'border-orange-500', 'border-yellow-500', 'border-lime-500',
+  'border-emerald-500', 'border-cyan-500',
 ];
-
 
 type MonitorTab = 'reach' | 'artistStats' | 'beatStats' | 'collaborationRadar';
 type ArtistSortableColumn = 'artistName' | 'matchedTracksCount' | 'spotifyFollowers' | 'mostRecentMatchDate' | 'spotifyPopularity';
@@ -59,18 +52,6 @@ interface BeatStatsEntry {
   key: string;
 }
 
-// Mock data for Time-Based Reach Graph
-interface FollowerSnapshot {
-    date: string; // YYYY-MM-DD
-    cumulativeFollowers: number;
-}
-
-const mockFollowerSnapshots: FollowerSnapshot[] = Array.from({length: 12}, (_, i) => ({
-    date: `2023-${String(i+1).padStart(2,'0')}-01`,
-    cumulativeFollowers: 5000 * (i+1) + Math.floor(Math.random() * 2000 * (i+1))
-}));
-
-
 const FakeWindowIcon: React.FC = () => (
   <div className="w-4 h-4 bg-gray-300 border border-t-white border-l-white border-r-gray-500 border-b-gray-500 inline-flex items-center justify-center mr-1 align-middle">
     <div className="w-[7px] h-[7px] bg-[#000080]"></div>
@@ -84,10 +65,9 @@ interface BarConfig {
 }
 
 const calculateBarConfig = (followers: number | null | undefined, level: number): BarConfig => {
-  let baseUnit = 1000; // For level 1
-  // Increase threshold per bar for higher levels (example logic)
-  if (level > 1) baseUnit = 1000 * Math.pow(1.5, level -1);
-
+  let baseUnit = 1000;
+  if (level > 1) baseUnit = 1000 * Math.pow(1.5, level - 1); // Example: level 2 = 1.5k, level 3 = 2.25k
+  baseUnit = Math.max(100, Math.round(baseUnit / 100) * 100);
 
   let barUnit = baseUnit;
   let unitLabel = `${Math.round(baseUnit/1000)}K`;
@@ -96,25 +76,23 @@ const calculateBarConfig = (followers: number | null | undefined, level: number)
     return { barUnit: 0, numberOfBarsToActivate: 0, unitLabel: '' };
   }
 
-  if (followers < baseUnit * 10) { // e.g., < 10K for L1, < 15K for L2
-    barUnit = baseUnit;
-    unitLabel = `${Math.round(baseUnit/1000)}K`;
-  } else if (followers < baseUnit * 100) { // e.g., < 100K for L1
-    barUnit = baseUnit * 10;
-    unitLabel = `${Math.round(baseUnit*10/1000)}K`;
-  } else if (followers < baseUnit * 1000) { // e.g., < 1M for L1
-    barUnit = baseUnit * 100;
-    unitLabel = `${Math.round(baseUnit*100/1000)}K`;
-     if (barUnit >= 1000000) unitLabel = `${Math.round(barUnit/1000000)}M`;
-  } else {
-    barUnit = baseUnit * 1000;
-    unitLabel = `${Math.round(baseUnit*1000/1000000)}M`;
+  const dynamicThresholds = [10, 100, 1000];
+  for(let i = 0; i < dynamicThresholds.length; i++){
+      if (followers < baseUnit * dynamicThresholds[i]) {
+          barUnit = baseUnit * (dynamicThresholds[i-1] || 1);
+          break;
+      }
+      barUnit = baseUnit * dynamicThresholds[i];
   }
+  barUnit = Math.max(baseUnit, barUnit);
 
 
-  const calculatedBars = Math.ceil(followers / barUnit);
-  const numberOfBarsToActivate = Math.min(MAX_BAR_SLOTS, Math.max(1, calculatedBars));
+  if (barUnit >= 1000000) unitLabel = `${(barUnit / 1000000).toFixed(barUnit % 1000000 === 0 ? 0 : 1)}M`;
+  else if (barUnit >= 1000) unitLabel = `${(barUnit / 1000).toFixed(barUnit % 1000 === 0 ? 0 : 1)}K`;
+  else unitLabel = `${barUnit}`;
 
+  const calculatedBars = followers > 0 && barUnit > 0 ? Math.ceil(followers / barUnit) : 0;
+  const numberOfBarsToActivate = Math.min(MAX_BAR_SLOTS, Math.max(0, calculatedBars));
 
   return { barUnit, numberOfBarsToActivate, unitLabel };
 };
@@ -136,10 +114,11 @@ const PopularityBar: React.FC<{ score: number | null | undefined }> = ({ score }
 
 const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   totalFollowers,
-  isLoading: isLoadingTotalFollowers,
+  isLoading: isLoadingTotalFollowers, // This is now overall loading for dashboard data
   error: totalFollowersError,
   scanLogs,
-  followerResults
+  followerResults,
+  historicalFollowerData // Received from DashboardViewPage
 }) => {
   const [activeMonitorTab, setActiveMonitorTab] = useState<MonitorTab>('reach');
   const [lineProgress, setLineProgress] = useState(0);
@@ -151,55 +130,41 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   const [isLevelingUp, setIsLevelingUp] = useState(false);
   const [reachBarConfig, setReachBarConfig] = useState<BarConfig>(calculateBarConfig(totalFollowers, currentLevel));
 
-  const [timeBasedData, setTimeBasedData] = useState<FollowerSnapshot[]>([]);
-  const [isLoadingTimeData, setIsLoadingTimeData] = useState(false);
-
-
   useEffect(() => {
     setReachBarConfig(calculateBarConfig(totalFollowers, currentLevel));
   }, [totalFollowers, currentLevel]);
 
   useEffect(() => {
-    if (reachBarConfig.numberOfBarsToActivate >= MAX_BAR_SLOTS && (totalFollowers ?? 0) > 0) {
+    if (reachBarConfig.numberOfBarsToActivate >= MAX_BAR_SLOTS && (totalFollowers ?? 0) > 0 && !isLevelingUp) {
         setLevelUpAvailable(true);
     } else {
         setLevelUpAvailable(false);
     }
-  }, [reachBarConfig.numberOfBarsToActivate, totalFollowers]);
+  }, [reachBarConfig.numberOfBarsToActivate, totalFollowers, isLevelingUp]);
 
   const handleLevelUp = () => {
     if (!levelUpAvailable) return;
     setIsLevelingUp(true);
     setLevelUpAvailable(false);
-    // Simple animation: flash colors, then update level
     let flashes = 0;
     const flashInterval = setInterval(() => {
-        // Placeholder: In a real scenario, might toggle a class for flashing effect
-        console.log("Flash!", flashes % 2 === 0 ? "on" : "off");
         flashes++;
-        if (flashes >= 6) { // 3 flashes
+        if (flashes >= 6) { // Simple animation: 6 flashes
             clearInterval(flashInterval);
-            setCurrentLevel(prev => prev + 1);
+            const newLevel = currentLevel + 1;
+            setCurrentLevel(newLevel);
             setIsLevelingUp(false);
-            // Reset progress for the new level or adjust how totalFollowers maps to bars
-            setLineProgress(0); // Reset line progress for the new level
-            // recalculate barConfig based on new level
-            setReachBarConfig(calculateBarConfig(totalFollowers, currentLevel + 1));
+            setLineProgress(0);
+            setReachBarConfig(calculateBarConfig(totalFollowers, newLevel)); // Recalculate bar config for new level
         }
     }, 200);
   };
 
-
   const animateLineCallback = useCallback((timestamp: number) => {
-    if (animationStartTime.current === 0) {
-      animationStartTime.current = timestamp;
-    }
+    if (animationStartTime.current === 0) animationStartTime.current = timestamp;
     const elapsedTime = timestamp - animationStartTime.current;
     let newProgress = elapsedTime / LINE_ANIMATION_DURATION_MS;
-    if (newProgress >= 1.0) {
-      newProgress = 0;
-      animationStartTime.current = timestamp;
-    }
+    if (newProgress >= 1.0) { newProgress = 0; animationStartTime.current = timestamp; }
     setLineProgress(newProgress);
     animationFrameId.current = requestAnimationFrame(animateLineCallback);
   }, []);
@@ -212,27 +177,18 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         animationFrameId.current = requestAnimationFrame(animateLineCallback);
       }
     } else {
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-        animationFrameId.current = null;
-      }
-       if (activeMonitorTab === 'reach' && (isLoadingTotalFollowers || totalFollowersError || (totalFollowers ?? 0) <= 0 || levelUpAvailable || isLevelingUp)) {
+      if (animationFrameId.current) { cancelAnimationFrame(animationFrameId.current); animationFrameId.current = null; }
+      if (activeMonitorTab === 'reach' && (isLoadingTotalFollowers || totalFollowersError || (totalFollowers ?? 0) <= 0 || levelUpAvailable || isLevelingUp)) {
          setLineProgress(0);
       }
     }
-    return () => {
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-        animationFrameId.current = null;
-      }
-    };
+    return () => { if (animationFrameId.current) { cancelAnimationFrame(animationFrameId.current); animationFrameId.current = null; }};
   }, [activeMonitorTab, isLoadingTotalFollowers, totalFollowersError, totalFollowers, animateLineCallback, lineProgress, levelUpAvailable, isLevelingUp]);
-
 
   const formatFollowersDisplay = (count: number | null | undefined): string => {
     if (isLoadingTotalFollowers && typeof count === 'undefined') return "Loading...";
-    if (typeof count === 'undefined') return "Loading..."; // Should not happen if isLoading is false
-    if (count === null) return "N/A";
+    if (typeof count === 'undefined') return "Loading..."; // Should be covered by isLoading, but defensive
+    if (count === null) return "N/A"; // Error or no data
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
     return count.toString();
@@ -245,98 +201,49 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   const [beatSortDirection, setBeatSortDirection] = useState<SortDirection>('desc');
   const [expandedBeat, setExpandedBeat] = useState<string | null>(null);
 
-
   const aggregatedArtistData = useMemo(() => {
     const artistMap = new Map<string, { name: string, id?: string, matches: AcrCloudMatch[], scanDates: string[] }>();
     scanLogs.forEach(log => {
       log.matches.forEach(match => {
         const artistKey = match.spotifyArtistId || match.artist;
-        if (!artistMap.has(artistKey)) {
-          artistMap.set(artistKey, { name: match.artist, id: match.spotifyArtistId, matches: [], scanDates: [] });
-        }
+        if (!artistMap.has(artistKey)) artistMap.set(artistKey, { name: match.artist, id: match.spotifyArtistId, matches: [], scanDates: [] });
         const artistEntry = artistMap.get(artistKey)!;
         artistEntry.matches.push(match);
-        artistEntry.scanDates.push(log.scanDate); // Store all scan dates
+        artistEntry.scanDates.push(log.scanDate);
       });
     });
-
     const processedData: Omit<ArtistLeaderboardEntry, 'followerBarPercent' | 'key'>[] = [];
     artistMap.forEach((data) => {
       const followerInfo = data.id ? followerResults.get(data.id) : undefined;
-      let followers: number | null | undefined = undefined;
-      let isLoadingFollowers = false;
-      let errorFollowers: string | undefined = undefined;
-      let popularity: number | null | undefined = undefined;
-      let genres: string[] | undefined = undefined;
-
+      let followers: number | null | undefined = undefined, isLoadingFollowers = false, errorFollowers: string | undefined = undefined, popularity: number | null | undefined = undefined, genres: string[] | undefined = undefined;
       if (followerInfo) {
-        if (followerInfo.status === 'success') {
-          followers = followerInfo.followers;
-          popularity = followerInfo.popularity;
-          genres = followerInfo.genres;
-        } else if (followerInfo.status === 'error') {
-          followers = null; errorFollowers = followerInfo.reason;
-        } else if (followerInfo.status === 'loading') {
-          isLoadingFollowers = true;
-        } else {
-          followers = null;
-        }
-      } else if (data.id) {
-         isLoadingFollowers = true;
-      }
+        if (followerInfo.status === 'success') { followers = followerInfo.followers; popularity = followerInfo.popularity; genres = followerInfo.genres; }
+        else if (followerInfo.status === 'error') { followers = null; errorFollowers = followerInfo.reason; }
+        else if (followerInfo.status === 'loading') isLoadingFollowers = true; else followers = null;
+      } else if (data.id) isLoadingFollowers = true;
 
-      // Find the release date of the most recent track by this artist that matched one of the user's beats
       let mostRecentMatchedReleaseDate: string | null = null;
-      if (data.matches.length > 0) {
-          const validDates = data.matches
-              .map(m => m.releaseDate ? new Date(m.releaseDate).getTime() : 0)
-              .filter(ts => ts > 0);
-          if (validDates.length > 0) {
-              mostRecentMatchedReleaseDate = new Date(Math.max(...validDates)).toLocaleDateString();
+      if(data.matches.length > 0){
+          const validDates = data.matches.map(m => m.releaseDate ? new Date(m.releaseDate).getTime() : 0).filter(ts => ts > 0);
+          if(validDates.length > 0) {
+            mostRecentMatchedReleaseDate = new Date(Math.max(...validDates)).toLocaleDateString();
           }
       }
-
-
-      processedData.push({
-        artistName: data.name,
-        spotifyArtistId: data.id,
-        matchedTracksCount: data.matches.length,
-        spotifyFollowers: followers,
-        isFollowersLoading: isLoadingFollowers,
-        followersError: errorFollowers,
-        mostRecentMatchDate: mostRecentMatchedReleaseDate,
-        spotifyPopularity: popularity,
-        genres,
-      });
+      processedData.push({ artistName: data.name, spotifyArtistId: data.id, matchedTracksCount: data.matches.length, spotifyFollowers: followers, isFollowersLoading: isLoadingFollowers, followersError: errorFollowers, mostRecentMatchDate: mostRecentMatchedReleaseDate, spotifyPopularity: popularity, genres });
     });
     const maxFollowers = Math.max(0, ...processedData.map(a => a.spotifyFollowers ?? 0));
-    return processedData.map((artist, index) => ({
-      ...artist,
-      key: artist.spotifyArtistId || `${artist.artistName}-${index}`,
-      followerBarPercent: maxFollowers > 0 && typeof artist.spotifyFollowers === 'number' ? (artist.spotifyFollowers / maxFollowers) * 100 : 0,
-    }));
+    return processedData.map((artist, index) => ({ ...artist, key: artist.spotifyArtistId || `${artist.artistName}-${index}`, followerBarPercent: maxFollowers > 0 && typeof artist.spotifyFollowers === 'number' ? (artist.spotifyFollowers / maxFollowers) * 100 : 0 }));
   }, [scanLogs, followerResults]);
 
   const sortedArtistData = useMemo(() => {
     return [...aggregatedArtistData].sort((a, b) => {
       let valA: any, valB: any;
       switch (artistSortColumn) {
-        case 'artistName':
-          valA = a.artistName; valB = b.artistName;
-          return artistSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        case 'matchedTracksCount':
-          valA = a.matchedTracksCount; valB = b.matchedTracksCount;
-          break;
-        case 'spotifyFollowers':
-          valA = a.spotifyFollowers ?? -1; valB = b.spotifyFollowers ?? -1;
-          break;
-        case 'mostRecentMatchDate': // Sort by timestamp for accuracy
-          valA = a.mostRecentMatchDate ? new Date(a.mostRecentMatchDate).getTime() : 0;
-          valB = b.mostRecentMatchDate ? new Date(b.mostRecentMatchDate).getTime() : 0;
-          break;
-        case 'spotifyPopularity':
-          valA = a.spotifyPopularity ?? -1; valB = b.spotifyPopularity ?? -1;
-          break;
+        case 'artistName': valA = a.artistName; valB = b.artistName; return artistSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'matchedTracksCount': valA = a.matchedTracksCount; valB = b.matchedTracksCount; break;
+        case 'spotifyFollowers': valA = a.spotifyFollowers ?? -1; valB = b.spotifyFollowers ?? -1; break;
+        case 'mostRecentMatchDate': valA = a.mostRecentMatchDate ? new Date(a.mostRecentMatchDate).getTime() : 0; valB = b.mostRecentMatchDate ? new Date(b.mostRecentMatchDate).getTime() : 0; break;
+        case 'spotifyPopularity': valA = a.spotifyPopularity ?? -1; valB = b.spotifyPopularity ?? -1; break;
         default: return 0;
       }
       return artistSortDirection === 'asc' ? valA - valB : valB - valA;
@@ -344,46 +251,26 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, [aggregatedArtistData, artistSortColumn, artistSortDirection]);
 
   const handleArtistSort = (column: ArtistSortableColumn) => {
-    if (artistSortColumn === column) {
-      setArtistSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setArtistSortColumn(column);
-      if (column === 'artistName') setArtistSortDirection('asc');
-      else setArtistSortDirection('desc');
-    }
+    if (artistSortColumn === column) setArtistSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    else { setArtistSortColumn(column); if (column === 'artistName') setArtistSortDirection('asc'); else setArtistSortDirection('desc'); }
   };
-
-  const renderArtistSortArrow = (column: ArtistSortableColumn) => {
-    if (artistSortColumn === column) { return artistSortDirection === 'asc' ? ' ▲' : ' ▼'; }
-    return '';
-  };
+  const renderArtistSortArrow = (column: ArtistSortableColumn) => { if (artistSortColumn === column) return artistSortDirection === 'asc' ? ' ▲' : ' ▼'; return ''; };
 
   const aggregatedBeatData = useMemo(() => {
     const beatMap = new Map<string, { matchedSongs: AcrCloudMatch[] }>();
     scanLogs.forEach(log => {
-      if (!beatMap.has(log.originalFileName)) {
-        beatMap.set(log.originalFileName, { matchedSongs: [] });
-      }
+      if (!beatMap.has(log.originalFileName)) beatMap.set(log.originalFileName, { matchedSongs: [] });
       const existingMatches = beatMap.get(log.originalFileName)!.matchedSongs;
-      log.matches.forEach(newMatch => {
-        if (!existingMatches.find(m => m.id === newMatch.id)) { existingMatches.push(newMatch); }
-      });
+      log.matches.forEach(newMatch => { if (!existingMatches.find(m => m.id === newMatch.id)) existingMatches.push(newMatch); });
     });
-    return Array.from(beatMap.entries()).map(([beatName, data]) => ({
-      beatName,
-      totalMatches: data.matchedSongs.length,
-      matchedSongs: data.matchedSongs.sort((a,b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()),
-      key: beatName,
-    }));
+    return Array.from(beatMap.entries()).map(([beatName, data]) => ({ beatName, totalMatches: data.matchedSongs.length, matchedSongs: data.matchedSongs.sort((a,b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()), key: beatName }));
   }, [scanLogs]);
 
   const sortedBeatData = useMemo(() => {
     return [...aggregatedBeatData].sort((a,b) => {
         let valA: any, valB: any;
         switch(beatSortColumn) {
-            case 'beatName':
-                valA = a.beatName; valB = b.beatName;
-                return beatSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            case 'beatName': valA = a.beatName; valB = b.beatName; return beatSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
             case 'totalMatches': valA = a.totalMatches; valB = b.totalMatches; break;
             default: return 0;
         }
@@ -392,51 +279,48 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, [aggregatedBeatData, beatSortColumn, beatSortDirection]);
 
   const handleBeatSort = (column: BeatSortableColumn) => {
-    if (beatSortColumn === column) { setBeatSortDirection(prev => prev === 'asc' ? 'desc' : 'asc'); }
+    if (beatSortColumn === column) setBeatSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     else { setBeatSortColumn(column); if (column === 'beatName') setBeatSortDirection('asc'); else setBeatSortDirection('desc'); }
   };
-  const renderBeatSortArrow = (column: BeatSortableColumn) => {
-    if (beatSortColumn === column) { return beatSortDirection === 'asc' ? ' ▲' : ' ▼';}
-    return '';
-  };
+  const renderBeatSortArrow = (column: BeatSortableColumn) => { if (beatSortColumn === column) return beatSortDirection === 'asc' ? ' ▲' : ' ▼'; return ''; };
   const toggleExpandBeat = (beatName: string) => setExpandedBeat(prev => prev === beatName ? null : beatName);
 
-   useEffect(() => {
-        const fetchTimeData = async () => {
-            setIsLoadingTimeData(true);
-            // Replace with actual API call:
-            // const data = await fetch('/api/analytics/user-follower-history').then(res => res.json());
-            // For now, use mock data with a delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            setTimeBasedData(mockFollowerSnapshots);
-            setIsLoadingTimeData(false);
-        };
-        if (activeMonitorTab === 'reach') { // Only load if tab is active
-            fetchTimeData();
+   const renderTimeBasedReachGraph = () => {
+        // Use historicalFollowerData prop directly
+        const dataToDisplay = historicalFollowerData.slice(-60);
+
+        if (isLoadingTotalFollowers && dataToDisplay.length === 0) { // Show loading if dashboard is loading and no history yet
+            return <div className="my-4"><ProgressBar text="Loading time-based reach data..." /></div>;
         }
-    }, [activeMonitorTab]);
+        if (dataToDisplay.length === 0) {
+            return <p className="text-center text-gray-600 mt-4">No historical follower data available to display graph.</p>;
+        }
 
-  const renderTimeBasedReachGraph = () => {
-        if (isLoadingTimeData) return <ProgressBar text="Loading time-based reach data..." />;
-        if (timeBasedData.length === 0) return <p className="text-center text-gray-600">No historical data available.</p>;
-
-        const maxFollowers = Math.max(...timeBasedData.map(d => d.cumulativeFollowers), 0);
-        const barWidthPercentage = 100 / timeBasedData.length;
+        const maxFollowersInPeriod = Math.max(...dataToDisplay.map(d => d.cumulativeFollowers), 1);
+        const barContainerWidth = 100;
+        const numberOfBars = dataToDisplay.length;
+        const gapBetweenBars = 0.2;
+        const totalGapSpace = (numberOfBars -1) * gapBetweenBars;
+        const barWidthPercentage = numberOfBars > 0 ? (barContainerWidth - totalGapSpace) / numberOfBars : 0;
 
         return (
             <div className="mt-4">
                 <h4 className="text-base font-semibold text-black mb-1 text-center">📊 Time-Based Reach Graph</h4>
-                <p className="text-xs text-gray-600 text-center mb-2">Track follower growth over time</p>
-                <div className="win95-border-inset bg-gray-700 p-2 h-48 flex items-end space-x-px overflow-x-auto">
-                    {timeBasedData.map((snapshot, index) => {
-                        const barHeight = maxFollowers > 0 ? (snapshot.cumulativeFollowers / maxFollowers) * 95 : 0; // 95% to leave space
+                <p className="text-xs text-gray-600 text-center mb-2">Track follower growth over time (last {dataToDisplay.length} records)</p>
+                <div className="win95-border-inset bg-gray-700 p-2 h-48 flex items-end overflow-x-auto" style={{gap: `${gapBetweenBars}%`}}>
+                    {dataToDisplay.map((snapshot) => {
+                        const barHeight = maxFollowersInPeriod > 0 ? (snapshot.cumulativeFollowers / maxFollowersInPeriod) * 95 : 0; // Use 95% to leave space for date label
+                        const formattedDate = new Date(snapshot.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
                         return (
                             <div
                                 key={snapshot.date}
-                                className="flex-shrink-0 win95-border-outset bg-green-400 hover:bg-green-300"
-                                style={{ width: `${Math.max(5, barWidthPercentage - 2)}%`, height: `${barHeight}%`, minWidth: '20px' }}
-                                title={`${new Date(snapshot.date).toLocaleDateString()}: ${formatFollowersDisplay(snapshot.cumulativeFollowers)} followers`}
+                                className="flex-shrink-0 win95-border-outset bg-green-400 hover:bg-green-300 relative group"
+                                style={{ width: `${barWidthPercentage}%`, height: `${Math.max(5, barHeight)}%`, minWidth: '15px' }} // Ensure min height for visibility
+                                title={`${formattedDate}: ${formatFollowersDisplay(snapshot.cumulativeFollowers)} followers`}
                             >
+                               <span className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 text-[8px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                                   {formattedDate}
+                               </span>
                             </div>
                         );
                     })}
@@ -450,7 +334,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
       return (
         <>
           <h4 className="text-base font-semibold text-black mb-1 text-center">Estimated Spotify Follower Reach</h4>
-          {isLoadingTotalFollowers ? (
+          {isLoadingTotalFollowers && typeof totalFollowers === 'undefined' ? ( // Show loading only if totalFollowers is truly undefined (initial load)
             <div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Calculating reach..." /></div>
           ) : totalFollowersError ? (
             <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center flex-grow"><p>Error: {totalFollowersError}</p></div>
@@ -502,7 +386,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                 )}
               </div>
               <p className="text-xs text-gray-700 mt-2 text-center">
-                {reachBarConfig.unitLabel ? `Bars represent: ${reachBarConfig.unitLabel} followers.` : "No follower data to display."}
+                {reachBarConfig.unitLabel ? `Bars represent: ${reachBarConfig.unitLabel} followers each.` : ""}
               </p>
               {renderTimeBasedReachGraph()}
             </>
@@ -510,25 +394,14 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         </>
       );
     } else if (activeMonitorTab === 'artistStats') {
-      if (isLoadingTotalFollowers && aggregatedArtistData.length === 0) {
-         return (<div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Loading artist data..." /></div>);
-      }
-      if (aggregatedArtistData.length === 0) {
-        return <p className="text-center text-gray-700 py-8">No artist data available from current scans.</p>;
-      }
+      if (isLoadingTotalFollowers && aggregatedArtistData.length === 0) return (<div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Loading artist data..." /></div>);
+      if (aggregatedArtistData.length === 0) return <p className="text-center text-gray-700 py-8">No artist data available from current scans.</p>;
       return (
         <div className="artist-leaderboard flex flex-col h-full">
           <h4 className="text-base font-semibold text-black mb-2 text-center">Artist Statistics</h4>
           <div className="overflow-auto win95-border-inset bg-white flex-grow p-0.5">
             <table className="min-w-full text-sm" style={{ tableLayout: 'fixed' }}>
-              <colgroup>
-                <col style={{ width: '25%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '13%' }} />
-                <col style={{ width: '15%' }} />
-              </colgroup>
+              <colgroup><col style={{ width: '25%' }} /><col style={{ width: '12%' }} /><col style={{ width: '20%' }} /><col style={{ width: '15%' }} /><col style={{ width: '13%' }} /><col style={{ width: '15%' }} /></colgroup>
               <thead className="bg-[#C0C0C0] sticky top-0 z-10">
                 <tr>
                   <HeaderCell onClick={() => handleArtistSort('artistName')} sortArrow={renderArtistSortArrow('artistName')}>Artist</HeaderCell>
@@ -547,23 +420,12 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                     <DataCell className="text-center">
                       <div className="flex items-center justify-center space-x-2 h-full">
                         <ArtistFollowers followers={artist.spotifyFollowers} isLoading={artist.isFollowersLoading} error={artist.followersError} />
-                        <div className="w-12 h-2.5 bg-gray-300 win95-border-inset relative" title={`${artist.spotifyFollowers ?? 0} followers`}>
-                          <div className="h-full bg-gradient-to-r from-cyan-500 to-teal-500" style={{ width: `${artist.followerBarPercent}%`, boxShadow: artist.followerBarPercent > 0 ? '0.5px 0.5px 0px #404040' : 'none' }}></div>
-                        </div>
+                        <div className="w-12 h-2.5 bg-gray-300 win95-border-inset relative" title={`${artist.spotifyFollowers ?? 0} followers`}><div className="h-full bg-gradient-to-r from-cyan-500 to-teal-500" style={{ width: `${artist.followerBarPercent}%`, boxShadow: artist.followerBarPercent > 0 ? '0.5px 0.5px 0px #404040' : 'none' }}></div></div>
                       </div>
                     </DataCell>
-                    <DataCell className="text-center">
-                        {typeof artist.spotifyPopularity === 'number' ? artist.spotifyPopularity : (artist.isFollowersLoading && !artist.followersError ? '...' : '-')}
-                        <PopularityBar score={artist.spotifyPopularity} />
-                    </DataCell>
+                    <DataCell className="text-center">{typeof artist.spotifyPopularity === 'number' ? artist.spotifyPopularity : (artist.isFollowersLoading && !artist.followersError ? '...' : '-')}<PopularityBar score={artist.spotifyPopularity} /></DataCell>
                     <DataCell className="text-center">{artist.mostRecentMatchDate || '-'}</DataCell>
-                    <DataCell className="text-center">
-                      <div className="flex flex-wrap justify-center items-center gap-0.5">
-                        {(artist.genres && artist.genres.length > 0) ? artist.genres.slice(0,3).map(genre => (
-                          <span key={genre} className="text-xs px-1 py-0 bg-gray-200 group-hover:bg-gray-300 win95-border-inset text-gray-700 group-hover:text-black whitespace-nowrap">{genre}</span>
-                        )) : (artist.isFollowersLoading && !artist.followersError ? '...' : <span className="text-xs">-</span>)}
-                      </div>
-                    </DataCell>
+                    <DataCell className="text-center"><div className="flex flex-wrap justify-center items-center gap-0.5">{(artist.genres && artist.genres.length > 0) ? artist.genres.slice(0,3).map(genre => (<span key={genre} className="text-xs px-1 py-0 bg-gray-200 group-hover:bg-gray-300 win95-border-inset text-gray-700 group-hover:text-black whitespace-nowrap">{genre}</span>)) : (artist.isFollowersLoading && !artist.followersError ? '...' : <span className="text-xs">-</span>)}</div></DataCell>
                   </tr>
                 ))}
               </tbody>
@@ -572,7 +434,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         </div>
       );
     } else if (activeMonitorTab === 'beatStats') {
-      if (sortedBeatData.length === 0) { return <p className="text-center text-gray-700 py-8">No beats have been scanned yet.</p>; }
+      if (sortedBeatData.length === 0) return <p className="text-center text-gray-700 py-8">No beats have been scanned yet.</p>;
       return (
         <div className="beat-stats flex flex-col h-full">
           <h4 className="text-base font-semibold text-black mb-2 text-center">Beat Statistics</h4>
@@ -589,44 +451,10 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                 {sortedBeatData.map((beat) => (
                   <React.Fragment key={beat.key}>
                     <tr className="hover:bg-blue-200 hover:text-black group border-b border-gray-300 last:border-b-0 cursor-pointer" onClick={() => toggleExpandBeat(beat.beatName)} title={`Click to see matches for ${beat.beatName}`}>
-                      <DataCell>{expandedBeat === beat.beatName ? '▼' : '►'} {beat.beatName}</DataCell>
-                      <DataCell className="text-center">{beat.totalMatches}</DataCell>
+                      <DataCell>{expandedBeat === beat.beatName ? '▼' : '►'} {beat.beatName}</DataCell><DataCell className="text-center">{beat.totalMatches}</DataCell>
                     </tr>
-                    {expandedBeat === beat.beatName && beat.matchedSongs.length > 0 && (
-                      <tr className="bg-gray-50 group-hover:bg-blue-100">
-                        <td colSpan={2} className="p-0">
-                          <div className="p-2 m-1 win95-border-inset bg-white">
-                            <h5 className="text-xs font-semibold text-black mb-1">Matches for "{beat.beatName}":</h5>
-                            <div className="max-h-32 overflow-y-auto">
-                              <table className="min-w-full text-xs">
-                                <thead className="bg-gray-200">
-                                  <tr>
-                                    <th className="px-1 py-0.5 text-left font-normal text-black">Song Title</th><th className="px-1 py-0.5 text-left font-normal text-black">Artist</th>
-                                    <th className="px-1 py-0.5 text-center font-normal text-black">Confidence</th><th className="px-1 py-0.5 text-left font-normal text-black">Release</th>
-                                    <th className="px-1 py-0.5 text-left font-normal text-black">Links</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {beat.matchedSongs.map(match => (
-                                    <tr key={match.id} className="border-b border-gray-200 last:border-b-0">
-                                      <td className="px-1 py-0.5 text-gray-700 truncate" title={match.title}>{match.title}</td><td className="px-1 py-0.5 text-gray-700 truncate" title={match.artist}>{match.artist}</td>
-                                      <td className="px-1 py-0.5 text-gray-700 text-center">{match.matchConfidence}%</td><td className="px-1 py-0.5 text-gray-700">{match.releaseDate}</td>
-                                      <td className="px-1 py-0.5">
-                                        {match.platformLinks?.spotify && <a href={match.platformLinks.spotify} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mr-1">SP</a>}
-                                        {match.platformLinks?.youtube && <a href={match.platformLinks.youtube} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">YT</a>}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                     {expandedBeat === beat.beatName && beat.matchedSongs.length === 0 && (
-                        <tr className="bg-gray-50 group-hover:bg-blue-100"><td colSpan={2} className="p-0"><div className="p-2 m-1 win95-border-inset bg-white text-center text-xs text-gray-600">No specific song matches found for this beat in the logs.</div></td></tr>
-                     )}
+                    {expandedBeat === beat.beatName && beat.matchedSongs.length > 0 && (<tr className="bg-gray-50 group-hover:bg-blue-100"><td colSpan={2} className="p-0"><div className="p-2 m-1 win95-border-inset bg-white"><h5 className="text-xs font-semibold text-black mb-1">Matches for "{beat.beatName}":</h5><div className="max-h-32 overflow-y-auto"><table className="min-w-full text-xs"><thead className="bg-gray-200"><tr><th className="px-1 py-0.5 text-left font-normal text-black">Song Title</th><th className="px-1 py-0.5 text-left font-normal text-black">Artist</th><th className="px-1 py-0.5 text-center font-normal text-black">Confidence</th><th className="px-1 py-0.5 text-left font-normal text-black">Release</th><th className="px-1 py-0.5 text-left font-normal text-black">Links</th></tr></thead><tbody>{beat.matchedSongs.map(match => (<tr key={match.id} className="border-b border-gray-200 last:border-b-0"><td className="px-1 py-0.5 text-gray-700 truncate" title={match.title}>{match.title}</td><td className="px-1 py-0.5 text-gray-700 truncate" title={match.artist}>{match.artist}</td><td className="px-1 py-0.5 text-gray-700 text-center">{match.matchConfidence}%</td><td className="px-1 py-0.5 text-gray-700">{match.releaseDate}</td><td className="px-1 py-0.5">{match.platformLinks?.spotify && <a href={match.platformLinks.spotify} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mr-1">SP</a>}{match.platformLinks?.youtube && <a href={match.platformLinks.youtube} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">YT</a>}</td></tr>))}</tbody></table></div></div></td></tr>)}
+                     {expandedBeat === beat.beatName && beat.matchedSongs.length === 0 && (<tr className="bg-gray-50 group-hover:bg-blue-100"><td colSpan={2} className="p-0"><div className="p-2 m-1 win95-border-inset bg-white text-center text-xs text-gray-600">No specific song matches found for this beat in the logs.</div></td></tr>)}
                   </React.Fragment>
                 ))}
               </tbody>
@@ -635,13 +463,13 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         </div>
       );
     } else if (activeMonitorTab === 'collaborationRadar') {
-        return <CollaborationRadarGrap scanLogs={scanLogs} />;
+        return <CollaborationRadarGraph scanLogs={scanLogs} />;
     }
     return null;
   };
 
   const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & {sortArrow?: string, width?: string}> = ({ children, sortArrow, width, className, ...props }) => (
-    <th scope="col" className={`px-2 py-1 text-left font-normal text-black win95-border-outset border-b-2 border-r-2 border-b-[#808080] border-r-[#808080] cursor-pointer select-none whitespace-nowrap hover:bg-gray-300 ${className || ''}`} style={{width: width}} {...props}>
+    <th scope="col" className={`px-2 py-1 text-left font-normal text-black win95-border-outset border-b-2 border-r-2 border-b-[#808080] border-r-[#808080] cursor-pointer select-none whitespace-nowrap hover:bg-black hover:text-white ${className || ''}`} style={{width: width}} {...props}>
         {children}{sortArrow && <span className="ml-1">{sortArrow}</span>}
     </th>
   );
@@ -654,42 +482,41 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
   const currentLevelBorderClass = LEVEL_COLORS[Math.min(currentLevel -1, LEVEL_COLORS.length -1)] || 'border-transparent';
 
-
   return (
     <div className={`win95-border-outset bg-[#C0C0C0] mb-4 text-black border-4 ${isLevelingUp ? 'animate-pulse border-yellow-400' : currentLevelBorderClass}`}>
       <div className="title-bar flex items-center justify-between bg-[#000080] text-white px-1 py-0.5 h-6 select-none">
-        <div className="flex items-center">
-          <FakeWindowIcon />
-          <span className="font-bold text-sm">Reach Analyzer</span>
-        </div>
+        <div className="flex items-center"><FakeWindowIcon /><span className="font-bold text-sm">Reach Analyzer</span></div>
         <div className="flex space-x-0.5">
           <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs" aria-label="Minimize">_</button>
           <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs flex items-center justify-center" aria-label="Maximize"><div className="w-2 h-2 border border-black"></div></button>
           <button className="win95-button-sm bg-[#C0C0C0] text-black font-bold font-mono w-4 h-4 leading-none text-xs" aria-label="Close">X</button>
         </div>
       </div>
-      <div className="menu-bar flex space-x-2 px-1 py-0.5 border-b border-t-white border-b-[#808080] select-none">
-        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>F</u>ile</span>
-        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>E</u>dit</span>
-        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>V</u>iew</span>
-        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>H</u>elp</span>
+      <div className="menu-bar flex space-x-0 select-none">
+        {['File', 'Edit', 'View', 'Help'].map(item => (
+            <span key={item} className="text-sm hover:bg-black hover:text-white px-2 py-0.5 cursor-default"><u>{item[0]}</u>{item.substring(1)}</span>
+        ))}
       </div>
       <div className="tabs-container flex pl-1 pt-1 bg-[#C0C0C0] select-none">
         {(['reach', 'artistStats', 'beatStats', 'collaborationRadar'] as MonitorTab[]).map(tab => (
             <div
               key={tab}
-              className={`tab px-3 py-1 text-sm cursor-default hover:bg-gray-300 ${activeMonitorTab === tab ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5'}`}
+              className={`tab px-3 py-1 text-sm cursor-default hover:bg-black hover:text-white ${activeMonitorTab === tab ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10 bg-[#C0C0C0]' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5 bg-gray-300'}`}
               onClick={() => setActiveMonitorTab(tab)}
+              role="tab"
+              aria-selected={activeMonitorTab === tab}
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveMonitorTab(tab);}}
             >
               {tab === 'reach' && 'Total Reach'}
               {tab === 'artistStats' && 'Artist Stats'}
-              {tab === 'beatStats' && 'Beat Stats'}
+              {tab === 'beatStats' && 'Beat Matches'}
               {tab === 'collaborationRadar' && 'Collaboration Radar'}
             </div>
         ))}
       </div>
       <div className="tab-content-wrapper p-0.5 pt-0 bg-[#C0C0C0]">
-        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[300px] flex flex-col">
+        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[350px] flex flex-col" role="tabpanel" aria-labelledby={`tab-${activeMonitorTab}`}>
           {renderTabContent()}
         </div>
       </div>

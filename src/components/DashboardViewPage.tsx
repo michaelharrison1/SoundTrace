@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult } from '../types';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, FollowerSnapshot } from '../types';
 import PreviousScans from './PreviousScans';
-import ReachAnalyzer from './common/ReachAnalyzer'; // Renamed from FollowerReachGraph
+import ReachAnalyzer from './common/ReachAnalyzer';
 import ProgressBar from './common/ProgressBar';
-// ArtistFollowers is used within ReachAnalyzer and PreviousScans, not directly here anymore unless for a specific summary.
+// Removed useLocalStorage import
+import { analyticsService } from '../services/analyticsService'; // Import analyticsService
 
 interface DashboardViewPageProps {
   user: User;
@@ -20,6 +21,8 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   const [followerResults, setFollowerResults] = useState<Map<string, SpotifyFollowerResult>>(new Map());
   const [followerFetchError, setFollowerFetchError] = useState<string | null>(null);
   const [isFollowerLoading, setIsFollowerLoading] = useState<boolean>(false);
+  const [historicalFollowerData, setHistoricalFollowerData] = useState<FollowerSnapshot[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(true);
 
   const uniqueArtistIds = useMemo(() => {
     const ids = new Set<string>();
@@ -35,12 +38,58 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     return Array.from(ids);
   }, [previousScans]);
 
+  // Fetch full history on mount or when user changes
+  useEffect(() => {
+    let isMounted = true;
+    const fetchHistory = async () => {
+      if (!user || !isMounted) return;
+      setIsHistoryLoading(true);
+      try {
+        const history = await analyticsService.getFollowerHistory();
+        if (isMounted) {
+          setHistoricalFollowerData(history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch follower history:", error);
+        if (isMounted) {
+          // Optionally set an error state for history fetching
+        }
+      } finally {
+        if (isMounted) {
+          setIsHistoryLoading(false);
+        }
+      }
+    };
+    fetchHistory();
+    return () => { isMounted = false; };
+  }, [user]);
+
+
   useEffect(() => {
     if (uniqueArtistIds.length === 0) {
       setTotalFollowers(0);
       setFollowerResults(new Map());
       setFollowerFetchError(null);
       setIsFollowerLoading(false);
+      // Save 0 followers for today if no artists
+      if (user) { // Ensure user is available before trying to save
+          analyticsService.saveFollowerSnapshot(0)
+            .then(savedSnapshot => {
+                 setHistoricalFollowerData(prevHistory => {
+                    const newHistory = [...prevHistory];
+                    const entryIndex = newHistory.findIndex(entry => entry.date === savedSnapshot.date);
+                    if (entryIndex > -1) {
+                        if (newHistory[entryIndex].cumulativeFollowers !== savedSnapshot.cumulativeFollowers) {
+                            newHistory[entryIndex] = savedSnapshot;
+                        } else { return prevHistory; }
+                    } else {
+                        newHistory.push(savedSnapshot);
+                    }
+                    return newHistory.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                });
+            })
+            .catch(err => console.error("Failed to save zero follower snapshot:", err));
+      }
       return;
     }
 
@@ -60,58 +109,34 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
             if (!isMounted) return { status: 'cancelled', artistId };
             if (!response.ok) {
               const errorBody = await response.json().catch(() => ({ message: `Status ${response.status}` }));
-              console.warn(`Failed to fetch details for artist ${artistId}: ${response.status}`, errorBody.message || '');
               return { status: 'error', artistId, reason: errorBody.message || `Failed to fetch artist details (${response.status})` };
             }
             const data = await response.json();
-            const followersData = typeof data.followers === 'number' ? data.followers : undefined;
-            const popularityData = typeof data.popularity === 'number' ? data.popularity : undefined;
-            const genresData = Array.isArray(data.genres) ? data.genres.filter((g: any) => typeof g === 'string') : undefined;
-
-            return {
-              status: 'success',
-              artistId,
-              followers: followersData,
-              popularity: popularityData,
-              genres: genresData
-            };
+            return { status: 'success', artistId, followers: data.followers, popularity: data.popularity, genres: data.genres };
           })
           .catch((err): SpotifyFollowerResult => {
             if (!isMounted) return { status: 'cancelled', artistId };
-            console.warn(`Network error fetching details for artist ${artistId}:`, err);
-            return { status: 'error', artistId, reason: err.message || 'Network error while fetching artist details' };
+            return { status: 'error', artistId, reason: err.message || 'Network error' };
           })
       );
 
       const settledResults = await Promise.allSettled(followerPromises);
-
       if (!isMounted) return;
 
       const newFollowerResults = new Map<string, SpotifyFollowerResult>(followerResults);
-      let sum = 0;
-      let errorsEncountered = 0;
-      let successfulFetches = 0;
+      let sum = 0; let errorsEncountered = 0; let successfulFetches = 0;
 
       settledResults.forEach(result => {
         if (result.status === 'fulfilled' && result.value) {
             const resValue = result.value;
             if (resValue.status === 'cancelled') return;
             newFollowerResults.set(resValue.artistId, resValue);
-            if (resValue.status === 'success') {
-                if (typeof resValue.followers === 'number') {
-                    sum += resValue.followers;
-                }
-                successfulFetches++;
-            } else if (resValue.status === 'error') {
-                errorsEncountered++;
-            }
+            if (resValue.status === 'success' && typeof resValue.followers === 'number') {
+                sum += resValue.followers; successfulFetches++;
+            } else if (resValue.status === 'error') errorsEncountered++;
         } else if (result.status === 'rejected') {
-            const artistsWithLoadingOrInitial = Array.from(newFollowerResults.values()).filter(r => r.status === 'loading');
-            if (artistsWithLoadingOrInitial.length > 0) {
-                const artistToUpdate = artistsWithLoadingOrInitial[0];
-                newFollowerResults.set(artistToUpdate.artistId, { status: 'error', artistId: artistToUpdate.artistId, reason: 'Network or promise error' });
-            }
-            console.error("A follower fetch promise was unexpectedly rejected:", result.reason);
+            const artistsWithLoading = Array.from(newFollowerResults.values()).filter(r => r.status === 'loading');
+            if (artistsWithLoading.length > 0) newFollowerResults.set(artistsWithLoading[0].artistId, { status: 'error', artistId: artistsWithLoading[0].artistId, reason: 'Network or promise error' });
             errorsEncountered++;
         }
       });
@@ -119,26 +144,41 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
       if (isMounted) {
         setFollowerResults(newFollowerResults);
         setTotalFollowers(sum);
-        if (errorsEncountered > 0 && successfulFetches === 0 && uniqueArtistIds.length > 0) {
-            setFollowerFetchError("Could not load artist data for any artist.");
-            setTotalFollowers(null);
-        } else if (errorsEncountered > 0) {
-             setFollowerFetchError("Could not load data for some artists. Total may be incomplete.");
-        } else if (successfulFetches === 0 && uniqueArtistIds.length > 0 && errorsEncountered === 0) {
-            setFollowerFetchError(null);
-        } else {
-            setFollowerFetchError(null);
+
+        if (typeof sum === 'number' && !isNaN(sum) && user) { // Check user available for saving
+          analyticsService.saveFollowerSnapshot(sum)
+            .then(savedSnapshot => {
+                // Optimistically update local history state
+                setHistoricalFollowerData(prevHistory => {
+                    const newHistory = [...prevHistory];
+                    const entryIndex = newHistory.findIndex(entry => entry.date === savedSnapshot.date);
+                    if (entryIndex > -1) { // Entry for today exists
+                        if (newHistory[entryIndex].cumulativeFollowers !== savedSnapshot.cumulativeFollowers) {
+                           newHistory[entryIndex] = savedSnapshot; // Update if different
+                        } else { return prevHistory; } // No change needed
+                    } else { // No entry for today, add new
+                        newHistory.push(savedSnapshot);
+                    }
+                    return newHistory.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                });
+            })
+            .catch(err => console.error("Failed to save follower snapshot:", err));
         }
+
+        if (errorsEncountered > 0 && successfulFetches === 0 && uniqueArtistIds.length > 0) setFollowerFetchError("Could not load artist data.");
+        else if (errorsEncountered > 0) setFollowerFetchError("Could not load data for some artists.");
+        else setFollowerFetchError(null);
         setIsFollowerLoading(false);
       }
     };
 
     fetchAllFollowers();
     return () => { isMounted = false; };
-  }, [uniqueArtistIds]);
+  }, [uniqueArtistIds, user]); // Removed setHistoricalFollowerData as it's managed via analyticsService now
 
+  const isLoadingOverall = isFollowerLoading || isHistoryLoading;
 
-  if (previousScans.length === 0 && !isFollowerLoading) {
+  if (previousScans.length === 0 && !isLoadingOverall) {
     return (
       <div className={containerStyles}>
         <span className="text-4xl text-gray-500" aria-hidden="true">♫</span>
@@ -149,14 +189,24 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     );
   }
 
+  if (isLoadingOverall && historicalFollowerData.length === 0 && previousScans.length > 0) {
+     return (
+      <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
+        <ProgressBar text="Loading dashboard data..." />
+      </div>
+    );
+  }
+
+
   return (
     <div>
       <ReachAnalyzer
         totalFollowers={totalFollowers}
-        isLoading={isFollowerLoading}
+        isLoading={isLoadingOverall} // Pass combined loading state
         error={followerFetchError}
         scanLogs={previousScans}
         followerResults={followerResults}
+        historicalFollowerData={historicalFollowerData}
       />
       <PreviousScans
         scanLogs={previousScans}
