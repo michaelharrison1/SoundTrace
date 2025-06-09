@@ -15,16 +15,29 @@ interface ReachAnalyzerProps {
 }
 
 const MAX_BAR_SLOTS = 30;
-const ACTIVE_BAR_COLOR = '#34D399'; // Emerald-400
+// const ACTIVE_BAR_COLOR = '#34D399'; // Emerald-400 - Now dynamic
 const CHART_BACKGROUND_COLOR = '#262626'; // Neutral-800
 const GRID_COLOR = 'rgba(128, 128, 128, 0.2)';
 const LINE_ANIMATION_DURATION_MS = 3750;
 
-const LEVEL_COLORS = [
-  'border-transparent', 'border-blue-500', 'border-purple-500', 'border-pink-500',
-  'border-red-500', 'border-orange-500', 'border-yellow-500', 'border-lime-500',
-  'border-emerald-500', 'border-cyan-500',
-];
+const LEVEL_HEX_COLORS: { [key: number]: string } = {
+  1: '#34D399', // Emerald-400 (Default)
+  2: '#3B82F6', // Blue-500
+  3: '#A855F7', // Purple-500
+  4: '#EC4899', // Pink-500
+  5: '#EF4444', // Red-500
+  6: '#F97316', // Orange-500
+  7: '#EAB308', // Yellow-500
+  8: '#84CC16', // Lime-500
+  9: '#10B981', // Emerald-500
+  10: '#06B6D4', // Cyan-500
+};
+const DEFAULT_LEVEL_HEX_COLOR = '#6366F1'; // Indigo-500 as a fallback
+
+const getActiveLevelHexColor = (level: number): string => {
+  return LEVEL_HEX_COLORS[level] || DEFAULT_LEVEL_HEX_COLOR;
+};
+
 
 type MonitorTab = 'reach' | 'artistStats' | 'beatStats' | 'collaborationRadar';
 type ArtistSortableColumn = 'artistName' | 'matchedTracksCount' | 'spotifyFollowers' | 'mostRecentMatchDate' | 'spotifyPopularity';
@@ -39,7 +52,7 @@ interface ArtistLeaderboardEntry {
   isFollowersLoading: boolean;
   followersError?: string;
   followerBarPercent: number;
-  mostRecentMatchDate: string | null;
+  mostRecentMatchDate: string | null; // This should be the release date of the artist's most recent track that used the beat
   spotifyPopularity: number | null | undefined;
   genres: string[] | undefined;
   key: string;
@@ -112,6 +125,21 @@ const PopularityBar: React.FC<{ score: number | null | undefined }> = ({ score }
   );
 };
 
+const ARTIST_LEVEL_THRESHOLDS = [100, 500, 1000, 5000, 10000]; // Artists needed for next level
+
+const calculateArtistLevel = (artistCount: number): number => {
+    let level = 1;
+    for (const threshold of ARTIST_LEVEL_THRESHOLDS) {
+        if (artistCount >= threshold) {
+            level++;
+        } else {
+            break;
+        }
+    }
+    return level;
+};
+
+
 const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   totalFollowers,
   isLoading: isLoadingTotalFollowers,
@@ -146,19 +174,24 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
     if (!levelUpAvailable) return;
     setIsLevelingUp(true);
     setLevelUpAvailable(false);
+    // Simple visual cue for leveling up - can be expanded
     let flashes = 0;
     const flashInterval = setInterval(() => {
         flashes++;
+        // Update CRT border to pulse yellow during leveling up.
+        // This is handled by isLevelingUp state and currentLevelCRTBorderClass
         if (flashes >= 6) {
             clearInterval(flashInterval);
             const newLevel = currentLevel + 1;
             setCurrentLevel(newLevel);
             setIsLevelingUp(false);
-            setLineProgress(0);
-            setReachBarConfig(calculateBarConfig(totalFollowers, newLevel));
+            setLineProgress(0); // Reset line progress for new level
+            setReachBarConfig(calculateBarConfig(totalFollowers, newLevel)); // Recalculate bar config for new level
         }
     }, 200);
   };
+
+  const activeBarAndLineColor = getActiveLevelHexColor(currentLevel);
 
   const animateLineCallback = useCallback((timestamp: number) => {
     if (animationStartTime.current === 0) animationStartTime.current = timestamp;
@@ -209,7 +242,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         if (!artistMap.has(artistKey)) artistMap.set(artistKey, { name: match.artist, id: match.spotifyArtistId, matches: [], scanDates: [] });
         const artistEntry = artistMap.get(artistKey)!;
         artistEntry.matches.push(match);
-        artistEntry.scanDates.push(log.scanDate);
+        // Use match release date instead of scan date for "Most Recent Match"
+        // The sorting/aggregation of this specific date per artist will happen later
       });
     });
     const processedData: Omit<ArtistLeaderboardEntry, 'followerBarPercent' | 'key'>[] = [];
@@ -224,7 +258,9 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
       let mostRecentMatchedReleaseDate: string | null = null;
       if(data.matches.length > 0){
-          const validDates = data.matches.map(m => m.releaseDate ? new Date(m.releaseDate).getTime() : 0).filter(ts => ts > 0);
+          const validDates = data.matches
+              .map(m => m.releaseDate ? new Date(m.releaseDate).getTime() : 0)
+              .filter(ts => ts > 0 && !isNaN(ts)); // Ensure valid, non-zero timestamps
           if(validDates.length > 0) {
             mostRecentMatchedReleaseDate = new Date(Math.max(...validDates)).toLocaleDateString();
           }
@@ -242,7 +278,10 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         case 'artistName': valA = a.artistName; valB = b.artistName; return artistSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         case 'matchedTracksCount': valA = a.matchedTracksCount; valB = b.matchedTracksCount; break;
         case 'spotifyFollowers': valA = a.spotifyFollowers ?? -1; valB = b.spotifyFollowers ?? -1; break;
-        case 'mostRecentMatchDate': valA = a.mostRecentMatchDate ? new Date(a.mostRecentMatchDate).getTime() : 0; valB = b.mostRecentMatchDate ? new Date(b.mostRecentMatchDate).getTime() : 0; break;
+        case 'mostRecentMatchDate':
+            valA = a.mostRecentMatchDate ? new Date(a.mostRecentMatchDate).getTime() : 0;
+            valB = b.mostRecentMatchDate ? new Date(b.mostRecentMatchDate).getTime() : 0;
+            break;
         case 'spotifyPopularity': valA = a.spotifyPopularity ?? -1; valB = b.spotifyPopularity ?? -1; break;
         default: return 0;
       }
@@ -280,10 +319,12 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
   const handleBeatSort = (column: BeatSortableColumn) => {
     if (beatSortColumn === column) setBeatSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    else { setBeatSortColumn(column); if (column === 'beatName') setBeatSortDirection('asc'); else setBeatSortDirection('desc'); }
+    else { setBeatSortColumn(column); if (column === 'beatName') setArtistSortDirection('asc'); else setBeatSortDirection('desc'); }
   };
   const renderBeatSortArrow = (column: BeatSortableColumn) => { if (beatSortColumn === column) return beatSortDirection === 'asc' ? ' ▲' : ' ▼'; return ''; };
   const toggleExpandBeat = (beatName: string) => setExpandedBeat(prev => prev === beatName ? null : beatName);
+
+  const currentArtistLevel = useMemo(() => calculateArtistLevel(aggregatedArtistData.length), [aggregatedArtistData.length]);
 
    const renderTimeBasedReachGraph = () => {
         const dataToDisplay = historicalFollowerData.slice(-60);
@@ -305,8 +346,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         return (
             <div className="mt-4">
                 <h4 className="text-base font-semibold text-black mb-1 text-center">Time-Based Reach Graph</h4>
-                <p className="text-xs text-gray-600 text-center mb-2">Track follower growth over time (last {dataToDisplay.length} records)</p>
-                 <div className={`p-0.5 ${isLevelingUp ? 'animate-pulse !border-yellow-400' : currentLevel > 1 ? LEVEL_COLORS[Math.min(currentLevel -1, LEVEL_COLORS.length -1)] || 'border-transparent' : 'border-transparent'} border-2`}>
+                <p className="text-xs text-gray-600 text-center mb-2">Track follower growth over time (last {dataToDisplay.length} records), updates daily.</p>
+                 <div className={`p-0.5 ${isLevelingUp ? 'animate-pulse !border-yellow-400' : 'border-transparent'} border-2`}> {/* Border only for leveling up */}
                     <div className="win95-border-inset bg-gray-700 p-2 h-48 flex items-end overflow-x-auto" style={{gap: `${gapBetweenBars}%`}}>
                         {dataToDisplay.map((snapshot) => {
                             const barHeight = maxFollowersInPeriod > 0 ? (snapshot.cumulativeFollowers / maxFollowersInPeriod) * 95 : 0;
@@ -318,7 +359,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                                     style={{ width: `${barWidthPercentage}%`, height: `${Math.max(5, barHeight)}%`, minWidth: '15px' }}
                                     title={`${formattedDate}: ${formatFollowersDisplay(snapshot.cumulativeFollowers)} followers`}
                                 >
-                                <span className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs text-gray-100 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-70 px-1 rounded-sm">
+                                <span className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs text-gray-100 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-70 px-1 py-0.5 rounded-sm">
                                     {formattedDate}
                                 </span>
                                 </div>
@@ -330,13 +371,15 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         );
     };
 
-  const currentLevelCRTBorderClass = isLevelingUp ? 'animate-pulse !border-yellow-400' : currentLevel > 1 ? LEVEL_COLORS[Math.min(currentLevel -1, LEVEL_COLORS.length -1)] || 'border-transparent' : 'border-transparent';
+  const crtElementBaseClass = "win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32";
+  const crtLevelingUpClass = isLevelingUp ? "animate-pulse !border-yellow-400 border-2" : "border-transparent border-0"; // For the temporary flash during level up.
 
   const renderTabContent = () => {
     if (activeMonitorTab === 'reach') {
       return (
         <>
-          <h4 className="text-base font-semibold text-black mb-1 text-center">Estimated Spotify Follower Reach</h4>
+          <h4 className="text-base font-semibold text-black mb-0 text-center">Estimated Spotify Artist Follower Reach</h4>
+          <p className="text-xs text-gray-600 text-center mb-1">Total followers of Spotify artists that have used your beats.</p>
           {isLoadingTotalFollowers && typeof totalFollowers === 'undefined' ? (
             <div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Calculating reach..." /></div>
           ) : totalFollowersError ? (
@@ -344,7 +387,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
           ) : (
             <>
               <p className="text-3xl text-black font-bold my-1 text-center">{displayTotalReachValue} followers</p>
-              <p className="text-sm text-gray-700 text-center mb-1">Level: {currentLevel}</p>
+              <p className="text-sm text-gray-700 text-center mb-1">Reach Level: {currentLevel}</p>
               {levelUpAvailable && !isLevelingUp && (
                 <div className="text-center my-1">
                     <button
@@ -357,9 +400,9 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               )}
               {isLevelingUp && <ProgressBar text="Leveling Up! Please Wait..." className="my-1"/>}
 
-              <div className={`p-0.5 ${currentLevelCRTBorderClass} border-2`}>
+              <div className={`p-0.5 ${crtLevelingUpClass}`}> {/* Only apply pulse border during leveling up animation */}
                 <div
-                  className="performance-chart-area win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32"
+                  className={crtElementBaseClass}
                   style={{ backgroundColor: CHART_BACKGROUND_COLOR, backgroundImage: `linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px), linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px)`, backgroundSize: "10px 10px" }}
                   role="img"
                   aria-label={`Performance chart. Current total follower reach: ${displayTotalReachValue}. ${reachBarConfig.unitLabel ? 'Each bar segment represents ' + reachBarConfig.unitLabel + ' followers.' : ''}`}
@@ -374,7 +417,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                           {((totalFollowers ?? 0) > 0 || levelUpAvailable) && (
                             <div
                               className="active-bar-fill relative win95-border-outset"
-                              style={{ backgroundColor: barIsActive ? ACTIVE_BAR_COLOR : 'transparent', height: barHeight, width: '80%', transition: 'height 0.1s linear', boxShadow: barIsActive ? `0 0 3px ${ACTIVE_BAR_COLOR}, 0 0 6px ${ACTIVE_BAR_COLOR}` : 'none' }}
+                              style={{ backgroundColor: barIsActive ? activeBarAndLineColor : 'transparent', height: barHeight, width: '80%', transition: 'height 0.1s linear', boxShadow: barIsActive ? `0 0 3px ${activeBarAndLineColor}, 0 0 6px ${activeBarAndLineColor}` : 'none' }}
                             ></div>
                           )}
                         </div>
@@ -384,7 +427,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                   {((totalFollowers ?? 0) > 0 && !isLoadingTotalFollowers && !totalFollowersError && !levelUpAvailable && !isLevelingUp) && (
                       <div
                         className="progress-line absolute top-0 bottom-0"
-                        style={{ left: `${lineProgress * 100}%`, width: '3px', boxShadow: `0 0 5px 1px ${ACTIVE_BAR_COLOR}, 0 0 10px 2px ${ACTIVE_BAR_COLOR}`, transform: 'translateX(-1.5px)', backgroundColor: ACTIVE_BAR_COLOR }}
+                        style={{ left: `${lineProgress * 100}%`, width: '3px', boxShadow: `0 0 5px 1px ${activeBarAndLineColor}, 0 0 10px 2px ${activeBarAndLineColor}`, transform: 'translateX(-1.5px)', backgroundColor: activeBarAndLineColor }}
                         aria-hidden="true"
                       ></div>
                   )}
@@ -403,7 +446,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
       if (aggregatedArtistData.length === 0) return <p className="text-center text-gray-700 py-8">No artist data available from current scans.</p>;
       return (
         <div className="artist-leaderboard flex flex-col h-full">
-          <h4 className="text-base font-semibold text-black mb-2 text-center">Artist Statistics</h4>
+          <h4 className="text-base font-semibold text-black mb-0 text-center">Artist Statistics</h4>
+          <p className="text-xs text-gray-600 text-center mb-1">Total Unique Artists: {aggregatedArtistData.length} &bull; Artist Level: {currentArtistLevel}</p>
           <div className="overflow-auto win95-border-inset bg-white flex-grow p-0.5">
             <table className="min-w-full text-sm" style={{ tableLayout: 'fixed' }}>
               <colgroup><col style={{ width: '25%' }} /><col style={{ width: '12%' }} /><col style={{ width: '20%' }} /><col style={{ width: '15%' }} /><col style={{ width: '13%' }} /><col style={{ width: '15%' }} /></colgroup>
@@ -524,7 +568,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         </div>
       </div>
       <div className="status-bar flex justify-between items-center px-1 py-0 border-t-2 border-t-[#808080] bg-[#C0C0C0] h-5 text-xs select-none">
-        <span className="win95-border-inset px-2 py-0 h-[18px] flex items-center">Ready. Level {currentLevel}</span>
+        <span className="win95-border-inset px-2 py-0 h-[18px] flex items-center">Level {currentLevel}</span>
         <div className="flex space-x-0.5 h-[18px]">
            <div className="win95-border-inset w-16 px-1 flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 1 H9 V9 H1Z" fill="#008000" stroke="#000000" strokeWidth="0.5"/></svg></div>
            <div className="win95-border-inset w-12 px-1 flex items-center justify-center">{new Date().toLocaleTimeString('en-US', {hour12: false, hour: '2-digit', minute:'2-digit'})}</div>
@@ -534,4 +578,3 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   );
 };
 export default ReachAnalyzer;
-
