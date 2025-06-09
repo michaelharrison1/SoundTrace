@@ -4,12 +4,10 @@ import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult } from '../types';
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
-import HeadphonesIcon from './icons/HeadphonesIcon';
-import SpotifyPlayerControls from './common/AudioPlayer'; // Renamed to SpotifyPlayerControls
-import PlayIcon from './icons/PlayIcon';
-import PauseIcon from './icons/PauseIcon';
-import { useSpotifyPlayer } from '../contexts/SpotifyContext'; // Corrected import path
-
+// HeadphonesIcon is removed as playback column is removed
+// PlayIcon and PauseIcon are removed as playback is removed
+import { useSpotifyPlayer } from '../contexts/SpotifyContext';
+import SpotifyIcon from './icons/SpotifyIcon'; // Assuming a SpotifyIcon is created
 
 type SortableColumn =
   | 'title'
@@ -38,24 +36,23 @@ interface DisplayableTableRow {
   matchDetails?: AcrCloudMatch;
   statusMessage?: string;
   rowKey: string;
-  spotifyTrackIdForPlayback?: string; // For identifying playable tracks from SDK
-  spotifyTrackUri?: string; // e.g. spotify:track:TRACK_ID
+  // Removed spotifyTrackIdForPlayback and spotifyTrackUri as in-app playback is gone
 }
 
 const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults, onDeleteScan, onClearAllScans }) => {
   const {
-    player: spotifyPlayerInstance, // Renamed to avoid conflict with SDK's player object if any confusion
-    playTrack: playSpotifyTrack,
-    currentPlayingTrackInfo,
-    currentState,
-    isLoadingPlayback,
-    // playbackError // Not directly used in this component's render, but available
+    isSpotifyConnected,
+    spotifyUser,
+    initiateSpotifyLogin,
+    createPlaylistAndAddTracks,
+    isLoadingSpotifyAuth, // To disable button while checking auth
   } = useSpotifyPlayer();
 
   const [sortColumn, setSortColumn] = useState<SortableColumn | null>('originalScanDate');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [isLoadingExport, setIsLoadingExport] = useState(false);
+  const [exportMessage, setExportMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
-  const tableRowRefs = useRef<(HTMLTableRowElement | null)[]>([]);
 
   const initialTableRows = useMemo(() => {
     return scanLogs.reduce((acc, log: TrackScanLog, logIndex: number) => {
@@ -71,8 +68,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             matchDetails: match,
             statusMessage: log.status === 'partially_completed' ? "Partial Scan" : undefined,
             rowKey: `${log.logId}-match-${match.id}-${matchIndex}`,
-            spotifyTrackIdForPlayback: match.spotifyTrackId,
-            spotifyTrackUri: match.spotifyTrackId ? `spotify:track:${match.spotifyTrackId}` : undefined
           });
         });
       } else {
@@ -87,8 +82,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           originalScanDate: log.scanDate,
           statusMessage: message,
           rowKey: `${log.logId}-status-${logIndex}`,
-          spotifyTrackIdForPlayback: undefined,
-          spotifyTrackUri: undefined
         });
       }
       return acc;
@@ -109,8 +102,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         return a.originalFileName.localeCompare(b.originalFileName);
       }
 
-      // Both are match rows from here
-      if (!a.matchDetails || !b.matchDetails) { // Should not happen if isMatchRow is true, but for type safety
+      if (!a.matchDetails || !b.matchDetails) {
           return 0;
       }
 
@@ -150,101 +142,8 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
       }
       return 0;
     });
-    tableRowRefs.current = tableRowRefs.current.slice(0, sorted.length);
     return sorted;
   }, [initialTableRows, sortColumn, sortDirection, followerResults]);
-
-  const activePlayingTrackUri = currentState?.track_window.current_track?.uri;
-  const isCurrentTrackPaused = currentState?.paused;
-
-  useEffect(() => {
-    if (activePlayingTrackUri && currentPlayingTrackInfo?.uri === activePlayingTrackUri) {
-      const playingRowIndex = sortedTableRows.findIndex(row => row.spotifyTrackUri === activePlayingTrackUri);
-      if (playingRowIndex !== -1 && tableRowRefs.current[playingRowIndex]) {
-        tableRowRefs.current[playingRowIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  }, [activePlayingTrackUri, currentPlayingTrackInfo, sortedTableRows]);
-
-
-  const handlePlaySpotifyTrack = (trackUri: string, trackId: string, title: string, artist: string) => {
-     if (activePlayingTrackUri === trackUri && !isCurrentTrackPaused) {
-        spotifyPlayerInstance?.pause();
-     } else if (activePlayingTrackUri === trackUri && isCurrentTrackPaused) {
-        spotifyPlayerInstance?.resume();
-     }
-     else {
-        playSpotifyTrack(trackUri, trackId, title, artist);
-     }
-  };
-
-  const playNextTrackInList = () => {
-    if (!currentPlayingTrackInfo || !currentPlayingTrackInfo.uri) return;
-    const currentIndex = sortedTableRows.findIndex(row => row.spotifyTrackUri === currentPlayingTrackInfo.uri);
-    if (currentIndex === -1) return;
-
-    let nextPlayableIndex = -1;
-    for (let i = currentIndex + 1; i < sortedTableRows.length; i++) {
-      if (sortedTableRows[i].spotifyTrackUri && sortedTableRows[i].spotifyTrackIdForPlayback) {
-        nextPlayableIndex = i;
-        break;
-      }
-    }
-    if (nextPlayableIndex === -1) {
-      for (let i = 0; i < currentIndex; i++) {
-        if (sortedTableRows[i].spotifyTrackUri && sortedTableRows[i].spotifyTrackIdForPlayback) {
-          nextPlayableIndex = i;
-          break;
-        }
-      }
-    }
-
-    if (nextPlayableIndex !== -1) {
-      const nextTrack = sortedTableRows[nextPlayableIndex];
-      if (nextTrack.spotifyTrackUri && nextTrack.spotifyTrackIdForPlayback && nextTrack.matchDetails) {
-         playSpotifyTrack(
-            nextTrack.spotifyTrackUri,
-            nextTrack.spotifyTrackIdForPlayback,
-            nextTrack.matchDetails.title,
-            nextTrack.matchDetails.artist
-        );
-      }
-    }
-  };
-
-  const playPreviousTrackInList = () => {
-    if (!currentPlayingTrackInfo || !currentPlayingTrackInfo.uri) return;
-    const currentIndex = sortedTableRows.findIndex(row => row.spotifyTrackUri === currentPlayingTrackInfo.uri);
-    if (currentIndex === -1) return;
-
-    let prevPlayableIndex = -1;
-    for (let i = currentIndex - 1; i >= 0; i--) {
-      if (sortedTableRows[i].spotifyTrackUri && sortedTableRows[i].spotifyTrackIdForPlayback) {
-        prevPlayableIndex = i;
-        break;
-      }
-    }
-    if (prevPlayableIndex === -1) {
-      for (let i = sortedTableRows.length - 1; i > currentIndex; i--) {
-         if (sortedTableRows[i].spotifyTrackUri && sortedTableRows[i].spotifyTrackIdForPlayback) {
-          prevPlayableIndex = i;
-          break;
-        }
-      }
-    }
-    if (prevPlayableIndex !== -1) {
-      const prevTrack = sortedTableRows[prevPlayableIndex];
-      if (prevTrack.spotifyTrackUri && prevTrack.spotifyTrackIdForPlayback && prevTrack.matchDetails) {
-        playSpotifyTrack(
-            prevTrack.spotifyTrackUri,
-            prevTrack.spotifyTrackIdForPlayback,
-            prevTrack.matchDetails.title,
-            prevTrack.matchDetails.artist
-        );
-      }
-    }
-  };
-
 
   const handleSort = (column: SortableColumn) => {
     if (sortColumn === column) {
@@ -262,6 +161,49 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     return '';
   };
 
+  const handleExportPlaylist = async () => {
+    setExportMessage(null);
+    if (!isSpotifyConnected || !spotifyUser) {
+      const shouldLogin = window.confirm("You need to be connected to Spotify to export a playlist. Connect now?");
+      if (shouldLogin) {
+        initiateSpotifyLogin();
+      } else {
+        setExportMessage({type: 'error', text: "Spotify connection required to export."});
+      }
+      return;
+    }
+
+    const trackUrisToExport = sortedTableRows
+      .filter(row => row.isMatchRow && row.matchDetails?.spotifyTrackId)
+      .map(row => `spotify:track:${row.matchDetails!.spotifyTrackId!}`)
+      .filter((uri, index, self) => self.indexOf(uri) === index); // Unique URIs
+
+    if (trackUrisToExport.length === 0) {
+      setExportMessage({type: 'error', text: "No Spotify tracks found in the current list to export."});
+      return;
+    }
+
+    const defaultPlaylistName = `SoundTrace Export ${new Date().toLocaleDateString()}`;
+    const playlistName = window.prompt("Enter a name for your new Spotify playlist:", defaultPlaylistName);
+
+    if (playlistName === null) { // User cancelled prompt
+      setExportMessage({type: 'error', text: "Playlist export cancelled."});
+      return;
+    }
+
+    const finalPlaylistName = playlistName.trim() === '' ? defaultPlaylistName : playlistName.trim();
+
+    setIsLoadingExport(true);
+    const result = await createPlaylistAndAddTracks(finalPlaylistName, trackUrisToExport, "Tracks exported from SoundTrace app.");
+    setIsLoadingExport(false);
+
+    if (result.playlistUrl) {
+      setExportMessage({type: 'success', text: `Playlist "${finalPlaylistName}" created! ${trackUrisToExport.length} track(s) added. View it on Spotify.`});
+      // Optionally open the playlist URL: window.open(result.playlistUrl, '_blank');
+    } else {
+      setExportMessage({type: 'error', text: result.error || "Failed to export playlist. Please try again."});
+    }
+  };
 
   const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & {sortKey?: SortableColumn, width?: string}> = ({ children, sortKey, width, className, ...props }) => (
     <th
@@ -285,59 +227,55 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const innerContainerStyles = "p-2 bg-[#C0C0C0]";
 
   if (scanLogs.length === 0 && sortedTableRows.length === 0) {
-    return null;
+    return null; // Or a message indicating no scans yet if this component is rendered standalone
   }
 
   const hasAnyMatchesInAnyLog = scanLogs.some(log => log.matches.length > 0 && (log.status === 'matches_found' || log.status === 'partially_completed'));
-
-  if (!hasAnyMatchesInAnyLog && scanLogs.length > 0) {
-     return (
-      <div className={containerStyles}>
-        <div className={innerContainerStyles}>
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-normal text-black">All Scan Records</h3>
-            {scanLogs.length > 0 && (
-              <Button
-                onClick={onClearAllScans}
-                size="sm"
-                className="p-1"
-                aria-label="Clear all records"
-                title="Clear all records"
-              >
-                <TrashIcon className="h-3.5 w-3.5" />
-              </Button>
-            )}
-          </div>
-          <p className="text-black text-center py-2 text-sm">No song matches found in your scan history.</p>
-          <p className="text-xs text-gray-700 text-center">{scanLogs.length} scan record(s) processed without finding song matches or with errors.</p>
-        </div>
-      </div>
-    );
-  }
-
 
   return (
     <div className={containerStyles}>
       <div className={innerContainerStyles}>
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-lg font-normal text-black">Matched Songs & Scan Log</h3>
-          {scanLogs.length > 0 && (
-            <Button
-              onClick={onClearAllScans}
-              size="sm"
-              className="p-1"
-              aria-label="Clear all scan records"
-              title="Clear all scan records"
-            >
-              <TrashIcon className="h-3.5 w-3.5" />
-            </Button>
-          )}
+          <div className="flex items-center space-x-1">
+            {hasAnyMatchesInAnyLog && (
+               <Button
+                onClick={handleExportPlaylist}
+                size="sm"
+                className="p-1 !text-xs"
+                disabled={isLoadingExport || isLoadingSpotifyAuth || sortedTableRows.filter(row => row.isMatchRow && row.matchDetails?.spotifyTrackId).length === 0}
+                isLoading={isLoadingExport}
+                title="Export visible Spotify tracks to a new playlist"
+              >
+                Export to Spotify
+              </Button>
+            )}
+            {scanLogs.length > 0 && (
+              <Button
+                onClick={onClearAllScans}
+                size="sm"
+                className="p-1"
+                aria-label="Clear all scan records"
+                title="Clear all scan records"
+              >
+                <TrashIcon className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
+         {exportMessage && (
+          <div className={`mb-2 p-2 text-sm border ${exportMessage.type === 'success' ? 'bg-green-100 border-green-700 text-green-700' : 'bg-red-100 border-red-700 text-red-700'}`}>
+            {exportMessage.text}
+          </div>
+        )}
 
-        <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-350px)]">
+        {!hasAnyMatchesInAnyLog && scanLogs.length > 0 ? (
+             <p className="text-black text-center py-2 text-sm">No song matches found in your scan history. {scanLogs.length} record(s) processed without matches or with errors.</p>
+        ) : (
+        <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-280px)]"> {/* Adjusted max-h */}
           <table className="min-w-full text-sm" style={{tableLayout: 'fixed'}}>
              <colgroup>
-                <col style={{ width: '5%' }} />
+                <col style={{ width: '5%' }} /> {/* Spotify Link */}
                 <col style={{ width: '18%' }} />
                 <col style={{ width: '15%' }} />
                 <col style={{ width: '10%' }} />
@@ -349,7 +287,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             </colgroup>
             <thead className="bg-[#C0C0C0] border-b-2 border-b-[#808080] sticky top-0 z-10">
               <tr>
-                <HeaderCell className="text-center"><HeadphonesIcon className="w-4 h-4 inline-block"/></HeaderCell>
+                <HeaderCell className="text-center"><SpotifyIcon className="w-4 h-4 inline-block"/></HeaderCell> {/* Spotify Icon */}
                 <HeaderCell sortKey="title">Song Title</HeaderCell>
                 <HeaderCell sortKey="artist">Artist</HeaderCell>
                 <HeaderCell sortKey="followers" className="text-center">Followers</HeaderCell>
@@ -366,27 +304,23 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                 return (
                 <tr
                     key={row.rowKey}
-                    ref={el => { tableRowRefs.current[rowIndex] = el; }}
-                    className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'} ${currentPlayingTrackInfo?.uri === row.spotifyTrackUri ? 'bg-blue-200 text-black' : ''}`}
+                    className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}
                 >
                   {row.isMatchRow && row.matchDetails ? (
                     <>
                       <DataCell className="text-center">
-                        {row.spotifyTrackUri && (
-                           <button
-                            onClick={() => handlePlaySpotifyTrack(row.spotifyTrackUri!, row.matchDetails!.spotifyTrackId!, row.matchDetails!.title, row.matchDetails!.artist)}
-                            className={`p-1 win95-button-sm disabled:opacity-50 ${currentPlayingTrackInfo?.uri === row.spotifyTrackUri && !isCurrentTrackPaused && !isLoadingPlayback ? 'bg-blue-300' : 'bg-[#C0C0C0]'}`}
-                            disabled={isLoadingPlayback && currentPlayingTrackInfo?.uri !== row.spotifyTrackUri}
-                            title={currentPlayingTrackInfo?.uri === row.spotifyTrackUri && !isCurrentTrackPaused ? `Pause ${row.matchDetails.title}` : `Play ${row.matchDetails.title}`}
+                        {row.matchDetails.platformLinks?.spotify ? (
+                          <a
+                            href={row.matchDetails.platformLinks.spotify}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 font-semibold"
+                            title={`Open ${row.matchDetails.title} on Spotify`}
                           >
-                            {isLoadingPlayback && currentPlayingTrackInfo?.uri === row.spotifyTrackUri ? (
-                                <div className="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                            ) : currentPlayingTrackInfo?.uri === row.spotifyTrackUri && !isCurrentTrackPaused ? (
-                              <PauseIcon className="w-3 h-3" />
-                            ) : (
-                              <PlayIcon className="w-3 h-3" />
-                            )}
-                          </button>
+                            SP
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">-</span>
                         )}
                       </DataCell>
                       <DataCell title={row.matchDetails.title}>{row.matchDetails.title}</DataCell>
@@ -433,12 +367,10 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             </tbody>
           </table>
         </div>
-        {sortedTableRows.length > 10 && <p className="mt-1 text-xs text-gray-700 text-center">{sortedTableRows.length} rows shown (matches and non-matches).</p>}
+        )}
+        {sortedTableRows.length > 10 && hasAnyMatchesInAnyLog && <p className="mt-1 text-xs text-gray-700 text-center">{sortedTableRows.length} rows shown.</p>}
       </div>
-      <SpotifyPlayerControls
-        onSkipNextProvided={playNextTrackInList}
-        onSkipPreviousProvided={playPreviousTrackInList}
-      />
+      {/* SpotifyPlayerControls component removed from here */}
     </div>
   );
 };

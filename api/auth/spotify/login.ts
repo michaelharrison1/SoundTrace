@@ -15,7 +15,16 @@ const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI; // This MUST match what's in Spotify Dev Dashboard
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
-const spotifyScopes = ['streaming', 'user-read-email', 'user-read-private', 'user-read-playback-state', 'user-modify-playback-state', 'user-read-currently-playing'];
+const spotifyScopes = [
+  'streaming',
+  'user-read-email',
+  'user-read-private',
+  'user-read-playback-state',
+  'user-modify-playback-state',
+  'user-read-currently-playing',
+  'playlist-modify-public',
+  'playlist-modify-private'
+];
 
 // Simplified authentication check for Vercel function
 async function getAuthenticatedUserId(req: VercelRequest): Promise<string | null> {

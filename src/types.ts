@@ -71,7 +71,7 @@ export interface SpotifyFollowerCancelled {
 export type SpotifyFollowerResult = SpotifyFollowerSuccess | SpotifyFollowerError | SpotifyFollowerLoading | SpotifyFollowerCancelled;
 
 export interface SpotifyTrackDetails {
-  previewUrl: string | null; // This might become less relevant if playing full tracks
+  previewUrl: string | null;
   trackName: string;
   artistName: string;
 }
@@ -86,72 +86,22 @@ export interface SpotifyUserInfo {
   expiresAt: string;
 }
 
-// Spotify Web Playback SDK types (simplified, as it's a subset of Spotify.PlaybackState)
-export interface SpotifyPlayerState {
-  context: {
-    uri: string | null;
-    metadata: Record<string, any> | null;
-  };
-  disallows: {
-    pausing?: boolean;
-    resuming?: boolean;
-    seeking?: boolean;
-    skipping_next?: boolean;
-    skipping_prev?: boolean;
-  };
-  duration: number;
-  paused: boolean;
-  position: number;
-  repeat_mode: 0 | 1 | 2;
-  shuffle: boolean;
-  track_window: {
-    current_track: Spotify.Track;
-    previous_tracks: Spotify.Track[];
-    next_tracks: Spotify.Track[];
-  };
-  timestamp: number;
-  restrictions: {
-    disallow_seeking_reasons?: string[];
-    disallow_skipping_prev_reasons?: string[];
-  }
-}
-
-// This interface was an attempt to redefine Spotify.Track.
-// It's better to use Spotify.Track directly from the SDK types if available.
-// If `Spotify.Track` is not resolving due to type setup issues, this might be a fallback,
-// but the goal is to have `@types/spotify-web-playback-sdk` correctly set up.
-// export interface SpotifySdkTrack {
-//   album: {
-//     album_type: string;
-//     artists: { name: string; uri: string }[];
-//     images: { height: number; url: string; width: number }[];
-//     name: string;
-//     uri: string;
-//   };
-//   artists: { name: string; uri: string }[];
-//   duration_ms: number;
-//   id: string | null;
-//   is_playable: boolean;
-//   name: string;
-//   uri: string;
-//   media_type: 'audio' | 'video';
-//   type: 'track' | 'episode' | 'ad';
-//   uid: string;
-// }
-
+// Removed SpotifyPlayerState as in-app playback is removed.
 
 export interface SpotifyPlayerContextType {
-  player: Spotify.Player | null;
-  deviceId: string | null;
-  isReady: boolean;
-  isActive: boolean;
-  currentState: SpotifyPlayerState | null; // This uses our subset
-  playTrack: (trackUri: string, spotifyTrackId?: string, initialTrackName?: string, initialArtistName?: string) => Promise<void>;
-  currentPlayingTrackInfo: { trackId: string | null; name: string; artist: string; uri: string } | null;
-  isLoadingPlayback: boolean;
-  playbackError: string | null;
+  // Playback related properties removed
+  // player: Spotify.Player | null;
+  // deviceId: string | null;
+  // isActive: boolean;
+  // currentState: SpotifyPlayerState | null;
+  // playTrack: (trackUri: string, spotifyTrackId?: string, initialTrackName?: string, initialArtistName?: string) => Promise<void>;
+  // currentPlayingTrackInfo: { trackId: string | null; name: string; artist: string; uri: string } | null;
+  // isLoadingPlayback: boolean;
+  // playbackError: string | null;
 
-  // Added properties for Spotify auth and connection status
+  isReady: boolean; // Now signifies Spotify authentication readiness
+
+  // Spotify auth and connection status
   isSpotifyConnected: boolean;
   spotifyUser: SpotifyUserInfo | null;
   isLoadingSpotifyAuth: boolean;
@@ -160,4 +110,15 @@ export interface SpotifyPlayerContextType {
   checkSpotifyStatus: (isCallback?: boolean) => Promise<void>;
   needsRefresh: boolean;
   refreshSpotifyToken: () => Promise<string | null>;
+  createPlaylistAndAddTracks: (playlistName: string, trackUris: string[], description?: string) => Promise<{playlistUrl?: string; error?: string}>;
+}
+
+// Spotify Playlist creation response type
+export interface SpotifyPlaylist {
+  id: string;
+  name: string;
+  external_urls: {
+    spotify: string;
+  };
+  // other properties as needed
 }

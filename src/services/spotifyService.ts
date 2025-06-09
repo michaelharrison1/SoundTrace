@@ -1,5 +1,6 @@
 
 // Service to interact with your backend's Spotify auth endpoints
+import { SpotifyPlaylist } from '../types';
 
 // Ensure VITE_API_BASE_URL is set in your environment for production.
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
@@ -23,7 +24,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
     credentials: 'include', // Crucial for sending HttpOnly session cookie
   });
 
-  if (!response.ok) {
+  if (!response.ok && response.status !== 207) { // 207 is Multi-Status, handle as potentially partial success
     let errorData: { message?: string } = {};
     try {
       errorData = await response.json();
@@ -55,5 +56,21 @@ export const spotifyService = {
       return { message: 'Successfully disconnected from Spotify on backend.' };
     }
     return response.json();
+  },
+
+  createPlaylistAndAddTracks: async (
+    playlistName: string,
+    trackUris: string[],
+    description?: string
+  ): Promise<{playlistUrl: string, playlistId: string, message: string}> => {
+    const response = await fetchWithAuth(`${SPOTIFY_AUTH_ENDPOINT}/create-playlist`, {
+      method: 'POST',
+      body: JSON.stringify({ playlistName, trackUris, description }),
+    });
+    const data = await response.json();
+    if (!response.ok && response.status !== 207) { // if not ok and not multi-status
+        throw new Error(data.message || `Failed to create playlist (status: ${response.status})`);
+    }
+    return data; // Contains playlistUrl, playlistId, message
   }
 };
