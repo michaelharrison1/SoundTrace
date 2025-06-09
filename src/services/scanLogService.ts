@@ -1,7 +1,7 @@
 
 import { TrackScanLog } from '../types';
 
-const BASE_URL = 'https://soundtracebackend.onrender.com/api/scanlogs';
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'https://soundtracebackend.onrender.com'}/api/scanlogs`;
 
 const getAuthToken = (): string | null => {
   try {
@@ -33,10 +33,9 @@ const handleApiResponse = async (response: Response) => {
 
 export const scanLogService = {
   getScanLogs: async (): Promise<TrackScanLog[]> => {
-    const token = getAuthToken();
+    const token = getAuthToken(); // JWT for Bearer
     if (!token) {
       console.warn("No auth token found, cannot fetch scan logs.");
-      // Potentially throw an auth error here or let the backend handle it
       const authError = new Error("Not authenticated. Cannot fetch scan logs.");
       (authError as any).status = 401;
       throw authError;
@@ -48,6 +47,7 @@ export const scanLogService = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
+      credentials: 'include', // Ensures HttpOnly session cookie is sent
     });
     return handleApiResponse(response);
   },
@@ -67,6 +67,7 @@ export const scanLogService = {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(logData),
+      credentials: 'include', // Ensures HttpOnly session cookie is sent
     });
     return handleApiResponse(response);
   },
@@ -84,8 +85,9 @@ export const scanLogService = {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
+      credentials: 'include', // Ensures HttpOnly session cookie is sent
     });
-    await handleApiResponse(response); // Awaits and handles error or returns (void for 204)
+    await handleApiResponse(response);
   },
 
   clearAllScanLogs: async (): Promise<void> => {
@@ -101,7 +103,8 @@ export const scanLogService = {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
+      credentials: 'include', // Ensures HttpOnly session cookie is sent
     });
-    await handleApiResponse(response); // Awaits and handles error or returns (void for 204)
+    await handleApiResponse(response);
   },
 };

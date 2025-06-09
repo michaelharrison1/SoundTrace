@@ -42,6 +42,7 @@ export const authService = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ username, password }),
+      credentials: 'include', // Added for sending cookies if needed (though login sets cookie via response)
     });
 
     return handleAuthApiResponse(response);
@@ -60,31 +61,32 @@ export const authService = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ username, password }),
+      credentials: 'include', // Added for sending cookies if needed (though register sets cookie via response)
     });
 
     return handleAuthApiResponse(response);
   },
 
   logout: async (): Promise<void> => {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken'); // This is the JWT, not the session cookie
     if (!BACKEND_URL) {
       console.warn('Backend URL not configured. Cannot call logout endpoint.');
       return;
     }
-    // No need to check for token here as the cookie is the primary concern for this call
-    // The authMiddleware on the backend will handle if the user is not authenticated via cookie/header
 
     try {
       const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) { // Send token if available, for authMiddleware consistency, though cookie is main target
+      // The authMiddleware primarily checks for the HttpOnly cookie.
+      // Sending the Bearer token is secondary but good for consistency if middleware checks both.
+      if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
       const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
         method: 'POST',
         headers,
+        credentials: 'include', // Crucial for sending the HttpOnly soundtrace_session_token cookie
       });
       if (!response.ok) {
-        // Log error but don't prevent client-side logout operations
         const errorBody = await response.text().catch(()=>'Could not read error response body');
         console.error('Backend logout call failed:', response.status, errorBody);
       }

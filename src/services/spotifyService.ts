@@ -6,7 +6,7 @@ const SPOTIFY_AUTH_ENDPOINT = `${API_BASE_URL_ROOT}/api/auth/spotify`;
 
 
 async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-  const token = localStorage.getItem('authToken'); // Your app's main auth token
+  const token = localStorage.getItem('authToken'); // Your app's main auth token (JWT)
   const headers: Record<string, string> = {
     'Content-Type': 'application/json', // Default, can be overridden by options.headers
     ...options.headers as Record<string, string>,
@@ -15,7 +15,11 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, { ...options, headers });
+  const response = await fetch(url, {
+    ...options,
+    headers,
+    credentials: 'include', // Crucial for sending HttpOnly session cookie
+  });
 
   if (!response.ok) {
     let errorData: { message?: string } = {};
