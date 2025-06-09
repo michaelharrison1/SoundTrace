@@ -153,12 +153,23 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     return sorted;
   }, [initialTableRows, sortColumn, sortDirection, followerResults]);
 
+  const playingInfoForEffect = useMemo(() => {
+    if (!currentPlayingInfo) {
+      return null;
+    }
+    return {
+      rowIndex: currentPlayingInfo.rowIndex,
+      // Add trackId if needed for comparison, though rowIndex is primary for scroll
+      trackId: currentPlayingInfo.trackId
+    };
+  }, [currentPlayingInfo]);
+
   useEffect(() => {
     // Scroll to playing track
-    if (currentPlayingInfo && currentPlayingInfo.rowIndex >= 0 && tableRowRefs.current[currentPlayingInfo.rowIndex]) {
-      tableRowRefs.current[currentPlayingInfo.rowIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (playingInfoForEffect && playingInfoForEffect.rowIndex >= 0 && tableRowRefs.current[playingInfoForEffect.rowIndex]) {
+      tableRowRefs.current[playingInfoForEffect.rowIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [currentPlayingInfo]); // Changed dependency array
+  }, [playingInfoForEffect]);
 
 
   const handlePlayTrack = async (trackId: string, rowIndex: number, defaultTitle: string, defaultArtist: string) => {
