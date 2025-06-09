@@ -37,10 +37,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#C0C0C0] p-4">
-      <div className="flex flex-col md:flex-row w-full max-w-6xl gap-6 mb-6"> {/* max-w-6xl for wider layout, gap for spacing */}
+      <div className="flex flex-col md:flex-row w-full max-w-6xl gap-6 mb-6 flex-grow"> {/* max-w-6xl for wider layout, gap for spacing, flex-grow */}
         {/* Left Blurb */}
-        <div className="w-full md:w-2/3 p-0.5 win95-border-outset bg-[#C0C0C0] order-1 md:order-none">
-          <div className="bg-[#C0C0C0] p-6 h-full text-black">
+        <div className="w-full md:w-2/3 p-0.5 win95-border-outset bg-[#C0C0C0] order-1 md:order-1 flex flex-col">
+          <div className="bg-[#C0C0C0] p-6 h-full text-black flex-grow">
             <h3 className="text-xl font-normal mb-4">Welcome to SoundTrace</h3>
             <p className="text-base mb-3">
               Built for producers to track the use of their instrumentals online by other artists.
@@ -55,9 +55,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
         </div>
 
         {/* Right Login Form */}
-        <div className="w-full md:w-1/3 order-2 md:order-none">
-          <div className="bg-[#C0C0C0] p-0.5 win95-border-outset w-full"> {/* Login box enlarged by taking full 1/3 width */}
-            <div className="bg-[#C0C0C0] p-4 border-2 border-transparent">
+        <div className="w-full md:w-1/3 order-2 md:order-2 flex flex-col">
+          <div className="bg-[#C0C0C0] p-0.5 win95-border-outset w-full flex-grow"> {/* Login box enlarged by taking full 1/3 width */}
+            <div className="bg-[#C0C0C0] p-4 border-2 border-transparent h-full flex flex-col justify-center">
               <div className="flex justify-center mb-4">
                 <span className="text-3xl text-[#084B8A]" aria-hidden="true">♫</span>
               </div>
@@ -150,7 +150,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister }) 
       </div>
 
       {/* Bottom Footer Text for Login Page */}
-      <div className="text-xs text-black w-full max-w-6xl mt-auto"> {/* mt-auto pushes to bottom if content is short */}
+      <div className="text-xs text-black w-full max-w-6xl mt-auto"> {/* mt-auto pushes to bottom */}
         <div className="flex justify-between items-center border-t-2 border-t-white bg-[#C0C0C0] py-1 px-2">
             <span>Powered by ACRCloud</span>
             <span>Created by Michael Harrison</span>
