@@ -2,23 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" type="image/svg+xml" href="/vite.svg">
+  <link rel="icon" type="image/svg+xml" href="/vite.svg"> <!-- From new version, ensure vite.svg exists or update path -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoundTrace</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-  <script src="https://sdk.scdn.co/spotify-player.js" defer></script>
+  <title>SoundTrace</title> <!-- Restored from old version -->
+  <script src="https://cdn.tailwindcss.com"></script> <!-- Restored from old version -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"> <!-- Restored from old version -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> <!-- Restored from old version -->
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet"> <!-- Restored from old version -->
+  <script src="https://sdk.scdn.co/spotify-player.js" defer></script> <!-- Kept from new version, ADDED DEFER -->
   <style>
     body {
       background-color: #C0C0C0; /* Windows 95 gray */
       font-family: 'VT323', monospace;
       color: #000000; /* Default text black */
       font-size: 16px; /* VT323 looks better a bit larger */
-      margin: 0;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+      margin: 0; /* From new version for basic reset */
+      -webkit-font-smoothing: antialiased; /* From new version */
+      -moz-osx-font-smoothing: grayscale; /* From new version */
     }
     /* Revert to browser default scrollbars */
     ::-webkit-scrollbar {
@@ -50,29 +50,30 @@
       stroke: #000000 !important;
     }
 
-    /* Progress Bar Animation */
+    /* Progress Bar Animation - Restored from old version */
     @keyframes progressBarMarqueeAnim {
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
     }
 
-    .progress-bar-blocks-container {
-      width: 200%;
+    .progress-bar-blocks-container { /* Old naming progressBarMarqueeAnim uses -50%, new marqueeBlocks uses -100% with 200% width*/
+      width: 200%; /* Ensures the animation appears seamless */
       animation: progressBarMarqueeAnim 1.2s linear infinite;
     }
 
-    /* Styles for Win95-like buttons (general purpose) */
+    /* Styles for Win95-like buttons (general purpose, can be overridden by Button component's own styles) */
+    /* This is for smaller buttons like in title bars, as per old .win95-button-sm */
     .win95-button-sm {
       font-family: inherit;
       background-color: #c0c0c0;
       color: #000000;
       border-style: solid;
-      border-width: 1px;
+      border-width: 1px; /* Original .win95-button-sm was 1px */
       border-top-color: #FFFFFF;
       border-left-color: #FFFFFF;
       border-bottom-color: #808080;
       border-right-color: #808080;
-      box-shadow: 0.5px 0.5px 0px #000000;
+      box-shadow: 0.5px 0.5px 0px #000000; /* Original .win95-button-sm was 0.5px */
       padding: 1px 3px;
       font-size: 1em;
       line-height: 1;
@@ -88,7 +89,7 @@
       border-bottom-color: #FFFFFF;
       border-right-color: #FFFFFF;
       box-shadow: none;
-      transform: translate(0.5px, 0.5px);
+      transform: translate(0.5px, 0.5px); /* Original .win95-button-sm was 0.5px */
     }
      .win95-button-sm:disabled {
         color: #808080;
@@ -104,7 +105,33 @@
         border-right-color: #808080;
     }
   </style>
-  <!-- Import map removed -->
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.1.0",
+    "react/jsx-runtime": "https://esm.sh/react@19.1.0/jsx-runtime",
+    "react/jsx-dev-runtime": "https://esm.sh/react@19.1.0/jsx-dev-runtime",
+    "react-dom": "https://esm.sh/react-dom@19.1.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.1.0/client",
+    "react-dom/": "https://esm.sh/react-dom@19.1.0/",
+    "react/": "https://esm.sh/react@19.1.0/",
+    "@vercel/node": "https://esm.sh/@vercel/node@^5.2.1",
+    "formidable": "https://esm.sh/formidable@^3.5.4",
+    "crypto": "https://esm.sh/crypto@^1.0.1",
+    "fs": "https://esm.sh/fs@^0.0.1-security",
+    "path": "https://esm.sh/path@^0.12.7",
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "@eslint/js": "https://esm.sh/@eslint/js@^9.28.0",
+    "globals": "https://esm.sh/globals@^16.2.0",
+    "eslint-plugin-react-hooks": "https://esm.sh/eslint-plugin-react-hooks@^5.2.0",
+    "eslint-plugin-react-refresh": "https://esm.sh/eslint-plugin-react-refresh@^0.4.20",
+    "typescript-eslint": "https://esm.sh/typescript-eslint@^8.33.1",
+    "vite": "https://esm.sh/vite@^6.3.5",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.5.1"
+  }
+}
+</script>
 </head>
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>
