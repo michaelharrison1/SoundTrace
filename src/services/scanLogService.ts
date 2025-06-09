@@ -1,7 +1,7 @@
 
 import { TrackScanLog } from '../types';
 
-const BASE_URL = 'https://soundtracebackend.onrender.com/api/scanlogs'; // Replace with your actual backend URL if different
+const BASE_URL = 'https://soundtracebackend.onrender.com/api/scanlogs';
 
 const getAuthToken = (): string | null => {
   try {
@@ -12,13 +12,34 @@ const getAuthToken = (): string | null => {
   }
 };
 
+const handleApiResponse = async (response: Response) => {
+  if (!response.ok) {
+    let errorData: { message?: string } = {};
+    try {
+      errorData = await response.json();
+    } catch (e) {
+      // If response is not JSON, use status text or a generic message
+    }
+    const errorMessage = errorData.message || `Request failed with status ${response.status}: ${response.statusText || 'Unknown error'}`;
+    const error = new Error(errorMessage);
+    (error as any).status = response.status; // Attach status
+    throw error;
+  }
+  if (response.status === 204) { // Handle No Content for DELETE operations
+    return;
+  }
+  return response.json();
+};
+
 export const scanLogService = {
   getScanLogs: async (): Promise<TrackScanLog[]> => {
     const token = getAuthToken();
     if (!token) {
-      // Or throw new Error("Not authenticated"); depending on how you want to handle this globally
       console.warn("No auth token found, cannot fetch scan logs.");
-      return [];
+      // Potentially throw an auth error here or let the backend handle it
+      const authError = new Error("Not authenticated. Cannot fetch scan logs.");
+      (authError as any).status = 401;
+      throw authError;
     }
 
     const response = await fetch(BASE_URL, {
@@ -28,18 +49,15 @@ export const scanLogService = {
         'Authorization': `Bearer ${token}`,
       },
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: `Failed to fetch scan logs: ${response.status}` }));
-      throw new Error(errorData.message || `Failed to fetch scan logs: ${response.status}`);
-    }
-    return response.json();
+    return handleApiResponse(response);
   },
 
   saveScanLog: async (logData: Omit<TrackScanLog, 'logId' | 'scanDate'>): Promise<TrackScanLog> => {
     const token = getAuthToken();
     if (!token) {
-      throw new Error("Not authenticated. Cannot save scan log.");
+      const authError = new Error("Not authenticated. Cannot save scan log.");
+      (authError as any).status = 401;
+      throw authError;
     }
 
     const response = await fetch(BASE_URL, {
@@ -50,18 +68,15 @@ export const scanLogService = {
       },
       body: JSON.stringify(logData),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: `Failed to save scan log: ${response.status}` }));
-      throw new Error(errorData.message || `Failed to save scan log: ${response.status}`);
-    }
-    return response.json();
+    return handleApiResponse(response);
   },
 
   deleteScanLog: async (logId: string): Promise<void> => {
     const token = getAuthToken();
     if (!token) {
-      throw new Error("Not authenticated. Cannot delete scan log.");
+      const authError = new Error("Not authenticated. Cannot delete scan log.");
+      (authError as any).status = 401;
+      throw authError;
     }
 
     const response = await fetch(`${BASE_URL}/${logId}`, {
@@ -70,18 +85,15 @@ export const scanLogService = {
         'Authorization': `Bearer ${token}`,
       },
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: `Failed to delete scan log: ${response.status}` }));
-      throw new Error(errorData.message || `Failed to delete scan log: ${response.status}`);
-    }
-    // No explicit content expected on successful DELETE other than 200/204
+    await handleApiResponse(response); // Awaits and handles error or returns (void for 204)
   },
 
   clearAllScanLogs: async (): Promise<void> => {
     const token = getAuthToken();
     if (!token) {
-      throw new Error("Not authenticated. Cannot clear all scan logs.");
+      const authError = new Error("Not authenticated. Cannot clear all scan logs.");
+      (authError as any).status = 401;
+      throw authError;
     }
 
     const response = await fetch(BASE_URL, {
@@ -90,11 +102,6 @@ export const scanLogService = {
         'Authorization': `Bearer ${token}`,
       },
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: `Failed to clear all scan logs: ${response.status}` }));
-      throw new Error(errorData.message || `Failed to clear all scan logs: ${response.status}`);
-    }
-    // No explicit content expected on successful DELETE
+    await handleApiResponse(response); // Awaits and handles error or returns (void for 204)
   },
 };

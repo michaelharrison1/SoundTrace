@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" type="image/svg+xml" href="/vite.svg"> <!-- Kept from new version -->
+  <link rel="icon" type="image/svg+xml" href="/vite.svg"> <!-- From new version, ensure vite.svg exists or update path -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SoundTrace</title> <!-- Restored from old version -->
   <script src="https://cdn.tailwindcss.com"></script> <!-- Restored from old version -->
@@ -16,6 +16,9 @@
       font-family: 'VT323', monospace;
       color: #000000; /* Default text black */
       font-size: 16px; /* VT323 looks better a bit larger */
+      margin: 0; /* From new version for basic reset */
+      -webkit-font-smoothing: antialiased; /* From new version */
+      -moz-osx-font-smoothing: grayscale; /* From new version */
     }
     /* Revert to browser default scrollbars */
     ::-webkit-scrollbar {
@@ -32,7 +35,7 @@
       border-left-color: #FFFFFF;
       border-bottom-color: #808080;
       border-right-color: #808080;
-      box-shadow: 1px 1px 0px #000000; /* Optional: slight outer shadow for pop */
+      box-shadow: 1px 1px 0px #000000;
     }
     .win95-border-inset {
       border-style: solid;
@@ -44,55 +47,56 @@
     }
     /* Ensure icons use black stroke by default if not overridden */
     svg {
-      stroke: #000000 !important; /* Override for icons */
+      stroke: #000000 !important;
     }
 
-    /* Progress Bar Animation */
-    @keyframes progressBarMarqueeAnim { /* Restored from old version */
+    /* Progress Bar Animation - Restored from old version */
+    @keyframes progressBarMarqueeAnim {
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
     }
 
-    .progress-bar-blocks-container {
-      width: 200%;
-      animation: progressBarMarqueeAnim 1.2s linear infinite; /* Restored from old version */
+    .progress-bar-blocks-container { /* Old naming progressBarMarqueeAnim uses -50%, new marqueeBlocks uses -100% with 200% width*/
+      width: 200%; /* Ensures the animation appears seamless */
+      animation: progressBarMarqueeAnim 1.2s linear infinite;
     }
 
-    /* Styles for Win95-like buttons in the FollowerReachMonitor title bar */
+    /* Styles for Win95-like buttons (general purpose, can be overridden by Button component's own styles) */
+    /* This is for smaller buttons like in title bars, as per old .win95-button-sm */
     .win95-button-sm {
-      font-family: inherit; /* Added from new version to ensure font consistency in buttons */
-      background-color: #c0c0c0; /* Added from new version */
-      color: #000000; /* Added from new version */
+      font-family: inherit;
+      background-color: #c0c0c0;
+      color: #000000;
       border-style: solid;
-      border-width: 1px; /* Old was 1px, new was 2px. Sticking to old for title bar buttons */
+      border-width: 1px; /* Original .win95-button-sm was 1px */
       border-top-color: #FFFFFF;
       border-left-color: #FFFFFF;
       border-bottom-color: #808080;
       border-right-color: #808080;
-      box-shadow: 0.5px 0.5px 0px #000000; /* Old was 0.5px, new had 1px for general buttons */
-      padding: 1px 3px; /* Added from new version, old had no explicit padding here */
-      font-size: 1em; /* Added from new version */
-      line-height: 1; /* Added from new version */
-      align-items: center; /* Added from new version */
-      justify-content: center; /* Added from new version */
-      display: inline-flex; /* Added from new version */
-      min-width: 20px; /* Added from new version */
-      min-height: 20px; /* Added from new version */
+      box-shadow: 0.5px 0.5px 0px #000000; /* Original .win95-button-sm was 0.5px */
+      padding: 1px 3px;
+      font-size: 1em;
+      line-height: 1;
+      align-items: center;
+      justify-content: center;
+      display: inline-flex;
+      min-width: 20px;
+      min-height: 20px;
     }
-    .win95-button-sm:active:not(:disabled) { /* Merged for consistency */
+    .win95-button-sm:active:not(:disabled) {
       border-top-color: #808080;
       border-left-color: #808080;
       border-bottom-color: #FFFFFF;
       border-right-color: #FFFFFF;
       box-shadow: none;
-      transform: translate(0.5px, 0.5px); /* Old had 0.5px, new had 1px. Sticking to old for -sm buttons */
+      transform: translate(0.5px, 0.5px); /* Original .win95-button-sm was 0.5px */
     }
-     .win95-button-sm:disabled { /* Added from new for completeness */
+     .win95-button-sm:disabled {
         color: #808080;
         text-shadow: 1px 1px 0 #ffffff;
         cursor: default;
     }
-    .win95-button-sm:disabled:active { /* Added from new for completeness */
+    .win95-button-sm:disabled:active {
         transform: none;
         box-shadow: 0.5px 0.5px 0px #000000;
         border-top-color: #FFFFFF;

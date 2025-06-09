@@ -1,20 +1,38 @@
 
 import { User } from '../types';
 
-// IMPORTANT: This has been set to your actual Render backend URL.
 const BACKEND_URL = 'https://soundtracebackend.onrender.com';
 
 interface LoginResponse {
   token: string;
   userId: string;
   username: string;
-  // Add any other fields your backend returns upon login/registration
+}
+
+const handleAuthApiResponse = async (response: Response): Promise<LoginResponse> => {
+    const data = await response.json().catch(() => ({ message: `Invalid JSON response from server during auth operation. Status: ${response.status}` }));
+
+    if (!response.ok) {
+      const error = new Error(data.message || `Authentication operation failed with status: ${response.status}`);
+      (error as any).status = response.status;
+      throw error;
+    }
+
+    if (!data.token || !data.userId || !data.username) {
+        console.error('Auth response missing expected fields:', data);
+        const error = new Error('Authentication response from server was incomplete.');
+        (error as any).status = response.status; // Or a generic 500-like client error
+        throw error;
+    }
+    return data as LoginResponse;
 }
 
 export const authService = {
   login: async (username: string, password: string): Promise<LoginResponse> => {
     if (!BACKEND_URL) {
-      throw new Error('Backend URL is not configured. Cannot log in.');
+      const configError = new Error('Backend URL is not configured. Cannot log in.');
+      (configError as any).status = 500; // Indicate server-side configuration issue from client's perspective
+      throw configError;
     }
 
     const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
@@ -25,23 +43,14 @@ export const authService = {
       body: JSON.stringify({ username, password }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || `Login failed with status: ${response.status}`);
-    }
-
-    if (!data.token || !data.userId || !data.username) {
-        console.error('Login response missing expected fields:', data);
-        throw new Error('Login response from server was incomplete.');
-    }
-
-    return data as LoginResponse;
+    return handleAuthApiResponse(response);
   },
 
   register: async (username: string, password: string): Promise<LoginResponse> => {
     if (!BACKEND_URL) {
-      throw new Error('Backend URL is not configured. Cannot register.');
+       const configError = new Error('Backend URL is not configured. Cannot register.');
+      (configError as any).status = 500;
+      throw configError;
     }
 
     const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
@@ -52,16 +61,6 @@ export const authService = {
       body: JSON.stringify({ username, password }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || `Registration failed with status: ${response.status}`);
-    }
-
-    if (!data.token || !data.userId || !data.username) {
-        console.error('Registration response missing expected fields:', data);
-        throw new Error('Registration response from server was incomplete.');
-    }
-    return data as LoginResponse;
+    return handleAuthApiResponse(response);
   },
 };
