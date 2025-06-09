@@ -158,7 +158,7 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
   useEffect(() => {
     if (!isSpotifyConnected || !spotifyUser?.accessToken || !isSdkReady) {
       if (player) {
-        console.log("Disconnecting player because SDK not ready or user not connected/authed.");
+        console.log("SpotifyContext: Player exists, but prerequisites not met (connected, token, SDK ready). Disconnecting player.");
         player.disconnect();
         setPlayer(null);
         setIsPlayerReady(false);
@@ -167,52 +167,50 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
     }
 
     if (player) { // Player already initialized
-        console.log("Player already initialized. Skipping re-initialization.");
+        console.log("SpotifyContext: Player already initialized. Skipping re-initialization.");
         return;
     }
 
-    console.log("Spotify connected, user token available, SDK ready. Initializing Spotify Player SDK instance...");
+    console.log("SpotifyContext: Prerequisites met (Spotify connected, user token available, SDK script ready). Initializing Spotify Player SDK instance...");
     const spotifyPlayerInstance = new window.Spotify.Player({
       name: 'SoundTrace Player',
       getOAuthToken: async (cb: (token: string) => void) => {
         if (spotifyUser && new Date(spotifyUser.expiresAt) < new Date(Date.now() - 5 * 60 * 1000)) { // 5 min buffer
-          console.log("Spotify SDK requesting token, current one is expired or nearing expiry. Refreshing...");
+          console.log("SpotifyContext SDK: Token expired or nearing expiry. Refreshing...");
           const newAccessToken = await refreshAccessToken();
           if (newAccessToken) {
             cb(newAccessToken);
           } else {
-            console.error("SDK: Failed to refresh token for playback. Disconnecting.");
+            console.error("SpotifyContext SDK: Failed to refresh token for playback. Disconnecting.");
             disconnectSpotify();
           }
         } else if (spotifyUser?.accessToken) {
           cb(spotifyUser.accessToken);
         } else {
-           console.warn("SDK: No Spotify user or access token available for getOAuthToken. This should not happen if connected.");
-           disconnectSpotify(); // Force disconnect if token is unexpectedly missing
+           console.warn("SpotifyContext SDK: No Spotify user or access token for getOAuthToken. Disconnecting.");
+           disconnectSpotify(); // Force disconnect
         }
       },
       volume: 0.5
     });
 
     spotifyPlayerInstance.addListener('ready', ({ device_id }: { device_id: string }) => {
-      console.log('Spotify Player SDK ready with Device ID:', device_id);
+      console.log('SpotifyContext SDK: Player ready. Device ID:', device_id);
       setDeviceId(device_id);
-      setIsPlayerReady(true);
+      setIsPlayerReady(true); // This indicates the SDK player instance is ready
     });
     spotifyPlayerInstance.addListener('not_ready', ({ device_id }: { device_id: string }) => {
-      console.log('Device ID has gone offline:', device_id);
-      setIsPlayerReady(false);
+      console.log('SpotifyContext SDK: Device ID has gone offline:', device_id);
+      setIsPlayerReady(false); // SDK player instance not ready
     });
     spotifyPlayerInstance.addListener('player_state_changed', (state: Spotify.PlaybackState | null) => {
        if (!state) {
-        setIsActive(false);
-        console.warn("Spotify player_state_changed: state is null.");
-        // Consider if currentPlayingTrackInfo should be cleared or kept
-        // setCurrentPlayingTrackInfo(null);
+        setIsActive(false); // Consider if player is still "active"
+        console.warn("SpotifyContext SDK: player_state_changed: state is null.");
         return;
       }
       setCurrentState(state as SpotifyPlayerState);
-      setIsActive(true);
+      setIsActive(true); // Player is active and reporting state
       const currentTrack = state.track_window.current_track;
       if (currentTrack) {
         setCurrentPlayingTrackInfo({
@@ -221,9 +219,6 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
           artist: currentTrack.artists.map((a: Spotify.Artist) => a.name).join(', '),
           uri: currentTrack.uri,
         });
-      } else {
-        // If no current track in state, perhaps clear local currentPlayingTrackInfo
-        // setCurrentPlayingTrackInfo(null);
       }
       setIsLoadingPlayback(false);
       setPlaybackError(null);
@@ -232,10 +227,10 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
     const errorEventTypes: Spotify.ErrorTypes[] = ['initialization_error', 'authentication_error', 'account_error', 'playback_error'];
     errorEventTypes.forEach(errorType => {
         spotifyPlayerInstance.addListener(errorType, (e: Spotify.Error) => {
-            console.error(`Spotify SDK Error - ${errorType}:`, e.message);
+            console.error(`SpotifyContext SDK Error - ${errorType}:`, e.message);
             setPlaybackError(e.message);
             if (errorType === 'authentication_error') {
-                console.log("Authentication error with SDK, attempting to refresh token or disconnect.");
+                console.log("SpotifyContext SDK: Authentication error, attempting refresh or disconnect.");
                 refreshAccessToken().catch(() => disconnectSpotify());
             }
              if (errorType === 'account_error' && (e.message.includes('premium') || e.message.includes('Premium'))) {
@@ -247,20 +242,21 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
 
     spotifyPlayerInstance.connect().then((success: boolean) => {
       if (success) {
-        console.log('Spotify Player SDK connected successfully!');
+        console.log('SpotifyContext SDK: Player connected successfully to Spotify backend!');
         setPlayer(spotifyPlayerInstance);
+        // isPlayerReady will be set by the 'ready' event listener
       } else {
-        console.error('Spotify Player SDK failed to connect.');
+        console.error('SpotifyContext SDK: Player failed to connect to Spotify backend.');
         setIsPlayerReady(false);
       }
     }).catch((error: Error) => {
-      console.error('Error connecting Spotify Player SDK:', error);
+      console.error('SpotifyContext SDK: Error connecting player:', error);
       setIsPlayerReady(false);
     });
 
     return () => {
       if (spotifyPlayerInstance) {
-        console.log("Disconnecting Spotify player SDK instance from context cleanup.");
+        console.log("SpotifyContext: Cleaning up. Disconnecting Spotify player SDK instance.");
         spotifyPlayerInstance.disconnect();
       }
     };
@@ -269,10 +265,18 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
 
   const playTrack = useCallback(async (trackUri: string, spotifyTrackId?: string, initialTrackName: string = 'Track', initialArtistName: string = 'Artist') => {
     if (!player || !deviceId || !isPlayerReady || !spotifyUser?.accessToken) {
-      console.warn('Spotify Player not ready or no access token.', { playerExists: !!player, deviceId, isPlayerReady, tokenExists: !!spotifyUser?.accessToken });
+      console.warn('SpotifyContext: Playback attempt failed. Player/Device/Token not ready.', {
+         playerExists: !!player,
+         hasDeviceId: !!deviceId,
+         isPlayerReady, // This indicates SDK instance ready
+         hasToken: !!spotifyUser?.accessToken,
+         isSpotifyConnected // User is authenticated with our backend for Spotify
+        });
       setPlaybackError('Spotify Player is not connected or ready.');
       if (!isSpotifyConnected) {
         setPlaybackError('Connect to Spotify first to enable playback.');
+      } else if (!isPlayerReady) {
+         setPlaybackError('SoundTrace Player is not ready. Try refreshing or selecting it in your Spotify app.');
       }
       return;
     }
@@ -282,18 +286,24 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
     setPlaybackError(null);
 
     try {
+      // Attempt to activate the player instance. Browsers may require this for programmatic playback.
       await player.activateElement();
+      console.log("SpotifyContext: Player element activated for playback.");
+
 
       let currentAccessToken = spotifyUser.accessToken;
       if (new Date(spotifyUser.expiresAt) < new Date(Date.now() - 60 * 1000)) { // 1 min buffer
-        console.log("Access token for playback is stale, refreshing first...");
+        console.log("SpotifyContext: Access token for playback is stale, refreshing first...");
         const refreshedToken = await refreshAccessToken();
         if (!refreshedToken) {
+          setPlaybackError("Spotify access token refresh failed. Cannot play.");
+          setIsLoadingPlayback(false);
           throw new Error("Spotify access token is unavailable after refresh attempt.");
         }
         currentAccessToken = refreshedToken;
       }
 
+      console.log(`SpotifyContext: Attempting to play URI: ${trackUri} on Device ID: ${deviceId}`);
       const response = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
         body: JSON.stringify({ uris: [trackUri] }),
@@ -305,29 +315,34 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: `Failed to play track. Status: ${response.status}` }));
-        console.error('Spotify API Play Error:', errorData);
+        console.error('SpotifyContext: Spotify API Play Error:', errorData);
         let specificError = errorData.message || `Failed to play track (Status: ${response.statusText})`;
+
         if (errorData.error?.reason === 'PREMIUM_REQUIRED' || (errorData.error?.message && errorData.error.message.toLowerCase().includes('premium required'))) {
             specificError = 'Spotify Premium is required for playback.';
-        } else if (errorData.error?.message) {
+        } else if (errorData.error?.reason === 'NO_ACTIVE_DEVICE' || (errorData.error?.message && errorData.error.message.toLowerCase().includes('device not found'))) {
+            specificError = "Spotify device not found. Please ensure SoundTrace Player is active in your Spotify app (check 'Connect to device' in Spotify).";
+        }
+         else if (errorData.error?.message) {
             specificError = `Spotify Error: ${errorData.error.message}`;
         }
         setPlaybackError(specificError);
         setIsLoadingPlayback(false);
         return;
       }
-      // Playback successfully initiated, player_state_changed event will handle UI updates.
+      console.log(`SpotifyContext: Play command for URI ${trackUri} sent successfully.`);
+      // Playback successfully initiated, player_state_changed event will handle further UI updates.
     } catch (err: any) {
-      console.error('Error in playTrack function:', err);
+      console.error('SpotifyContext: Error in playTrack function:', err);
       setPlaybackError(err.message || 'Could not start playback.');
       setIsLoadingPlayback(false);
     }
-  }, [player, deviceId, isPlayerReady, spotifyUser, refreshAccessToken]);
+  }, [player, deviceId, isPlayerReady, isSpotifyConnected, spotifyUser, refreshAccessToken]);
 
   const value: SpotifyPlayerContextType = {
     player,
     deviceId,
-    isReady: isPlayerReady && isSpotifyConnected,
+    isReady: isPlayerReady && isSpotifyConnected, // Combined readiness: SDK player + app connected to Spotify
     isActive,
     currentState,
     playTrack,
@@ -393,4 +408,3 @@ export const SpotifyCallbackReceiver: React.FC = () => {
     </div>
   );
 };
-33
