@@ -7,6 +7,7 @@ import ArtistFollowers from './common/ArtistFollowers';
 import { useSpotifyPlayer } from '../contexts/SpotifyContext';
 import SpotifyIcon from './icons/SpotifyIcon';
 import { spotifyStreamService } from '../services/spotifyStreamService';
+import UploadIcon from './icons/UploadIcon'; // For export icon
 
 type SortableColumn =
   | 'title'
@@ -257,6 +258,75 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     }
   };
 
+  const escapeCsvCell = (cellData: any): string => {
+    if (cellData == null) return ''; // Handles null or undefined
+    const stringData = String(cellData);
+    // If the string contains a comma, double quote, or newline, wrap it in double quotes
+    // and escape any existing double quotes by doubling them up (e.g., " becomes "")
+    if (stringData.includes(',') || stringData.includes('"') || stringData.includes('\n')) {
+      return `"${stringData.replace(/"/g, '""')}"`;
+    }
+    return stringData;
+  };
+
+  const handleExportToCSV = () => {
+    const headers = [
+      "Original File Name", "Original Scan Date", "Status",
+      "Matched Song Title", "Matched Artist", "Matched Album", "Release Date",
+      "Confidence (%)", "Spotify Link", "YouTube Link",
+      "Spotify Artist ID", "Spotify Track ID",
+      "Fetched Artist Followers", "Fetched Artist Popularity", "Fetched Spotify Streams"
+    ];
+    const csvRows = [headers.join(',')];
+
+    sortedTableRows.forEach(row => {
+      const rowData = [
+        escapeCsvCell(row.originalFileName),
+        escapeCsvCell(new Date(row.originalScanDate).toLocaleString()),
+        escapeCsvCell(row.isMatchRow ? (row.statusMessage || 'Match Found') : row.statusMessage || 'No Match')
+      ];
+
+      if (row.isMatchRow && row.matchDetails) {
+        const match = row.matchDetails;
+        const followerInfo = match.spotifyArtistId ? followerResults.get(match.spotifyArtistId) : undefined;
+        const streamInfo = match.spotifyTrackId ? streamCounts.get(match.spotifyTrackId) : undefined;
+
+        rowData.push(
+          escapeCsvCell(match.title),
+          escapeCsvCell(match.artist),
+          escapeCsvCell(match.album),
+          escapeCsvCell(match.releaseDate),
+          escapeCsvCell(match.matchConfidence),
+          escapeCsvCell(match.platformLinks?.spotify),
+          escapeCsvCell(match.platformLinks?.youtube),
+          escapeCsvCell(match.spotifyArtistId),
+          escapeCsvCell(match.spotifyTrackId),
+          escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.followers : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
+          escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.popularity : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
+          escapeCsvCell(streamInfo?.count ?? (streamInfo?.loading ? 'Loading...' : 'N/A'))
+        );
+      } else {
+        // Fill remaining cells with empty strings for non-match rows or rows without details
+        rowData.push(...Array(headers.length - rowData.length).fill(''));
+      }
+      csvRows.push(rowData.join(','));
+    });
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `soundtrace_scan_logs_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+
   const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & {sortKey?: SortableColumn, width?: string}> = ({ children, sortKey, width, className, ...props }) => (
     <th
         scope="col"
@@ -302,6 +372,15 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                 Export to Spotify
               </Button>
             )}
+            <Button
+              onClick={handleExportToCSV}
+              size="sm"
+              className="p-1 !text-xs hover:bg-gray-300"
+              title="Export current table view to CSV"
+              icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>}
+            >
+              Export Table CSV
+            </Button>
             {scanLogs.length > 0 && (
               <Button
                 onClick={onClearAllScans}
@@ -469,3 +548,4 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
 };
 
 export default PreviousScans;
+

@@ -96,7 +96,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
   };
 
   const handleExportAllData = () => {
-    alert("Full data export (CSV/PDF) functionality is coming soon!");
+    alert("Full data export (e.g., combined CSV/PDF of all sections) is coming soon! Individual tables may have their own export options.");
   };
 
   return (
@@ -123,10 +123,10 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
               onClick={handleExportAllData}
               size="sm"
               className="win95-border-outset hover:bg-gray-300"
-              icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>} // Using upload icon rotated as a placeholder
-              title="Export all data (coming soon)"
+              icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>}
+              title="Export all data (feature coming soon)"
             >
-                Export Data
+                Export All (Soon)
             </Button>
         </div>
       </nav>

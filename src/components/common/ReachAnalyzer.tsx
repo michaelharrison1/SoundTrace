@@ -327,7 +327,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   const currentArtistLevel = useMemo(() => calculateArtistLevel(aggregatedArtistData.length), [aggregatedArtistData.length]);
 
    const renderTimeBasedReachGraph = () => {
-        const dataToDisplay = historicalFollowerData.slice(-60);
+        const dataToDisplay = historicalFollowerData.slice(-60); // Display last 60 records
 
         if (isLoadingTotalFollowers && dataToDisplay.length === 0) {
             return <div className="my-4"><ProgressBar text="Loading time-based reach data..." /></div>;
@@ -336,35 +336,79 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
             return <p className="text-center text-gray-600 mt-4">No historical follower data available to display graph.</p>;
         }
 
-        const maxFollowersInPeriod = Math.max(...dataToDisplay.map(d => d.cumulativeFollowers), 1);
-        const barContainerWidth = 100;
+        const maxFollowersInPeriod = Math.max(...dataToDisplay.map(d => d.cumulativeFollowers), 1); // Avoid division by zero
+
+        // Y-axis ticks (e.g., 0, 25K, 50K, 100K or dynamic)
+        const yAxisTicks = [];
+        const numYTicks = 4;
+        for (let i = 0; i <= numYTicks; i++) {
+            const value = Math.round((maxFollowersInPeriod / numYTicks) * i);
+            yAxisTicks.push({ value, label: formatFollowersDisplay(value) });
+        }
+
+        // X-axis ticks (e.g., start, middle, end dates)
+        const xAxisTicks = [];
+        if (dataToDisplay.length > 0) {
+            xAxisTicks.push(dataToDisplay[0].date);
+            if (dataToDisplay.length > 2) {
+                xAxisTicks.push(dataToDisplay[Math.floor(dataToDisplay.length / 2)].date);
+            }
+            if (dataToDisplay.length > 1) {
+                xAxisTicks.push(dataToDisplay[dataToDisplay.length - 1].date);
+            }
+        }
+        const formattedXAxisTicks = xAxisTicks.map(dateStr => new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+
+
+        const barContainerWidth = 100; // Represents 100% of the scrollable graph width
         const numberOfBars = dataToDisplay.length;
-        const gapBetweenBars = 0.2;
-        const totalGapSpace = (numberOfBars -1) * gapBetweenBars;
+        const gapBetweenBars = 0.2; // Percentage gap
+        const totalGapSpace = (numberOfBars - 1) * gapBetweenBars;
         const barWidthPercentage = numberOfBars > 0 ? (barContainerWidth - totalGapSpace) / numberOfBars : 0;
 
         return (
             <div className="mt-4">
                 <h4 className="text-base font-semibold text-black mb-1 text-center">Time-Based Reach Graph</h4>
                 <p className="text-xs text-gray-600 text-center mb-2">Track follower growth over time (last {dataToDisplay.length} records), updates daily.</p>
-                 <div className={`p-0.5 ${isLevelingUp ? 'animate-pulse !border-yellow-400' : 'border-transparent'} border-2`}> {/* Border only for leveling up */}
-                    <div className="win95-border-inset bg-gray-700 p-2 h-48 flex items-end overflow-x-auto" style={{gap: `${gapBetweenBars}%`}}>
-                        {dataToDisplay.map((snapshot) => {
-                            const barHeight = maxFollowersInPeriod > 0 ? (snapshot.cumulativeFollowers / maxFollowersInPeriod) * 95 : 0;
-                            const formattedDate = new Date(snapshot.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                            return (
-                                <div
-                                    key={snapshot.date}
-                                    className="flex-shrink-0 win95-border-outset bg-green-400 hover:bg-green-300 relative group"
-                                    style={{ width: `${barWidthPercentage}%`, height: `${Math.max(5, barHeight)}%`, minWidth: '15px' }}
-                                    title={`${formattedDate}: ${formatFollowersDisplay(snapshot.cumulativeFollowers)} followers`}
-                                >
-                                <span className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs text-gray-100 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-70 px-1 py-0.5 rounded-sm">
-                                    {formattedDate}
-                                </span>
-                                </div>
-                            );
-                        })}
+                 <div className={`p-0.5 ${isLevelingUp ? 'animate-pulse !border-yellow-400' : 'border-transparent'} border-2`}>
+                    <div className="flex">
+                        {/* Y-Axis Labels */}
+                        <div className="flex flex-col justify-between items-end pr-1 text-xs text-gray-400" style={{ height: '192px' /* h-48 */, minWidth: '30px' }}>
+                            {yAxisTicks.reverse().map(tick => (
+                                <span key={tick.value}>{tick.label}</span>
+                            ))}
+                        </div>
+                        {/* Graph Area */}
+                        <div className="win95-border-inset bg-gray-700 p-2 h-48 flex-grow flex items-end overflow-x-auto" style={{gap: `${gapBetweenBars}%`}}>
+                            {dataToDisplay.map((snapshot) => {
+                                const barHeight = maxFollowersInPeriod > 0 ? (snapshot.cumulativeFollowers / maxFollowersInPeriod) * 95 : 0; // 95% to leave some space at top
+                                const formattedDate = new Date(snapshot.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                                return (
+                                    <div
+                                        key={snapshot.date}
+                                        className="flex-shrink-0 win95-border-outset hover:opacity-80 relative group"
+                                        style={{
+                                            width: `${barWidthPercentage}%`,
+                                            height: `${Math.max(2, barHeight)}%`, /* min height to be visible */
+                                            minWidth: '15px',
+                                            backgroundColor: activeBarAndLineColor, // Use dynamic color
+                                            boxShadow: `0 0 2px ${activeBarAndLineColor}` // Add a subtle glow
+                                        }}
+                                        title={`${formattedDate}: ${formatFollowersDisplay(snapshot.cumulativeFollowers)} followers`}
+                                    >
+                                    <span className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-xs text-gray-100 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-70 px-1 py-0.5 rounded-sm">
+                                        {formattedDate}
+                                    </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                     {/* X-Axis Labels */}
+                    <div className="flex justify-between pl-[34px] text-xs text-gray-400 mt-1 pr-1"> {/* Adjust pl to align with graph */}
+                        {formattedXAxisTicks.map((label, index) => (
+                             <span key={index}>{label}</span>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -578,3 +622,4 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   );
 };
 export default ReachAnalyzer;
+
