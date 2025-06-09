@@ -12,7 +12,7 @@ const MAX_BAR_SLOTS = 30; // Number of physical bar slots visible on the chart
 const ACTIVE_BAR_COLOR = '#34D399'; // Green color for active bars and line glow
 const CHART_BACKGROUND_COLOR = '#262626'; // neutral-800, dark gray
 const GRID_COLOR = 'rgba(128, 128, 128, 0.2)';
-const LINE_ANIMATION_DURATION_MS = 2500; // Duration for the line to sweep across
+const LINE_ANIMATION_DURATION_MS = 3750; // Duration for the line to sweep across (was 2500)
 
 const FakeWindowIcon: React.FC = () => (
   <div className="w-4 h-4 bg-gray-300 border border-t-white border-l-white border-r-gray-500 border-b-gray-500 inline-flex items-center justify-center mr-1 align-middle">
@@ -80,31 +80,30 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
 
     setLineProgress(newProgress);
     animationFrameId.current = requestAnimationFrame(animateLineCallback);
-  }, [LINE_ANIMATION_DURATION_MS]);
+  }, []); // LINE_ANIMATION_DURATION_MS is a const, not a prop, so not needed in deps
 
   useEffect(() => {
     const shouldAnimate = !isLoading && !error && (totalFollowers ?? 0) > 0;
 
     if (shouldAnimate) {
-      if (!animationFrameId.current) { // Only start if not already running
-        animationStartTime.current = performance.now() - (lineProgress * LINE_ANIMATION_DURATION_MS); // Preserve current progress if animation was paused
+      if (!animationFrameId.current) {
+        animationStartTime.current = performance.now() - (lineProgress * LINE_ANIMATION_DURATION_MS);
         animationFrameId.current = requestAnimationFrame(animateLineCallback);
       }
     } else {
-      // Stop animation
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
         animationFrameId.current = null;
       }
       if (isLoading || error || (totalFollowers ?? 0) <= 0) {
-         setLineProgress(0); // Reset line to start if not animating due to these conditions
+         setLineProgress(0);
       }
     }
 
     return () => {
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
-        animationFrameId.current = null; // Ensure it's null on cleanup
+        animationFrameId.current = null;
       }
     };
   }, [isLoading, error, totalFollowers, animateLineCallback, lineProgress]);
@@ -217,13 +216,13 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
                 {/* Green Progress Line Overlay */}
                 { (totalFollowers ?? 0) > 0 && !isLoading && !error && (
                     <div
-                    className="progress-line absolute top-0 bottom-0 bg-green-400" // bg-green-400 for visibility if shadow fails
+                    className="progress-line absolute top-0 bottom-0"
                     style={{
                         left: `${lineProgress * 100}%`,
                         width: '3px',
                         boxShadow: `0 0 5px 1px ${ACTIVE_BAR_COLOR}, 0 0 10px 2px ${ACTIVE_BAR_COLOR}`,
                         transform: 'translateX(-1.5px)',
-                        backgroundColor: ACTIVE_BAR_COLOR, // Ensure line itself is green
+                        backgroundColor: ACTIVE_BAR_COLOR,
                     }}
                     aria-hidden="true"
                     ></div>
