@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, TrackScanLog, AcrCloudMatch } from '../types'; // Updated to TrackScanLog
 import PreviousScans from './PreviousScans';
-import FollowerReachGraph from './common/FollowerReachGraph'; // New import
+import FollowerReachGraph from './common/FollowerReachGraph.tsx'; // New import
 
 interface DashboardViewPageProps {
   user: User;
