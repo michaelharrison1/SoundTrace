@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import fetch from 'node-fetch'; // Using node-fetch for consistency with backend
 import { URLSearchParams } from 'url';
 import jwt from 'jsonwebtoken';
+import { Buffer } from 'buffer'; // Added import for Buffer
 
 // Assuming User model and db connection are in backend
 // Adjust paths as necessary
