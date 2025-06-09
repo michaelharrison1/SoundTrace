@@ -6,9 +6,9 @@ import { URL } from 'url'; // Import URL
 
 // Assuming User model, db connection, and pkce utils are in backend
 // Adjust paths as necessary based on your Vercel project structure and how it handles monorepos/imports
-import User from '../../../../backend/models/User';
-import connectDB from '../../../../backend/config/db';
-import { generateCodeVerifier, generateCodeChallenge } from '../../../../backend/util/pkce';
+import User from '/../../../backend/models/User';
+import connectDB from '/../../../backend/config/db';
+import { generateCodeVerifier, generateCodeChallenge } from '/../../../backend/util/pkce';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
