@@ -71,6 +71,32 @@ const FollowerReachGraph: React.FC<FollowerReachGraphProps> = ({ totalFollowers,
 
   const peopleUnits = typeof totalFollowers === 'number' && totalFollowers > 0 && iconValue > 0 ? Math.floor(totalFollowers / iconValue) : 0;
   const displayIconCount = Math.min(peopleUnits, MAX_ICONS_TO_DISPLAY);
+  const remainingGroups = peopleUnits - displayIconCount;
+
+  const renderIconDisplay = () => {
+    if (typeof totalFollowers === 'number' && totalFollowers > 0) {
+      if (displayIconCount > 0) {
+        return (
+          <>
+            {Array.from({ length: displayIconCount }).map((_, i) => (
+              <PixelPersonIcon key={i} className="m-0.5" />
+            ))}
+            {remainingGroups > 0 && (
+              <span className="text-sm text-black ml-1">+{remainingGroups} more groups</span>
+            )}
+          </>
+        );
+      } else if (totalFollowers < iconValue && totalFollowers > 0) {
+        return <p className="text-sm text-black">Less than {iconUnitText} followers represented by one icon.</p>;
+      } else { // totalFollowers is 0 or less than iconValue but not enough for an icon at current scale
+        return <p className="text-sm text-black">0 followers</p>;
+      }
+    } else if (totalFollowers === 0) {
+      return <p className="text-sm text-black">0 followers</p>;
+    } else { // totalFollowers is null (error or not loaded yet, but handled by !isLoading && !error below)
+      return <p className="text-sm text-black">Data unavailable</p>;
+    }
+  };
 
   return (
     <div className={containerStyles}>
@@ -92,33 +118,15 @@ const FollowerReachGraph: React.FC<FollowerReachGraphProps> = ({ totalFollowers,
             </div>
 
             <div
-              className="flex flex-wrap justify-center items-center my-2 p-2 min-h-[80px] win95-border-inset bg-black"
+              className="flex flex-wrap justify-center items-center my-2 p-2 min-h-[80px] win95-border-inset bg-[#C0C0C0]" // Grey background
               role="figure"
               aria-label={`Follower representation: ${peopleUnits} groups of ${iconUnitText}`}
             >
-              {typeof totalFollowers === 'number' && totalFollowers >= 0 && displayIconCount > 0 && (
-                Array.from({ length: displayIconCount }).map((_, i) => (
-                  <PixelPersonIcon key={i} className="m-1" />
-                ))
-              )}
-              {typeof totalFollowers === 'number' && peopleUnits > MAX_ICONS_TO_DISPLAY && (
-                <span className="text-white text-lg ml-2 p-1">+{peopleUnits - MAX_ICONS_TO_DISPLAY} more groups</span>
-              )}
-              {typeof totalFollowers === 'number' && peopleUnits === 0 && totalFollowers > 0 && (
-                 <span className="text-xs text-gray-400 italic p-1">Less than {iconUnitText} (no full icon)</span>
-              )}
-               {typeof totalFollowers === 'number' && totalFollowers === 0 && (
-                 <span className="text-xs text-gray-400 italic p-1">0 followers</span>
-              )}
-               {(totalFollowers === null || typeof totalFollowers === 'undefined') && ( // Show N/A if data is null after loading
-                 <span className="text-xs text-gray-400 italic p-1">Data unavailable</span>
-              )}
+              {renderIconDisplay()}
             </div>
 
-            <p className="text-xs text-gray-700 text-center mt-1">
-              Combined Spotify followers. Each
-              <PixelPersonIcon className="inline align-middle mx-1 -mt-1" />
-              represents {iconUnitText} people.
+            <p className="text-xs text-center text-black mt-1">
+              Combined Spotify followers. Each <PixelPersonIcon className="mx-0.5" /> represents {iconUnitText} people.
             </p>
           </>
         )}
