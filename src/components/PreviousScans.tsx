@@ -158,7 +158,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     if (currentPlayingInfo && currentPlayingInfo.rowIndex >= 0 && tableRowRefs.current[currentPlayingInfo.rowIndex]) {
       tableRowRefs.current[currentPlayingInfo.rowIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [currentPlayingInfo?.rowIndex, currentPlayingInfo?.trackId]);
+  }, [currentPlayingInfo]); // Changed dependency array
 
 
   const handlePlayTrack = async (trackId: string, rowIndex: number, defaultTitle: string, defaultArtist: string) => {
