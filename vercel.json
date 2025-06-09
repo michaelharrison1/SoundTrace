@@ -7,10 +7,7 @@
     },
     {
       "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "use": "@vercel/vite"
     }
   ],
   "routes": [
@@ -19,15 +16,14 @@
     { "src": "/api/scanlogs/(.*)", "dest": "../backend/server.js" },
     { "src": "/api/scanlogs", "dest": "../backend/server.js" },
     { "src": "/api/spotify-track-details", "dest": "../backend/server.js" },
-
-    { "src": "/assets/(.*)", "dest": "/dist/assets/$1" },
-    { "src": "/vite.svg", "dest": "/dist/vite.svg" },
+    { "src": "/api/scan-track", "dest": "/api/scan-track" },
+    { "src": "/api/spotify-artist-details", "dest": "/api/spotify-artist-details" },
     {
       "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/index.html"
+      "dest": "/index.html"
     }
   ]
 }
