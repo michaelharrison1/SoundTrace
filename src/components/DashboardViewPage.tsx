@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, TrackScanLog, AcrCloudMatch } from '../types';
 import PreviousScans from './PreviousScans';
-import FollowerReachGraph from './common/FollowerReachGraph';
+import FollowerReachGraph from './common/FollowerReachGraph'; // This is FollowerReachMonitor
 
 interface DashboardViewPageProps {
   user: User;
@@ -14,7 +14,7 @@ interface DashboardViewPageProps {
 export interface SpotifyFollowerSuccess {
   status: 'success';
   artistId: string;
-  followers: number | undefined; // Can be undefined if API returns no specific follower count
+  followers: number | undefined;
 }
 
 export interface SpotifyFollowerError {
@@ -75,7 +75,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
       const initialResults = new Map<string, SpotifyFollowerResult>();
       uniqueArtistIds.forEach(id => initialResults.set(id, {status: 'loading', artistId: id}));
-      setFollowerResults(initialResults);
+      if(isMounted) setFollowerResults(initialResults);
 
       const followerPromises: Promise<SpotifyFollowerResult>[] = uniqueArtistIds.map(artistId =>
         fetch(`/api/spotify-artist-details?artistId=${artistId}`)
@@ -101,7 +101,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
       if (!isMounted) return;
 
-      const newFollowerResults = new Map<string, SpotifyFollowerResult>(initialResults); // Start with loading states
+      const newFollowerResults = new Map<string, SpotifyFollowerResult>(followerResults); // Start with current (possibly loading) states
       let sum = 0;
       let errorsEncountered = 0;
       let successfulFetches = 0;
@@ -109,27 +109,20 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
       settledResults.forEach(result => {
         if (result.status === 'fulfilled' && result.value) {
             const resValue = result.value;
-            if (resValue.status === 'cancelled') return; // Skip if cancelled during fetch
+            if (resValue.status === 'cancelled') return;
 
-            newFollowerResults.set(resValue.artistId, resValue); // Update map with actual result
+            newFollowerResults.set(resValue.artistId, resValue);
 
             if (resValue.status === 'success') {
                 if (typeof resValue.followers === 'number') {
                     sum += resValue.followers;
-                    successfulFetches++;
-                } else {
-                    // Artist found, but no follower count (e.g. new artist) or API returned undefined
-                    // Still a success in terms of API call, but no followers to add
-                    console.warn(`Followers data undefined for artist ${resValue.artistId}`);
                 }
+                successfulFetches++; // Count success even if followers are undefined
             } else if (resValue.status === 'error') {
                 errorsEncountered++;
             }
         } else if (result.status === 'rejected') {
-            // This case should be less common due to catch in promise, but handle defensively
             console.error("A follower fetch promise was unexpectedly rejected:", result.reason);
-            // We don't know which artistId this was for if the promise itself rejected early.
-            // This might indicate a fundamental issue with Promise.allSettled or logic before fetch.
             errorsEncountered++;
         }
       });
@@ -144,8 +137,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         } else if (errorsEncountered > 0) {
              setFollowerFetchError("Could not load data for some artists. Total may be incomplete.");
         } else if (successfulFetches === 0 && uniqueArtistIds.length > 0 && errorsEncountered === 0) {
-             // All fetches might have returned success but with undefined followers
-            setFollowerFetchError(null);
+            setFollowerFetchError(null); // No errors, but no countable followers
         } else {
             setFollowerFetchError(null);
         }
@@ -155,7 +147,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
     fetchAllFollowers();
     return () => { isMounted = false; };
-  }, [uniqueArtistIds]);
+  }, [uniqueArtistIds]); // Removed followerResults from deps to avoid re-triggering from its own update
 
 
   if (previousScans.length === 0 && !isFollowerLoading) {
@@ -175,6 +167,8 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         totalFollowers={totalFollowers}
         isLoading={isFollowerLoading}
         error={followerFetchError}
+        scanLogs={previousScans}
+        followerResults={followerResults}
       />
       <PreviousScans
         scanLogs={previousScans}

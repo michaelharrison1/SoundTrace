@@ -1,18 +1,39 @@
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import ProgressBar from './ProgressBar'; // For loading state inside the content area
+import { TrackScanLog, AcrCloudMatch } from '../../types';
+import { SpotifyFollowerResult } from '../DashboardViewPage';
+import ArtistFollowers from './ArtistFollowers'; // Re-use for consistency
 
 interface FollowerReachMonitorProps {
   totalFollowers: number | null | undefined;
-  isLoading: boolean;
-  error?: string | null;
+  isLoading: boolean; // For total followers calculation
+  error?: string | null; // For total followers calculation
+  scanLogs: TrackScanLog[];
+  followerResults: Map<string, SpotifyFollowerResult>;
 }
 
-const MAX_BAR_SLOTS = 30; // Number of physical bar slots visible on the chart
-const ACTIVE_BAR_COLOR = '#34D399'; // Green color for active bars and line glow
-const CHART_BACKGROUND_COLOR = '#262626'; // neutral-800, dark gray
+const MAX_BAR_SLOTS = 30;
+const ACTIVE_BAR_COLOR = '#34D399';
+const CHART_BACKGROUND_COLOR = '#262626';
 const GRID_COLOR = 'rgba(128, 128, 128, 0.2)';
-const LINE_ANIMATION_DURATION_MS = 3750; // Duration for the line to sweep across (was 2500)
+const LINE_ANIMATION_DURATION_MS = 3750;
+
+type MonitorTab = 'reach' | 'stats';
+type ArtistSortableColumn = 'artistName' | 'matchedTracksCount' | 'spotifyFollowers' | 'averageConfidence';
+type SortDirection = 'asc' | 'desc';
+
+interface ArtistLeaderboardEntry {
+  artistName: string;
+  matchedTracksCount: number;
+  spotifyArtistId?: string; // Keep for linking to followerResults
+  spotifyFollowers: number | null | undefined;
+  isFollowersLoading: boolean;
+  followersError?: string;
+  averageConfidence: number;
+  followerBarPercent: number;
+  key: string;
+}
 
 const FakeWindowIcon: React.FC = () => (
   <div className="w-4 h-4 bg-gray-300 border border-t-white border-l-white border-r-gray-500 border-b-gray-500 inline-flex items-center justify-center mr-1 align-middle">
@@ -55,36 +76,45 @@ const calculateBarConfig = (followers: number | null | undefined): BarConfig => 
 };
 
 
-const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollowers, isLoading, error }) => {
-  const [lineProgress, setLineProgress] = useState(0); // 0 to 1
-  const [barConfig, setBarConfig] = useState<BarConfig>(calculateBarConfig(totalFollowers));
+const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
+  totalFollowers,
+  isLoading: isLoadingTotalFollowers,
+  error: totalFollowersError,
+  scanLogs,
+  followerResults
+}) => {
+  const [activeMonitorTab, setActiveMonitorTab] = useState<MonitorTab>('reach');
+
+  // States for "Total Reach" tab
+  const [lineProgress, setLineProgress] = useState(0);
+  const [reachBarConfig, setReachBarConfig] = useState<BarConfig>(calculateBarConfig(totalFollowers));
   const animationFrameId = useRef<number | null>(null);
   const animationStartTime = useRef<number>(0);
 
+  // States for "Artist Stats" tab
+  const [artistSortColumn, setArtistSortColumn] = useState<ArtistSortableColumn>('matchedTracksCount');
+  const [artistSortDirection, setArtistSortDirection] = useState<SortDirection>('desc');
+
   useEffect(() => {
-    setBarConfig(calculateBarConfig(totalFollowers));
+    setReachBarConfig(calculateBarConfig(totalFollowers));
   }, [totalFollowers]);
 
   const animateLineCallback = useCallback((timestamp: number) => {
     if (animationStartTime.current === 0) {
       animationStartTime.current = timestamp;
     }
-
     const elapsedTime = timestamp - animationStartTime.current;
     let newProgress = elapsedTime / LINE_ANIMATION_DURATION_MS;
-
     if (newProgress >= 1.0) {
-      newProgress = 0; // Reset for the loop
-      animationStartTime.current = timestamp; // Restart the timer from the current frame
+      newProgress = 0;
+      animationStartTime.current = timestamp;
     }
-
     setLineProgress(newProgress);
     animationFrameId.current = requestAnimationFrame(animateLineCallback);
-  }, []); // LINE_ANIMATION_DURATION_MS is a const, not a prop, so not needed in deps
+  }, []);
 
   useEffect(() => {
-    const shouldAnimate = !isLoading && !error && (totalFollowers ?? 0) > 0;
-
+    const shouldAnimate = activeMonitorTab === 'reach' && !isLoadingTotalFollowers && !totalFollowersError && (totalFollowers ?? 0) > 0;
     if (shouldAnimate) {
       if (!animationFrameId.current) {
         animationStartTime.current = performance.now() - (lineProgress * LINE_ANIMATION_DURATION_MS);
@@ -95,83 +125,143 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
         cancelAnimationFrame(animationFrameId.current);
         animationFrameId.current = null;
       }
-      if (isLoading || error || (totalFollowers ?? 0) <= 0) {
+      if (activeMonitorTab === 'reach' && (isLoadingTotalFollowers || totalFollowersError || (totalFollowers ?? 0) <= 0)) {
          setLineProgress(0);
       }
     }
-
     return () => {
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
         animationFrameId.current = null;
       }
     };
-  }, [isLoading, error, totalFollowers, animateLineCallback, lineProgress]);
-
+  }, [activeMonitorTab, isLoadingTotalFollowers, totalFollowersError, totalFollowers, animateLineCallback, lineProgress]);
 
   const formatFollowersDisplay = (count: number | null | undefined): string => {
-    if (isLoading && typeof count === 'undefined') return "Loading...";
+    if (isLoadingTotalFollowers && typeof count === 'undefined') return "Loading...";
     if (typeof count === 'undefined') return "Loading...";
     if (count === null) return "N/A";
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
     return count.toString();
   };
-  const displayValue = formatFollowersDisplay(totalFollowers);
+  const displayTotalReachValue = formatFollowersDisplay(totalFollowers);
 
-  return (
-    <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black">
-      {/* Title Bar */}
-      <div className="title-bar flex items-center justify-between bg-[#000080] text-white px-1 py-0.5 h-6 select-none">
-        <div className="flex items-center">
-          <FakeWindowIcon />
-          <span className="font-bold text-sm">Follower Reach Monitor</span>
-        </div>
-        <div className="flex space-x-0.5">
-          <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs" aria-label="Minimize">_</button>
-          <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs flex items-center justify-center" aria-label="Maximize">
-            <div className="w-2 h-2 border border-black"></div>
-          </button>
-          <button className="win95-button-sm bg-[#C0C0C0] text-black font-bold font-mono w-4 h-4 leading-none text-xs" aria-label="Close">X</button>
-        </div>
-      </div>
+  // --- Artist Stats Tab Logic ---
+  const aggregatedArtistData = useMemo(() => {
+    const artistMap = new Map<string, { name: string, id?: string, matches: AcrCloudMatch[] }>();
 
-      {/* Menu Bar */}
-      <div className="menu-bar flex space-x-2 px-1 py-0.5 border-b border-t-white border-b-[#808080] select-none">
-        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>F</u>ile</span>
-        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>E</u>dit</span>
-        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>V</u>iew</span>
-        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>H</u>elp</span>
-      </div>
+    scanLogs.forEach(log => {
+      log.matches.forEach(match => {
+        const artistKey = match.spotifyArtistId || match.artist; // Prefer ID for uniqueness
+        if (!artistMap.has(artistKey)) {
+          artistMap.set(artistKey, { name: match.artist, id: match.spotifyArtistId, matches: [] });
+        }
+        artistMap.get(artistKey)!.matches.push(match);
+      });
+    });
 
-      {/* Tabs */}
-      <div className="tabs-container flex pl-1 pt-1 bg-[#C0C0C0] select-none">
-        <div className="tab selected bg-[#C0C0C0] px-3 py-1 text-sm win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10 cursor-default">
-          Total Reach
-        </div>
-        <div className="tab bg-[#C0C0C0] px-3 py-1 text-sm win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 ml-0.5 opacity-75 cursor-default">
-          Artist Stats
-        </div>
-        <div className="tab bg-[#C0C0C0] px-3 py-1 text-sm win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 ml-0.5 opacity-75 cursor-default">
-          Settings
-        </div>
-      </div>
+    const processedData: Omit<ArtistLeaderboardEntry, 'followerBarPercent' | 'key'>[] = [];
+    artistMap.forEach((data, key) => {
+      const totalConfidence = data.matches.reduce((sum, m) => sum + m.matchConfidence, 0);
+      const avgConfidence = data.matches.length > 0 ? totalConfidence / data.matches.length : 0;
 
-      <div className="tab-content-wrapper p-0.5 pt-0 bg-[#C0C0C0]">
-        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[220px] flex flex-col">
+      const followerInfo = data.id ? followerResults.get(data.id) : undefined;
+      let followers: number | null | undefined = undefined;
+      let isLoadingFollowers = false;
+      let errorFollowers: string | undefined = undefined;
+
+      if (followerInfo) {
+        if (followerInfo.status === 'success') followers = followerInfo.followers;
+        else if (followerInfo.status === 'error') { followers = null; errorFollowers = followerInfo.reason; }
+        else if (followerInfo.status === 'loading') isLoadingFollowers = true;
+        else followers = null; // cancelled or other
+      } else if (data.id) { // If ID exists but no info, assume loading
+         isLoadingFollowers = true;
+      }
+
+
+      processedData.push({
+        artistName: data.name,
+        spotifyArtistId: data.id,
+        matchedTracksCount: data.matches.length,
+        spotifyFollowers: followers,
+        isFollowersLoading: isLoadingFollowers,
+        followersError: errorFollowers,
+        averageConfidence: parseFloat(avgConfidence.toFixed(1)),
+      });
+    });
+
+    // Calculate followerBarPercent
+    const maxFollowers = Math.max(0, ...processedData.map(a => a.spotifyFollowers ?? 0));
+
+    return processedData.map((artist, index) => ({
+      ...artist,
+      key: artist.spotifyArtistId || `${artist.artistName}-${index}`,
+      followerBarPercent: maxFollowers > 0 && typeof artist.spotifyFollowers === 'number' ? (artist.spotifyFollowers / maxFollowers) * 100 : 0,
+    }));
+
+  }, [scanLogs, followerResults]);
+
+  const sortedArtistData = useMemo(() => {
+    return [...aggregatedArtistData].sort((a, b) => {
+      let valA: any, valB: any;
+      switch (artistSortColumn) {
+        case 'artistName':
+          valA = a.artistName; valB = b.artistName;
+          return artistSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'matchedTracksCount':
+          valA = a.matchedTracksCount; valB = b.matchedTracksCount;
+          break;
+        case 'spotifyFollowers':
+          valA = a.spotifyFollowers ?? -1; // Treat null/undefined as -1 for sorting
+          valB = b.spotifyFollowers ?? -1;
+          break;
+        case 'averageConfidence':
+          valA = a.averageConfidence; valB = b.averageConfidence;
+          break;
+        default: return 0;
+      }
+      return artistSortDirection === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [aggregatedArtistData, artistSortColumn, artistSortDirection]);
+
+  const handleArtistSort = (column: ArtistSortableColumn) => {
+    if (artistSortColumn === column) {
+      setArtistSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setArtistSortColumn(column);
+      // Default directions for new columns
+      if (column === 'artistName') setArtistSortDirection('asc');
+      else setArtistSortDirection('desc');
+    }
+  };
+
+  const renderArtistSortArrow = (column: ArtistSortableColumn) => {
+    if (artistSortColumn === column) {
+      return artistSortDirection === 'asc' ? ' ▲' : ' ▼';
+    }
+    return '';
+  };
+
+
+  // Tab rendering logic
+  const renderTabContent = () => {
+    if (activeMonitorTab === 'reach') {
+      return (
+        <>
           <h4 className="text-base font-semibold text-black mb-1 text-center">Total Estimated Spotify Reach</h4>
-
-          {isLoading ? (
+          {isLoadingTotalFollowers ? (
             <div className="flex flex-col items-center justify-center flex-grow py-4">
                <ProgressBar text="Calculating reach..." />
             </div>
-          ) : error ? (
+          ) : totalFollowersError ? (
             <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center flex-grow">
-              <p>Error: {error}</p>
+              <p>Error: {totalFollowersError}</p>
             </div>
           ) : (
             <>
-              <p className="text-3xl text-black font-bold my-3 text-center">{displayValue}</p>
+              <p className="text-3xl text-black font-bold my-3 text-center">{displayTotalReachValue}</p>
               <div
                 className="performance-chart-area win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32"
                 style={{
@@ -183,28 +273,21 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
                   backgroundSize: "10px 10px"
                 }}
                 role="img"
-                aria-label={`Performance chart. Current total follower reach: ${displayValue}. ${barConfig.unitLabel ? 'Each bar segment represents ' + barConfig.unitLabel + ' followers.' : ''}`}
+                aria-label={`Performance chart. Current total follower reach: ${displayTotalReachValue}. ${reachBarConfig.unitLabel ? 'Each bar segment represents ' + reachBarConfig.unitLabel + ' followers.' : ''}`}
               >
-                {/* Bars Area */}
                 <div className="flex w-full h-full items-end">
                   {[...Array(MAX_BAR_SLOTS)].map((_, i) => {
-                    const barIsActive = lineProgress * MAX_BAR_SLOTS > i && i < barConfig.numberOfBarsToActivate && (totalFollowers ?? 0) > 0;
+                    const barIsActive = lineProgress * MAX_BAR_SLOTS > i && i < reachBarConfig.numberOfBarsToActivate && (totalFollowers ?? 0) > 0;
                     const barHeight = barIsActive ? '100%' : '0%';
-
                     return (
-                      <div
-                        key={i}
-                        className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center"
-                      >
+                      <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
                         <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>
-                        { (totalFollowers ?? 0) > 0 && (
+                        {(totalFollowers ?? 0) > 0 && (
                           <div
                             className="active-bar-fill relative win95-border-outset"
                             style={{
                               backgroundColor: barIsActive ? ACTIVE_BAR_COLOR : 'transparent',
-                              height: barHeight,
-                              width: '80%',
-                              transition: 'height 0.1s linear',
+                              height: barHeight, width: '80%', transition: 'height 0.1s linear',
                               boxShadow: barIsActive ? `0 0 3px ${ACTIVE_BAR_COLOR}, 0 0 6px ${ACTIVE_BAR_COLOR}` : 'none',
                             }}
                           ></div>
@@ -213,31 +296,136 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
                     );
                   })}
                 </div>
-                {/* Green Progress Line Overlay */}
-                { (totalFollowers ?? 0) > 0 && !isLoading && !error && (
+                {(totalFollowers ?? 0) > 0 && !isLoadingTotalFollowers && !totalFollowersError && (
                     <div
-                    className="progress-line absolute top-0 bottom-0"
-                    style={{
-                        left: `${lineProgress * 100}%`,
-                        width: '3px',
+                      className="progress-line absolute top-0 bottom-0"
+                      style={{
+                        left: `${lineProgress * 100}%`, width: '3px',
                         boxShadow: `0 0 5px 1px ${ACTIVE_BAR_COLOR}, 0 0 10px 2px ${ACTIVE_BAR_COLOR}`,
-                        transform: 'translateX(-1.5px)',
-                        backgroundColor: ACTIVE_BAR_COLOR,
-                    }}
-                    aria-hidden="true"
+                        transform: 'translateX(-1.5px)', backgroundColor: ACTIVE_BAR_COLOR,
+                      }}
+                      aria-hidden="true"
                     ></div>
                 )}
               </div>
               <p className="text-xs text-gray-700 mt-2 text-center">
-                {barConfig.unitLabel ? `Bars represent: ${barConfig.unitLabel} followers.` : "No follower data to display."}
+                {reachBarConfig.unitLabel ? `Bars represent: ${reachBarConfig.unitLabel} followers.` : "No follower data to display."}
                 {' '}Max visual bars: {MAX_BAR_SLOTS}.
               </p>
             </>
           )}
+        </>
+      );
+    } else if (activeMonitorTab === 'stats') {
+      if (isLoadingTotalFollowers && aggregatedArtistData.length === 0) { // Show global loading if still calculating total reach AND no artist data yet
+         return (<div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Loading artist data..." /></div>);
+      }
+      if (aggregatedArtistData.length === 0) {
+        return <p className="text-center text-gray-700 py-8">No artist data available from current scans.</p>;
+      }
+      return (
+        <div className="artist-leaderboard flex flex-col h-full">
+          <h4 className="text-base font-semibold text-black mb-2 text-center">Artist Leaderboard</h4>
+          <div className="overflow-auto win95-border-inset bg-white flex-grow p-0.5">
+            <table className="min-w-full text-sm" style={{ tableLayout: 'fixed' }}>
+              <thead className="bg-[#C0C0C0] sticky top-0 z-10">
+                <tr>
+                  <HeaderCell onClick={() => handleArtistSort('artistName')} sortArrow={renderArtistSortArrow('artistName')} width="30%">Artist Name</HeaderCell>
+                  <HeaderCell onClick={() => handleArtistSort('matchedTracksCount')} sortArrow={renderArtistSortArrow('matchedTracksCount')} width="15%" className="text-center">Matched Tracks</HeaderCell>
+                  <HeaderCell onClick={() => handleArtistSort('spotifyFollowers')} sortArrow={renderArtistSortArrow('spotifyFollowers')} width="35%" className="text-center">Followers</HeaderCell>
+                  <HeaderCell onClick={() => handleArtistSort('averageConfidence')} sortArrow={renderArtistSortArrow('averageConfidence')} width="20%" className="text-center">Avg. Confidence</HeaderCell>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {sortedArtistData.map((artist) => (
+                  <tr key={artist.key} className="hover:bg-blue-200 hover:text-black group border-b border-gray-300 last:border-b-0">
+                    <DataCell title={artist.artistName}>{artist.artistName}</DataCell>
+                    <DataCell className="text-center">{artist.matchedTracksCount}</DataCell>
+                    <DataCell className="text-center">
+                      <div className="flex items-center justify-center space-x-2 h-full">
+                        <ArtistFollowers followers={artist.spotifyFollowers} isLoading={artist.isFollowersLoading} error={artist.followersError} />
+                        <div className="w-16 h-3 bg-gray-300 win95-border-inset relative" title={`${artist.spotifyFollowers ?? 0} followers`}>
+                          <div
+                            className="h-full bg-gradient-to-r from-cyan-500 to-teal-500"
+                            style={{
+                              width: `${artist.followerBarPercent}%`,
+                              boxShadow: artist.followerBarPercent > 0 ? '1px 1px 0px #404040' : 'none'
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </DataCell>
+                    <DataCell className="text-center">{artist.averageConfidence}%</DataCell>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & {sortArrow?: string, width?: string}> = ({ children, sortArrow, width, className, ...props }) => (
+    <th
+        scope="col"
+        className={`px-2 py-1 text-left font-normal text-black win95-border-outset border-b-2 border-r-2 border-b-[#808080] border-r-[#808080] cursor-pointer select-none whitespace-nowrap ${className || ''}`}
+        style={{width: width}}
+        {...props}
+    >
+        {children}{sortArrow && <span className="ml-1">{sortArrow}</span>}
+    </th>
+  );
+
+  const DataCell: React.FC<React.TdHTMLAttributes<HTMLTableCellElement>> = ({ children, className, ...props }) => (
+    <td className={`px-2 py-1.5 text-gray-800 group-hover:text-black truncate whitespace-nowrap ${className || ''}`} {...props}>
+      {children}
+    </td>
+  );
+
+
+  return (
+    <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black">
+      <div className="title-bar flex items-center justify-between bg-[#000080] text-white px-1 py-0.5 h-6 select-none">
+        <div className="flex items-center">
+          <FakeWindowIcon />
+          <span className="font-bold text-sm">Follower Reach Monitor</span>
+        </div>
+        <div className="flex space-x-0.5">
+          <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs" aria-label="Minimize">_</button>
+          <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs flex items-center justify-center" aria-label="Maximize"><div className="w-2 h-2 border border-black"></div></button>
+          <button className="win95-button-sm bg-[#C0C0C0] text-black font-bold font-mono w-4 h-4 leading-none text-xs" aria-label="Close">X</button>
         </div>
       </div>
-
-      {/* Status Bar */}
+      <div className="menu-bar flex space-x-2 px-1 py-0.5 border-b border-t-white border-b-[#808080] select-none">
+        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>F</u>ile</span>
+        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>E</u>dit</span>
+        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>V</u>iew</span>
+        <span className="text-sm hover:bg-black hover:text-white px-1 cursor-default"><u>H</u>elp</span>
+      </div>
+      <div className="tabs-container flex pl-1 pt-1 bg-[#C0C0C0] select-none">
+        <div
+          className={`tab px-3 py-1 text-sm cursor-default ${activeMonitorTab === 'reach' ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5'}`}
+          onClick={() => setActiveMonitorTab('reach')}
+        >
+          Total Reach
+        </div>
+        <div
+          className={`tab px-3 py-1 text-sm cursor-default ${activeMonitorTab === 'stats' ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5'}`}
+          onClick={() => setActiveMonitorTab('stats')}
+        >
+          Artist Stats
+        </div>
+        <div className="tab bg-[#C0C0C0] px-3 py-1 text-sm win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 ml-0.5 opacity-75 cursor-default">
+          Settings
+        </div>
+      </div>
+      <div className="tab-content-wrapper p-0.5 pt-0 bg-[#C0C0C0]">
+        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[260px] flex flex-col"> {/* Increased min-h */}
+          {renderTabContent()}
+        </div>
+      </div>
       <div className="status-bar flex justify-between items-center px-1 py-0 border-t-2 border-t-[#808080] bg-[#C0C0C0] h-5 text-xs select-none">
         <span className="win95-border-inset px-2 py-0 h-[18px] flex items-center">Ready.</span>
         <div className="flex space-x-0.5 h-[18px]">
