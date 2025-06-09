@@ -2,7 +2,8 @@
 import { User } from '../types';
 
 // Ensure VITE_API_BASE_URL is set in your environment for production.
-const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.soundtrace.uk';
+const defaultApiBaseUrl = 'https://api.soundtrace.uk';
+const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
 
 
 interface LoginResponse {

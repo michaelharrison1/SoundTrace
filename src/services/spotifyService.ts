@@ -2,7 +2,8 @@
 // Service to interact with your backend's Spotify auth endpoints
 
 // Ensure VITE_API_BASE_URL is set in your environment for production.
-const API_BASE_URL_ROOT = import.meta.env.VITE_API_BASE_URL || 'https://api.soundtrace.uk';
+const defaultApiBaseUrl = 'https://api.soundtrace.uk';
+const API_BASE_URL_ROOT = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
 const SPOTIFY_AUTH_ENDPOINT = `${API_BASE_URL_ROOT}/api/auth/spotify`;
 
 
