@@ -1,10 +1,10 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { TrackScanLog, AcrCloudMatch, SpotifyTrackDetails } from '../types'; // Uses TrackScanLog
+import { TrackScanLog, AcrCloudMatch, SpotifyTrackDetails, SpotifyFollowerResult } from '../types'; // Uses TrackScanLog
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
-import { SpotifyFollowerResult } from '../types'; // Import for follower data type from types.ts
+// import { SpotifyFollowerResult } from '../types'; // Import for follower data type from types.ts (already in first line)
 import HeadphonesIcon from './icons/HeadphonesIcon';
 import AudioPlayer from './common/AudioPlayer';
 import PlayIcon from './icons/PlayIcon'; // For disabling button feedback
@@ -429,7 +429,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
       </div>
       {currentPlayingInfo && (
         <AudioPlayer
-            key={currentPlayingInfo.trackId} // Force re-render on track change
+            key={currentPlayingInfo ? currentPlayingInfo.trackId : undefined}
             src={currentPlayingInfo.previewUrl}
             trackTitle={currentPlayingInfo.trackName}
             trackArtist={currentPlayingInfo.artistName}
