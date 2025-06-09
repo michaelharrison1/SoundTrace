@@ -19,19 +19,29 @@ const CHART_BACKGROUND_COLOR = '#262626';
 const GRID_COLOR = 'rgba(128, 128, 128, 0.2)';
 const LINE_ANIMATION_DURATION_MS = 3750;
 
-type MonitorTab = 'reach' | 'stats';
-type ArtistSortableColumn = 'artistName' | 'matchedTracksCount' | 'spotifyFollowers' | 'averageConfidence';
+type MonitorTab = 'reach' | 'artistStats' | 'beatStats'; // Updated tab names
+type ArtistSortableColumn = 'artistName' | 'matchedTracksCount' | 'spotifyFollowers' | 'mostRecentMatchDate' | 'spotifyPopularity';
+type BeatSortableColumn = 'beatName' | 'totalMatches';
 type SortDirection = 'asc' | 'desc';
 
 interface ArtistLeaderboardEntry {
   artistName: string;
   matchedTracksCount: number;
-  spotifyArtistId?: string; // Keep for linking to followerResults
+  spotifyArtistId?: string;
   spotifyFollowers: number | null | undefined;
   isFollowersLoading: boolean;
   followersError?: string;
-  averageConfidence: number;
   followerBarPercent: number;
+  mostRecentMatchDate: string | null;
+  spotifyPopularity: number | null | undefined;
+  genres: string[] | undefined;
+  key: string;
+}
+
+interface BeatStatsEntry {
+  beatName: string;
+  totalMatches: number;
+  matchedSongs: AcrCloudMatch[]; // All matches for this beat
   key: string;
 }
 
@@ -75,6 +85,19 @@ const calculateBarConfig = (followers: number | null | undefined): BarConfig => 
   return { barUnit, numberOfBarsToActivate, unitLabel };
 };
 
+const PopularityBar: React.FC<{ score: number | null | undefined }> = ({ score }) => {
+  if (typeof score !== 'number' || score === null) return <span className="text-xs text-gray-500">-</span>;
+  const percent = score; // score is 0-100
+  let barColor = 'bg-green-500';
+  if (score < 40) barColor = 'bg-red-500';
+  else if (score < 70) barColor = 'bg-yellow-500';
+
+  return (
+    <div className="w-10 h-2.5 bg-gray-300 win95-border-inset relative inline-block ml-1 align-middle" title={`Popularity: ${score}`}>
+      <div className={`${barColor} h-full`} style={{ width: `${percent}%` }}></div>
+    </div>
+  );
+};
 
 const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
   totalFollowers,
@@ -94,6 +117,12 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
   // States for "Artist Stats" tab
   const [artistSortColumn, setArtistSortColumn] = useState<ArtistSortableColumn>('matchedTracksCount');
   const [artistSortDirection, setArtistSortDirection] = useState<SortDirection>('desc');
+
+  // States for "Beat Stats" tab
+  const [beatSortColumn, setBeatSortColumn] = useState<BeatSortableColumn>('totalMatches');
+  const [beatSortDirection, setBeatSortDirection] = useState<SortDirection>('desc');
+  const [expandedBeat, setExpandedBeat] = useState<string | null>(null);
+
 
   useEffect(() => {
     setReachBarConfig(calculateBarConfig(totalFollowers));
@@ -149,37 +178,48 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
 
   // --- Artist Stats Tab Logic ---
   const aggregatedArtistData = useMemo(() => {
-    const artistMap = new Map<string, { name: string, id?: string, matches: AcrCloudMatch[] }>();
+    const artistMap = new Map<string, { name: string, id?: string, matches: AcrCloudMatch[], scanDates: string[] }>();
 
     scanLogs.forEach(log => {
       log.matches.forEach(match => {
-        const artistKey = match.spotifyArtistId || match.artist; // Prefer ID for uniqueness
+        const artistKey = match.spotifyArtistId || match.artist;
         if (!artistMap.has(artistKey)) {
-          artistMap.set(artistKey, { name: match.artist, id: match.spotifyArtistId, matches: [] });
+          artistMap.set(artistKey, { name: match.artist, id: match.spotifyArtistId, matches: [], scanDates: [] });
         }
-        artistMap.get(artistKey)!.matches.push(match);
+        const artistEntry = artistMap.get(artistKey)!;
+        artistEntry.matches.push(match);
+        artistEntry.scanDates.push(log.scanDate);
       });
     });
 
     const processedData: Omit<ArtistLeaderboardEntry, 'followerBarPercent' | 'key'>[] = [];
-    artistMap.forEach((data, key) => {
-      const totalConfidence = data.matches.reduce((sum, m) => sum + m.matchConfidence, 0);
-      const avgConfidence = data.matches.length > 0 ? totalConfidence / data.matches.length : 0;
-
+    artistMap.forEach((data) => {
       const followerInfo = data.id ? followerResults.get(data.id) : undefined;
       let followers: number | null | undefined = undefined;
       let isLoadingFollowers = false;
       let errorFollowers: string | undefined = undefined;
+      let popularity: number | null | undefined = undefined;
+      let genres: string[] | undefined = undefined;
 
       if (followerInfo) {
-        if (followerInfo.status === 'success') followers = followerInfo.followers;
-        else if (followerInfo.status === 'error') { followers = null; errorFollowers = followerInfo.reason; }
-        else if (followerInfo.status === 'loading') isLoadingFollowers = true;
-        else followers = null; // cancelled or other
-      } else if (data.id) { // If ID exists but no info, assume loading
+        if (followerInfo.status === 'success') {
+          followers = followerInfo.followers;
+          popularity = followerInfo.popularity;
+          genres = followerInfo.genres;
+        } else if (followerInfo.status === 'error') {
+          followers = null; errorFollowers = followerInfo.reason;
+        } else if (followerInfo.status === 'loading') {
+          isLoadingFollowers = true;
+        } else {
+          followers = null; // cancelled or other
+        }
+      } else if (data.id) {
          isLoadingFollowers = true;
       }
 
+      const mostRecentMatchDate = data.scanDates.length > 0
+        ? new Date(Math.max(...data.scanDates.map(date => new Date(date).getTime()))).toLocaleDateString()
+        : null;
 
       processedData.push({
         artistName: data.name,
@@ -188,11 +228,12 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
         spotifyFollowers: followers,
         isFollowersLoading: isLoadingFollowers,
         followersError: errorFollowers,
-        averageConfidence: parseFloat(avgConfidence.toFixed(1)),
+        mostRecentMatchDate,
+        spotifyPopularity: popularity,
+        genres,
       });
     });
 
-    // Calculate followerBarPercent
     const maxFollowers = Math.max(0, ...processedData.map(a => a.spotifyFollowers ?? 0));
 
     return processedData.map((artist, index) => ({
@@ -214,11 +255,14 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
           valA = a.matchedTracksCount; valB = b.matchedTracksCount;
           break;
         case 'spotifyFollowers':
-          valA = a.spotifyFollowers ?? -1; // Treat null/undefined as -1 for sorting
-          valB = b.spotifyFollowers ?? -1;
+          valA = a.spotifyFollowers ?? -1; valB = b.spotifyFollowers ?? -1;
           break;
-        case 'averageConfidence':
-          valA = a.averageConfidence; valB = b.averageConfidence;
+        case 'mostRecentMatchDate':
+          valA = a.mostRecentMatchDate ? new Date(a.mostRecentMatchDate).getTime() : 0;
+          valB = b.mostRecentMatchDate ? new Date(b.mostRecentMatchDate).getTime() : 0;
+          break;
+        case 'spotifyPopularity':
+          valA = a.spotifyPopularity ?? -1; valB = b.spotifyPopularity ?? -1;
           break;
         default: return 0;
       }
@@ -231,7 +275,6 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
       setArtistSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
       setArtistSortColumn(column);
-      // Default directions for new columns
       if (column === 'artistName') setArtistSortDirection('asc');
       else setArtistSortDirection('desc');
     }
@@ -244,11 +287,73 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
     return '';
   };
 
+  // --- Beat Stats Tab Logic ---
+  const aggregatedBeatData = useMemo(() => {
+    const beatMap = new Map<string, { matchedSongs: AcrCloudMatch[] }>();
+    scanLogs.forEach(log => {
+      if (!beatMap.has(log.originalFileName)) {
+        beatMap.set(log.originalFileName, { matchedSongs: [] });
+      }
+      // Consolidate matches for the same original file from potentially multiple snippet results (if that was the logic)
+      // Current structure: TrackScanLog already has consolidated matches for an originalFile.
+      // So, we just sum up the number of *unique* song matches for this beat.
+      const existingMatches = beatMap.get(log.originalFileName)!.matchedSongs;
+      log.matches.forEach(newMatch => {
+        if (!existingMatches.find(m => m.id === newMatch.id)) {
+          existingMatches.push(newMatch);
+        }
+      });
+    });
 
-  // Tab rendering logic
+    return Array.from(beatMap.entries()).map(([beatName, data]) => ({
+      beatName,
+      totalMatches: data.matchedSongs.length,
+      matchedSongs: data.matchedSongs.sort((a,b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()), // Sort matches by release date
+      key: beatName,
+    }));
+  }, [scanLogs]);
+
+  const sortedBeatData = useMemo(() => {
+    return [...aggregatedBeatData].sort((a,b) => {
+        let valA: any, valB: any;
+        switch(beatSortColumn) {
+            case 'beatName':
+                valA = a.beatName; valB = b.beatName;
+                return beatSortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            case 'totalMatches':
+                valA = a.totalMatches; valB = b.totalMatches;
+                break;
+            default: return 0;
+        }
+        return beatSortDirection === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [aggregatedBeatData, beatSortColumn, beatSortDirection]);
+
+  const handleBeatSort = (column: BeatSortableColumn) => {
+    if (beatSortColumn === column) {
+      setBeatSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setBeatSortColumn(column);
+      if (column === 'beatName') setBeatSortDirection('asc');
+      else setBeatSortDirection('desc');
+    }
+  };
+
+    const renderBeatSortArrow = (column: BeatSortableColumn) => {
+    if (beatSortColumn === column) {
+      return beatSortDirection === 'asc' ? ' ▲' : ' ▼';
+    }
+    return '';
+  };
+
+  const toggleExpandBeat = (beatName: string) => {
+    setExpandedBeat(prev => prev === beatName ? null : beatName);
+  };
+
+  // --- Tab Rendering ---
   const renderTabContent = () => {
     if (activeMonitorTab === 'reach') {
-      return (
+      return ( /* ... Total Reach JSX remains the same ... */
         <>
           <h4 className="text-base font-semibold text-black mb-1 text-center">Total Estimated Spotify Reach</h4>
           {isLoadingTotalFollowers ? (
@@ -316,8 +421,8 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
           )}
         </>
       );
-    } else if (activeMonitorTab === 'stats') {
-      if (isLoadingTotalFollowers && aggregatedArtistData.length === 0) { // Show global loading if still calculating total reach AND no artist data yet
+    } else if (activeMonitorTab === 'artistStats') {
+      if (isLoadingTotalFollowers && aggregatedArtistData.length === 0) {
          return (<div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Loading artist data..." /></div>);
       }
       if (aggregatedArtistData.length === 0) {
@@ -325,15 +430,25 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
       }
       return (
         <div className="artist-leaderboard flex flex-col h-full">
-          <h4 className="text-base font-semibold text-black mb-2 text-center">Artist Leaderboard</h4>
+          <h4 className="text-base font-semibold text-black mb-2 text-center">Artist Statistics</h4>
           <div className="overflow-auto win95-border-inset bg-white flex-grow p-0.5">
             <table className="min-w-full text-sm" style={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '25%' }} /> {/* Artist Name */}
+                <col style={{ width: '12%' }} /> {/* Matched Tracks */}
+                <col style={{ width: '20%' }} /> {/* Followers + Bar */}
+                <col style={{ width: '15%' }} /> {/* Popularity + Bar */}
+                <col style={{ width: '13%' }} /> {/* Recent Match */}
+                <col style={{ width: '15%' }} /> {/* Genres */}
+              </colgroup>
               <thead className="bg-[#C0C0C0] sticky top-0 z-10">
                 <tr>
-                  <HeaderCell onClick={() => handleArtistSort('artistName')} sortArrow={renderArtistSortArrow('artistName')} width="30%">Artist Name</HeaderCell>
-                  <HeaderCell onClick={() => handleArtistSort('matchedTracksCount')} sortArrow={renderArtistSortArrow('matchedTracksCount')} width="15%" className="text-center">Matched Tracks</HeaderCell>
-                  <HeaderCell onClick={() => handleArtistSort('spotifyFollowers')} sortArrow={renderArtistSortArrow('spotifyFollowers')} width="35%" className="text-center">Followers</HeaderCell>
-                  <HeaderCell onClick={() => handleArtistSort('averageConfidence')} sortArrow={renderArtistSortArrow('averageConfidence')} width="20%" className="text-center">Avg. Confidence</HeaderCell>
+                  <HeaderCell onClick={() => handleArtistSort('artistName')} sortArrow={renderArtistSortArrow('artistName')}>Artist</HeaderCell>
+                  <HeaderCell onClick={() => handleArtistSort('matchedTracksCount')} sortArrow={renderArtistSortArrow('matchedTracksCount')} className="text-center">Matches</HeaderCell>
+                  <HeaderCell onClick={() => handleArtistSort('spotifyFollowers')} sortArrow={renderArtistSortArrow('spotifyFollowers')} className="text-center">Followers</HeaderCell>
+                  <HeaderCell onClick={() => handleArtistSort('spotifyPopularity')} sortArrow={renderArtistSortArrow('spotifyPopularity')} className="text-center">Popularity</HeaderCell>
+                  <HeaderCell onClick={() => handleArtistSort('mostRecentMatchDate')} sortArrow={renderArtistSortArrow('mostRecentMatchDate')} className="text-center">Recent Match</HeaderCell>
+                  <HeaderCell className="text-center">Genres</HeaderCell>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -344,19 +459,114 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
                     <DataCell className="text-center">
                       <div className="flex items-center justify-center space-x-2 h-full">
                         <ArtistFollowers followers={artist.spotifyFollowers} isLoading={artist.isFollowersLoading} error={artist.followersError} />
-                        <div className="w-16 h-3 bg-gray-300 win95-border-inset relative" title={`${artist.spotifyFollowers ?? 0} followers`}>
+                        <div className="w-12 h-2.5 bg-gray-300 win95-border-inset relative" title={`${artist.spotifyFollowers ?? 0} followers`}>
                           <div
                             className="h-full bg-gradient-to-r from-cyan-500 to-teal-500"
                             style={{
                               width: `${artist.followerBarPercent}%`,
-                              boxShadow: artist.followerBarPercent > 0 ? '1px 1px 0px #404040' : 'none'
+                              boxShadow: artist.followerBarPercent > 0 ? '0.5px 0.5px 0px #404040' : 'none'
                             }}
                           ></div>
                         </div>
                       </div>
                     </DataCell>
-                    <DataCell className="text-center">{artist.averageConfidence}%</DataCell>
+                    <DataCell className="text-center">
+                        {typeof artist.spotifyPopularity === 'number' ? artist.spotifyPopularity : (artist.isFollowersLoading && !artist.followersError ? '...' : '-')}
+                        <PopularityBar score={artist.spotifyPopularity} />
+                    </DataCell>
+                    <DataCell className="text-center">{artist.mostRecentMatchDate || '-'}</DataCell>
+                    <DataCell className="text-center">
+                      <div className="flex flex-wrap justify-center items-center gap-0.5">
+                        {(artist.genres && artist.genres.length > 0) ? artist.genres.slice(0,3).map(genre => (
+                          <span key={genre} className="text-xs px-1 py-0 bg-gray-200 group-hover:bg-gray-300 win95-border-inset text-gray-700 group-hover:text-black whitespace-nowrap">
+                            {genre}
+                          </span>
+                        )) : (artist.isFollowersLoading && !artist.followersError ? '...' : <span className="text-xs">-</span>)}
+                      </div>
+                    </DataCell>
                   </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    } else if (activeMonitorTab === 'beatStats') {
+      if (sortedBeatData.length === 0) {
+        return <p className="text-center text-gray-700 py-8">No beats have been scanned yet.</p>;
+      }
+      return (
+        <div className="beat-stats flex flex-col h-full">
+          <h4 className="text-base font-semibold text-black mb-2 text-center">Beat Statistics</h4>
+          <div className="overflow-auto win95-border-inset bg-white flex-grow p-0.5">
+            <table className="min-w-full text-sm" style={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '70%' }} /> {/* Beat Name */}
+                <col style={{ width: '30%' }} /> {/* Total Matches */}
+              </colgroup>
+              <thead className="bg-[#C0C0C0] sticky top-0 z-10">
+                <tr>
+                  <HeaderCell onClick={() => handleBeatSort('beatName')} sortArrow={renderBeatSortArrow('beatName')}>Beat Name (Your Upload)</HeaderCell>
+                  <HeaderCell onClick={() => handleBeatSort('totalMatches')} sortArrow={renderBeatSortArrow('totalMatches')} className="text-center">Total Unique Song Matches</HeaderCell>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedBeatData.map((beat) => (
+                  <React.Fragment key={beat.key}>
+                    <tr
+                      className="hover:bg-blue-200 hover:text-black group border-b border-gray-300 last:border-b-0 cursor-pointer"
+                      onClick={() => toggleExpandBeat(beat.beatName)}
+                      title={`Click to see matches for ${beat.beatName}`}
+                    >
+                      <DataCell>{expandedBeat === beat.beatName ? '▼' : '►'} {beat.beatName}</DataCell>
+                      <DataCell className="text-center">{beat.totalMatches}</DataCell>
+                    </tr>
+                    {expandedBeat === beat.beatName && beat.matchedSongs.length > 0 && (
+                      <tr className="bg-gray-50 group-hover:bg-blue-100">
+                        <td colSpan={2} className="p-0">
+                          <div className="p-2 m-1 win95-border-inset bg-white">
+                            <h5 className="text-xs font-semibold text-black mb-1">Matches for "{beat.beatName}":</h5>
+                            <div className="max-h-32 overflow-y-auto">
+                              <table className="min-w-full text-xs">
+                                <thead className="bg-gray-200">
+                                  <tr>
+                                    <th className="px-1 py-0.5 text-left font-normal text-black">Song Title</th>
+                                    <th className="px-1 py-0.5 text-left font-normal text-black">Artist</th>
+                                    <th className="px-1 py-0.5 text-center font-normal text-black">Confidence</th>
+                                    <th className="px-1 py-0.5 text-left font-normal text-black">Release</th>
+                                    <th className="px-1 py-0.5 text-left font-normal text-black">Links</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {beat.matchedSongs.map(match => (
+                                    <tr key={match.id} className="border-b border-gray-200 last:border-b-0">
+                                      <td className="px-1 py-0.5 text-gray-700 truncate" title={match.title}>{match.title}</td>
+                                      <td className="px-1 py-0.5 text-gray-700 truncate" title={match.artist}>{match.artist}</td>
+                                      <td className="px-1 py-0.5 text-gray-700 text-center">{match.matchConfidence}%</td>
+                                      <td className="px-1 py-0.5 text-gray-700">{match.releaseDate}</td>
+                                      <td className="px-1 py-0.5">
+                                        {match.platformLinks?.spotify && <a href={match.platformLinks.spotify} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mr-1">SP</a>}
+                                        {match.platformLinks?.youtube && <a href={match.platformLinks.youtube} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">YT</a>}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                     {expandedBeat === beat.beatName && beat.matchedSongs.length === 0 && (
+                        <tr className="bg-gray-50 group-hover:bg-blue-100">
+                            <td colSpan={2} className="p-0">
+                                <div className="p-2 m-1 win95-border-inset bg-white text-center text-xs text-gray-600">
+                                    No specific song matches found for this beat in the logs.
+                                </div>
+                            </td>
+                        </tr>
+                     )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -412,17 +622,20 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
           Total Reach
         </div>
         <div
-          className={`tab px-3 py-1 text-sm cursor-default ${activeMonitorTab === 'stats' ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5'}`}
-          onClick={() => setActiveMonitorTab('stats')}
+          className={`tab px-3 py-1 text-sm cursor-default ${activeMonitorTab === 'artistStats' ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5'}`}
+          onClick={() => setActiveMonitorTab('artistStats')}
         >
           Artist Stats
         </div>
-        <div className="tab bg-[#C0C0C0] px-3 py-1 text-sm win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 ml-0.5 opacity-75 cursor-default">
-          Settings
+        <div
+           className={`tab px-3 py-1 text-sm cursor-default ${activeMonitorTab === 'beatStats' ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5'}`}
+           onClick={() => setActiveMonitorTab('beatStats')}
+        >
+          Beat Stats
         </div>
       </div>
       <div className="tab-content-wrapper p-0.5 pt-0 bg-[#C0C0C0]">
-        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[260px] flex flex-col"> {/* Increased min-h */}
+        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[300px] flex flex-col"> {/* Increased min-h */}
           {renderTabContent()}
         </div>
       </div>
