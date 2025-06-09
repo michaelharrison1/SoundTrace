@@ -1,102 +1,182 @@
+
 import React, { useState, useCallback } from 'react';
-import { User, ScanResult } from '../types';
+import { User, TrackScanLog, SnippetScanResult, AcrCloudMatch } from '../types'; // Updated imports
 import FileUpload from './FileUpload';
-import { acrCloudService } from '../services/acrCloudService'; // Corrected: Use actual service
-// import Spinner from './common/Spinner'; // Using simple text for loading
-// import MusicNoteIcon from './icons/MusicNoteIcon'; // Using text/simpler icon
+import { acrCloudService } from '../src/services/acrCloudService'; // Corrected path
+import { scanLogService } from '../src/services/scanLogService';   // Added and corrected path
+import { generateSnippetsForFile } from '../src/utils/audioProcessing'; // Added and corrected path
+import ProgressBar from '../src/components/common/ProgressBar'; // Corrected path, assuming ProgressBar is in src
 
 interface ScanPageProps {
   user: User;
-  previousScans: ScanResult[];
-  setPreviousScans: React.Dispatch<React.SetStateAction<ScanResult[]>>;
+  previousScans: TrackScanLog[]; // Updated: Was previousScans: ScanResult[], now TrackScanLog[]
+  onNewScanLogsSaved: (newLogs: TrackScanLog[]) => void; // Updated: Was setPreviousScans
+  onLogout: () => void; // Added onLogout prop
 }
 
-const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, setPreviousScans }) => {
+const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsSaved, onLogout }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [scanProgressMessage, setScanProgressMessage] = useState<string>('');
   const [scanCompletionMessage, setScanCompletionMessage] = useState<string | null>(null);
-  const [duplicateFilesMessage, setDuplicateFilesMessage] = useState<string | null>(null);
+  const [alreadyScannedMessage, setAlreadyScannedMessage] = useState<string | null>(null); // Renamed from duplicateFilesMessage
 
-  const isFileDuplicate = (file: File, scans: ScanResult[]): boolean => {
-    return scans.some(scan => scan.instrumentalName === file.name && scan.instrumentalSize === file.size);
+  // Updated to check against TrackScanLog.originalFileName
+  const isFileAlreadyScanned = (file: File, scannedLogs: TrackScanLog[]): boolean => {
+    return scannedLogs.some(log => log.originalFileName === file.name);
   };
 
-  const handleScan = useCallback(async (files: File[]) => {
+  const handleScan = useCallback(async (originalFiles: File[]) => {
     setIsLoading(true);
     setError(null);
     setScanCompletionMessage(null);
-    setDuplicateFilesMessage(null);
-    setScanProgressMessage(`Preparing ${files.length} file(s)...`);
+    setAlreadyScannedMessage(null);
+    setScanProgressMessage('Preparing tracks...');
 
-    const newFilesToScan: File[] = [];
-    const duplicateFiles: string[] = [];
+    if (originalFiles.length === 0) {
+      setScanCompletionMessage("No tracks selected for scanning.");
+      setIsLoading(false);
+      return;
+    }
 
-    files.forEach(file => {
-      if (isFileDuplicate(file, previousScans)) {
-        duplicateFiles.push(file.name);
+    const filesToActuallyScan: File[] = [];
+    const alreadyScannedFileNames: string[] = [];
+
+    originalFiles.forEach(originalFile => {
+      // Use previousScans from props here
+      if (isFileAlreadyScanned(originalFile, previousScans)) {
+        alreadyScannedFileNames.push(originalFile.name);
       } else {
-        newFilesToScan.push(file);
+        filesToActuallyScan.push(originalFile);
       }
     });
 
-    if (duplicateFiles.length > 0) {
-      setDuplicateFilesMessage(`${duplicateFiles.length} file(s) were duplicates: ${duplicateFiles.join(', ')}.`);
+    if (alreadyScannedFileNames.length > 0) {
+      setAlreadyScannedMessage(
+        `The following ${alreadyScannedFileNames.length} file(s) have already been scanned and are in your dashboard: ${alreadyScannedFileNames.join(', ')}. They were not scanned again.`
+      );
     }
 
-    if (newFilesToScan.length === 0 && files.length > 0) {
-        setScanCompletionMessage(duplicateFiles.length > 0 ? "No new files to scan." : "No files selected.");
-        setIsLoading(false);
-        setScanProgressMessage('');
-        if (duplicateFiles.length === 0 && files.length > 0) {
-            setError("Selected files are duplicates or no new files.");
+    if (filesToActuallyScan.length === 0) {
+      setIsLoading(false);
+      setScanProgressMessage('');
+      if (originalFiles.length > 0 && alreadyScannedFileNames.length === originalFiles.length) {
+        setScanCompletionMessage("All selected tracks have already been scanned.");
+      } else if (originalFiles.length > 0) {
+         setScanCompletionMessage("No new tracks to scan among the selection.");
+      } else {
+         setScanCompletionMessage("No tracks selected for scanning.");
+      }
+      return;
+    }
+
+    const successfullySavedLogs: TrackScanLog[] = [];
+    let processingErrorOccurred = false;
+    let tracksProcessedCount = 0;
+
+    for (let i = 0; i < filesToActuallyScan.length; i++) {
+      const originalFile = filesToActuallyScan[i];
+      tracksProcessedCount++;
+      setScanProgressMessage(`Processing track ${i + 1}/${filesToActuallyScan.length}: "${originalFile.name}"...`);
+
+      let trackMatches: AcrCloudMatch[] = [];
+      let trackStatus: TrackScanLog['status'] = 'no_matches_found';
+      let snippetsScannedCount = 0;
+      let snippetErrors = 0;
+
+      const snippets = await generateSnippetsForFile(originalFile);
+
+      if (!snippets || snippets.length === 0) {
+        trackStatus = 'error_processing';
+        const newError = `Could not generate scannable segments for ${originalFile.name}.`;
+        setError(prev => prev ? `${prev}\\n${newError}` : newError); // Use \n for multi-line display
+        processingErrorOccurred = true;
+      } else {
+        for (let j = 0; j < snippets.length; j++) {
+          const snippet = snippets[j];
+          setScanProgressMessage(`Scanning segment ${j + 1}/${snippets.length} of "${originalFile.name}"...`);
+          try {
+            const snippetScanResult: SnippetScanResult = await acrCloudService.scanWithAcrCloud(snippet);
+            if (snippetScanResult.matches && snippetScanResult.matches.length > 0) {
+              trackMatches.push(...snippetScanResult.matches);
+            }
+            snippetsScannedCount++;
+          } catch (err: any) {
+            console.error(`Error scanning snippet ${snippet.name} for ${originalFile.name}:`, err);
+            const newError = `Error scanning segment of ${originalFile.name}: ${err.message}`;
+            setError(prev => prev ? `${prev}\\n${newError}` : newError);
+            snippetErrors++;
+            processingErrorOccurred = true;
+          }
+        }
+
+        if (snippetsScannedCount === 0 && snippetErrors > 0) {
+            trackStatus = 'error_processing';
+        } else if (trackMatches.length > 0) {
+            const uniqueMatchesMap = new Map<string, AcrCloudMatch>();
+            trackMatches.forEach(match => {
+                if (!uniqueMatchesMap.has(match.id)) { uniqueMatchesMap.set(match.id, match); }
+            });
+            trackMatches = Array.from(uniqueMatchesMap.values());
+            trackStatus = 'matches_found';
         } else {
-            setError(null);
+             trackStatus = 'no_matches_found';
         }
-        return;
-    }
-     if (newFilesToScan.length === 0 && files.length === 0) {
-        setScanCompletionMessage("No files selected.");
-        setIsLoading(false);
-        setScanProgressMessage('');
-        setError("Please select files to scan.");
-        return;
-    }
+        if (snippetErrors > 0 && snippetsScannedCount > 0 && trackStatus !== 'error_processing') {
+            trackStatus = 'partially_completed';
+        }
+      }
 
+      const logDataToSave: Omit<TrackScanLog, 'logId' | 'scanDate'> = {
+        originalFileName: originalFile.name,
+        originalFileSize: originalFile.size,
+        matches: trackMatches,
+        status: trackStatus,
+      };
 
-    const batchResults: ScanResult[] = [];
-    let firstError: string | null = null;
-
-    for (let i = 0; i < newFilesToScan.length; i++) {
-      const file = newFilesToScan[i];
-      setScanProgressMessage(`Scanning ${i + 1}/${newFilesToScan.length}: "${file.name}"...`);
       try {
-        // Use the new acrCloudService
-        const result = await acrCloudService.scanWithAcrCloud(file);
-        batchResults.push(result);
-      } catch (err: any) {
-        console.error(`Error scanning ${file.name}:`, err);
-        if (!firstError) {
-          firstError = `Error scanning "${file.name}": ${err.message || 'Unknown error.'}`;
+        setScanProgressMessage(`Saving results for "${originalFile.name}"...`);
+        const savedLog = await scanLogService.saveScanLog(logDataToSave);
+        successfullySavedLogs.push(savedLog);
+      } catch (saveError: any) {
+        console.error(`Failed to save scan log for ${originalFile.name}:`, saveError);
+        const isAuthError = (saveError.status === 401 || saveError.status === 403) ||
+                            (typeof saveError.message === 'string' && saveError.message.toLowerCase().includes('token is not valid'));
+        if (isAuthError) {
+          console.warn("Authentication error while saving scan log. Logging out.", saveError.message);
+          onLogout();
+          setIsLoading(false);
+          return;
         }
+        const newError = `Failed to save results for ${originalFile.name}: ${saveError.message}`;
+        setError(prev => prev ? `${prev}\\n${newError}` : newError);
+        processingErrorOccurred = true;
       }
     }
 
-    if (batchResults.length > 0) {
-      setPreviousScans(prevScans => [...batchResults.slice().reverse(), ...prevScans]);
-      setScanCompletionMessage(`${batchResults.length} new scans added to dashboard.`);
-    } else if (newFilesToScan.length > 0 && !firstError) {
-       setScanCompletionMessage("No new matches found from the uploaded files.");
+    if (successfullySavedLogs.length > 0) {
+      onNewScanLogsSaved(successfullySavedLogs);
     }
 
-
-    if (firstError) {
-        setError(firstError);
+    let finalCompletionMsg = "";
+    if (tracksProcessedCount > 0) {
+        finalCompletionMsg += `${tracksProcessedCount} new track(s) processed. `;
+        const foundMatchesCount = successfullySavedLogs.filter(log => log.status === 'matches_found' && log.matches.length > 0).length;
+        if (foundMatchesCount > 0) {
+            finalCompletionMsg += `${foundMatchesCount} had new matches saved. `;
+        } else if (successfullySavedLogs.length > 0) {
+            finalCompletionMsg += `No new matches found in the processed tracks. `;
+        }
+    } else if (alreadyScannedFileNames.length === originalFiles.length && originalFiles.length > 0) {
+        // This state is handled before the loop now.
+    } else {
+        finalCompletionMsg = "No new tracks were processed.";
     }
+    setScanCompletionMessage(finalCompletionMsg.trim() || null);
 
     setIsLoading(false);
     setScanProgressMessage('');
-  }, [previousScans, setPreviousScans]);
+  }, [onNewScanLogsSaved, user, previousScans, onLogout]); // Added dependencies
 
   return (
     <div className="space-y-3">
@@ -105,43 +185,39 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, setPreviousSca
       </section>
 
       {isLoading && (
-        <div className="p-3 win95-border-outset bg-[#C0C0C0] text-center">
-          {/* <Spinner size="md" color="text-black" /> */}
-          <p className="mt-1 text-base text-black font-normal">
-            {scanProgressMessage || 'Scanning...'}
-          </p>
-          <p className="text-xs text-gray-700">Please wait.</p>
+        <div className="p-3 win95-border-outset bg-[#C0C0C0]">
+          <ProgressBar text={scanProgressMessage || 'Scanning...'} className="mb-1" />
+          <p className="text-xs text-gray-700 text-center">Please wait.</p>
         </div>
       )}
 
-      {!isLoading && (error || scanCompletionMessage || duplicateFilesMessage) && (
+      {!isLoading && (error || scanCompletionMessage || alreadyScannedMessage) && (
         <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
             <div className="p-2 bg-[#C0C0C0] space-y-1.5">
-            {error && (
-                <div className="p-2 bg-yellow-200 text-black border border-black">
-                <p className="font-semibold">Error:</p>
-                <p>{error}</p>
-                </div>
-            )}
             {scanCompletionMessage && (
                 <div className="p-2 bg-green-200 text-black border border-black">
-                <p className="font-semibold">Status:</p>
+                <p className="font-semibold">Scan Status:</p>
                 <p>{scanCompletionMessage}</p>
                 </div>
             )}
-            {duplicateFilesMessage && (
+            {alreadyScannedMessage && (
                 <div className="p-2 bg-blue-200 text-black border border-black">
-                <p className="font-semibold">Duplicates:</p>
-                <p>{duplicateFilesMessage}</p>
+                <p className="font-semibold">Already Scanned:</p>
+                <p>{alreadyScannedMessage}</p>
+                </div>
+            )}
+            {error && (
+                <div className="p-2 bg-yellow-200 text-black border border-black">
+                <p className="font-semibold">Notifications/Errors:</p>
+                <p style={{whiteSpace: 'pre-line'}}>{error}</p>
                 </div>
             )}
             </div>
         </div>
       )}
 
-      {!isLoading && !error && !scanCompletionMessage && !duplicateFilesMessage && (
+      {!isLoading && !error && !scanCompletionMessage && !alreadyScannedMessage && (
          <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
-            {/* <MusicNoteIcon className="mx-auto h-12 w-12 text-gray-500 mb-2" /> */}
             <span className="text-4xl text-gray-500" aria-hidden="true">♫</span>
             <h2 className="text-lg font-normal text-black mt-1">Ready to Scan?</h2>
             <p className="text-gray-700 mt-0.5 text-sm">Upload instrumentals above to begin.</p>

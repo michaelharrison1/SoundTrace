@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, TrackScanLog } from '../types';
-import { scanLogService } from '../services/scanLogService';
+import { scanLogService } from '../src/services/scanLogService'; // Corrected import path
 import Button from './common/Button';
 // LogoutIcon is now in App.tsx's global header
 import ScanPage from './ScanPage';
@@ -131,8 +131,9 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
       {!isLoadingScans && !scanError && activeView === 'scan' && (
         <ScanPage
           user={user}
-          previousScanLogs={previousScans}
+          previousScans={previousScans} /* Corrected prop name */
           onNewScanLogsSaved={addMultipleScanLogsToState}
+          onLogout={onLogout} /* Added onLogout prop */
         />
       )}
       {!isLoadingScans && !scanError && activeView === 'dashboard' && (

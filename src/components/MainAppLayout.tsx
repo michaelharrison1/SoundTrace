@@ -10,7 +10,7 @@ import ProgressBar from './common/ProgressBar';
 
 interface MainAppLayoutProps {
   user: User;
-  onLogout: () => void; // Kept for now, though logout is primarily handled by App's header
+  onLogout: () => void;
 }
 
 type ActiveView = 'scan' | 'dashboard';
@@ -58,7 +58,11 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         setPreviousScans([]); // Update state immediately
       } catch (error: any) {
         console.error("Failed to clear all scan logs:", error);
-        setScanError(error.message || "Could not clear scan history.");
+        if ((error.status === 401 || error.status === 403) || (typeof error.message === 'string' && error.message.toLowerCase().includes('token is not valid'))) {
+            onLogout();
+        } else {
+            setScanError(error.message || "Could not clear scan history.");
+        }
       } finally {
         setIsLoadingScans(false);
       }
@@ -74,7 +78,11 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
           setPreviousScans(prevScans => prevScans.filter(log => log.logId !== logIdToDelete));
         } catch (error: any) {
           console.error(`Failed to delete scan log ${logIdToDelete}:`, error);
-          setScanError(error.message || `Could not delete scan log.`);
+          if ((error.status === 401 || error.status === 403) || (typeof error.message === 'string' && error.message.toLowerCase().includes('token is not valid'))) {
+            onLogout();
+          } else {
+            setScanError(error.message || `Could not delete scan log.`);
+          }
         } finally {
           setIsLoadingScans(false);
         }
@@ -90,10 +98,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
   };
 
   return (
-    // The outer div and min-h-screen are now handled by App.tsx
-    // Header is removed as it's global in App.tsx
     <>
-      {/* Navigation as "Tabs" or simple buttons under the global title bar */}
       <nav className="flex justify-start space-x-0.5 p-1 bg-[#C0C0C0] border-t-2 border-[#DFDFDF] mb-2">
         <Button
           onClick={() => setActiveView('scan')}
@@ -113,13 +118,12 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         </Button>
       </nav>
 
-      {/* Main Content Area for MainAppLayout - already has p-2 from App.tsx's main > div */}
-      {isLoadingScans && !scanError && ( // Show loading only if no specific error has been set by non-auth failure
+      {isLoadingScans && !scanError && (
         <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
           <ProgressBar text="Loading scan history..." />
         </div>
       )}
-      {scanError && !isLoadingScans && ( // Show error if loading finished and error exists (and it wasn't an auth error that triggered logout)
+      {scanError && !isLoadingScans && (
         <div className="p-3 win95-border-outset bg-yellow-200 text-black border border-black mb-2">
           <p className="font-semibold text-center">Error loading scan history:</p>
           <p className="text-center mb-1">{scanError}</p>
@@ -133,6 +137,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
           user={user}
           previousScans={previousScans}
           onNewScanLogsSaved={addMultipleScanLogsToState}
+          onLogout={onLogout} // Pass onLogout down
         />
       )}
       {!isLoadingScans && !scanError && activeView === 'dashboard' && (

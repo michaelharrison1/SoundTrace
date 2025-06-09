@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import LoginPage from './components/LoginPage';
 import RegistrationPage from './components/RegistrationPage';
 import MainAppLayout from './components/MainAppLayout';
@@ -45,8 +45,9 @@ const AppContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [authView, setAuthView] = useState<AuthView>('login');
 
-  // Spotify context hook for connection status, used by SpotifyConnectButton
-  // const spotifyCtx = useSpotifyPlayer(); // No longer directly used in AppContent like this
+  // Get disconnectSpotify once for use in handleLogout
+  const { disconnectSpotify: spotifyDisconnect } = useSpotifyPlayer();
+
 
   useEffect(() => {
     try {
@@ -74,22 +75,32 @@ const AppContent: React.FC = () => {
     // Spotify connection is now handled by SpotifyContext & user interaction
   };
 
-  const handleLogout = () => {
-    const { disconnectSpotify: contextDisconnectSpotify } = useSpotifyPlayer(); // Get disconnect from context
+  const handleLogout = useCallback(async () => {
+    try {
+      // Attempt to disconnect Spotify first, but don't let it block app logout
+      if (spotifyDisconnect) {
+        await spotifyDisconnect().catch(err => {
+          console.error("Error during Spotify disconnect on logout (non-critical):", err);
+        });
+      }
+    } catch (error) {
+      // This catch is for errors if spotifyDisconnect hook call itself fails, which is unlikely
+      console.error("Error calling spotifyDisconnect function (non-critical):", error);
+    }
+
     try {
       localStorage.removeItem('authToken');
       localStorage.removeItem('currentUserDetails');
-      // Spotify tokens are primarily backend/cookie managed, but if frontend context needs reset:
-      if(contextDisconnectSpotify) contextDisconnectSpotify(); // This calls backend disconnect too
     } catch (error) {
       console.error("Error clearing auth data from localStorage:", error);
     }
+
     setCurrentUser(null);
     setAuthView('login');
     if (document.activeElement && typeof (document.activeElement as HTMLElement).blur === 'function') {
       (document.activeElement as HTMLElement).blur();
     }
-  };
+  }, [spotifyDisconnect, setCurrentUser, setAuthView]);
 
   const getButtonClass = (viewType: AuthView) => {
     return `px-2 py-0.5 !bg-[#C0C0C0] !text-black !border-t-white !border-l-white !border-b-[#808080] !border-r-[#808080] !shadow-[1px_1px_0px_#000000] active:!shadow-[0px_0px_0px_#000000] active:!border-t-[#808080] active:!border-l-[#808080] active:!border-b-white active:!border-r-white ${authView === viewType && !currentUser ? '!shadow-none !translate-x-[1px] !translate-y-[1px] !border-t-[#808080] !border-l-[#808080] !border-b-white !border-r-white' : ''}`;

@@ -11,9 +11,10 @@ interface ScanPageProps {
   user: User;
   previousScans: TrackScanLog[]; // To check for existing original file names
   onNewScanLogsSaved: (newLogs: TrackScanLog[]) => void;
+  onLogout: () => void; // Add onLogout prop
 }
 
-const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsSaved }) => {
+const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsSaved, onLogout }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [scanProgressMessage, setScanProgressMessage] = useState<string>('');
@@ -84,7 +85,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
       if (!snippets || snippets.length === 0) {
         trackStatus = 'error_processing';
         const newError = `Could not generate scannable segments for ${originalFile.name}.`;
-        setError(prev => prev ? `${prev}\n${newError}` : newError);
+        setError(prev => prev ? `${prev}\\n${newError}` : newError);
         processingErrorOccurred = true;
       } else {
         for (let j = 0; j < snippets.length; j++) {
@@ -99,7 +100,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
           } catch (err: any) {
             console.error(`Error scanning snippet ${snippet.name} for ${originalFile.name}:`, err);
             const newError = `Error scanning segment of ${originalFile.name}: ${err.message}`;
-            setError(prev => prev ? `${prev}\n${newError}` : newError);
+            setError(prev => prev ? `${prev}\\n${newError}` : newError);
             snippetErrors++;
             processingErrorOccurred = true;
           }
@@ -135,8 +136,16 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         successfullySavedLogs.push(savedLog);
       } catch (saveError: any) {
         console.error(`Failed to save scan log for ${originalFile.name}:`, saveError);
+        const isAuthError = (saveError.status === 401 || saveError.status === 403) ||
+                            (typeof saveError.message === 'string' && saveError.message.toLowerCase().includes('token is not valid'));
+        if (isAuthError) {
+          console.warn("Authentication error while saving scan log. Logging out.", saveError.message);
+          onLogout(); // Call onLogout on auth error
+          setIsLoading(false); // Stop loading as we are logging out
+          return; // Exit handleScan early
+        }
         const newError = `Failed to save results for ${originalFile.name}: ${saveError.message}`;
-        setError(prev => prev ? `${prev}\n${newError}` : newError);
+        setError(prev => prev ? `${prev}\\n${newError}` : newError);
         processingErrorOccurred = true;
       }
     }
@@ -163,7 +172,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
 
     setIsLoading(false);
     setScanProgressMessage('');
-  }, [onNewScanLogsSaved, user, previousScans]);
+  }, [onNewScanLogsSaved, user, previousScans, onLogout]);
 
   return (
     <div className="space-y-3">
