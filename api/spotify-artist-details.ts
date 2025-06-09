@@ -85,7 +85,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const errorBody = await artistResponse.text();
       console.error('Spotify API Error:', artistResponse.status, errorBody);
-      throw new Error(`Failed to fetch artist details from Spotify: ${artistResponse.statusText}`);
+      // Try to parse to see if Spotify provides a structured error
+      let spotifyErrorMessage = `Failed to fetch artist details from Spotify: ${artistResponse.statusText}`;
+      try {
+        const spotifyErrorJson = JSON.parse(errorBody);
+        if (spotifyErrorJson.error && spotifyErrorJson.error.message) {
+          spotifyErrorMessage = `Spotify API: ${spotifyErrorJson.error.message}`;
+        }
+      } catch (e) { /* ignore if not json */ }
+
+      return res.status(artistResponse.status).json({ message: spotifyErrorMessage });
     }
 
     const artistData = (await artistResponse.json()) as SpotifyArtistDetailsResponse;
@@ -95,14 +104,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('Error in /api/spotify-artist-details:', error);
-    // Don't expose internal server errors or API keys in client-facing messages
+    console.error('Error in /api/spotify-artist-details:', error.message);
     let clientMessage = 'Failed to fetch Spotify artist details.';
     if (error.message.includes('Spotify API credentials')) {
         clientMessage = 'Server configuration error for Spotify API.';
     } else if (error.message.includes('Spotify authentication failed')) {
         clientMessage = 'Could not authenticate with Spotify API.';
     }
-    return res.status(500).json({ message: clientMessage, details: error.message });
+    // Only return the clientMessage to avoid leaking internal details.
+    return res.status(500).json({ message: clientMessage });
   }
 }
