@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import ProgressBar from './ProgressBar'; // For loading state inside the content area
 
 interface FollowerReachMonitorProps {
@@ -8,59 +8,67 @@ interface FollowerReachMonitorProps {
   error?: string | null;
 }
 
-const MAX_GRAPH_BARS = 30; // Number of segments in the graph
-const BAR_COLORS = ['#008080', '#000080', '#800080', '#808000', '#008000', '#A9A9A9']; // Teal, DkBlue, Purple, Olive, DkGreen, DarkGray (instead of Silver for better contrast on C0C0C0)
+const VISIBLE_DATA_POINTS = 60; // Number of columns visible on the chart
+const PIXEL_LINE_COLOR = '#34D399'; // Emerald-400 for a nice green
+const CHART_BACKGROUND_COLOR = '#262626'; // neutral-800, dark gray
+const GRID_COLOR = 'rgba(128, 128, 128, 0.2)'; // Lighter gray for grid lines
+const CHART_HEIGHT_PX = 128; // Corresponds to h-32 in Tailwind (1 unit = 4px)
 
 const FakeWindowIcon: React.FC = () => (
   <div className="w-4 h-4 bg-gray-300 border border-t-white border-l-white border-r-gray-500 border-b-gray-500 inline-flex items-center justify-center mr-1 align-middle">
-    <div className="w-[7px] h-[7px] bg-[#000080]"></div> {/* Tiny blue square inside */}
+    <div className="w-[7px] h-[7px] bg-[#000080]"></div>
   </div>
 );
 
 const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollowers, isLoading, error }) => {
-  const [animatedBars, setAnimatedBars] = useState(0);
-
-  const calculateFilledBars = (followers: number | null | undefined): number => {
-    if (typeof followers !== 'number' || followers <= 0) return 0;
-    const maxFollowersForFullGraph = 1000000; // Visual cap for 100% filled graph
-    const minFollowersForOneBar = 1; // Even a small number of followers lights up one bar
-
-    if (followers < minFollowersForOneBar) return 0;
-
-    const proportion = Math.min(1, followers / maxFollowersForFullGraph);
-    let barsToFill = Math.ceil(proportion * MAX_GRAPH_BARS);
-
-    // Ensure at least one bar is shown if there are any followers
-    if (followers > 0 && barsToFill === 0) {
-      barsToFill = 1;
-    }
-    return barsToFill;
-  };
+  const [chartData, setChartData] = useState<number[]>(() => Array(VISIBLE_DATA_POINTS).fill(0));
+  const [currentMaxFollowers, setCurrentMaxFollowers] = useState<number>(1000); // Initial sensible default
 
   useEffect(() => {
-    if (!isLoading) {
-      const targetBars = calculateFilledBars(totalFollowers);
-      setAnimatedBars(targetBars);
-    } else {
-      // While loading, we can either show 0 or keep previous state,
-      // but ProgressBar handles the visual "loading" state.
-      // Let's reset to 0 if loading starts, to ensure animation on new data.
-       setAnimatedBars(0);
+    if (!isLoading && !error && typeof totalFollowers === 'number') {
+      setChartData(prevData => {
+        const newData = [...prevData];
+        newData.shift(); // Remove the oldest point
+        newData.push(totalFollowers); // Add the new point
+        return newData;
+      });
+    } else if (!isLoading && !error && totalFollowers === null) { // Handle explicit null (N/A) as 0 for chart
+       setChartData(prevData => {
+        const newData = [...prevData];
+        newData.shift();
+        newData.push(0);
+        return newData;
+      });
     }
-  }, [totalFollowers, isLoading]);
+    // If loading or error, chartData remains as is, letting the loading/error UI take over.
+    // If totalFollowers is undefined (initial loading), chartData also remains, waiting for first valid number.
+
+  }, [totalFollowers, isLoading, error]);
+
+  useEffect(() => {
+    // Update currentMaxFollowers based on the current chartData
+    const maxInChart = Math.max(...chartData.filter(v => typeof v === 'number'));
+    setCurrentMaxFollowers(Math.max(1000, maxInChart)); // Ensure a minimum scaling factor, e.g., 1000 followers
+  }, [chartData]);
 
   const formatFollowersDisplay = (count: number | null | undefined): string => {
-    if (isLoading && typeof count === 'undefined') return "Loading..."; // Specifically when isLoading is true and count is undefined
-    if (typeof count === 'undefined') return "Loading..."; // General undefined case (could be initial state before fetch)
-    if (count === null) return "N/A"; // Error or explicitly no data
+    if (isLoading && typeof count === 'undefined') return "Loading...";
+    if (typeof count === 'undefined') return "Loading...";
+    if (count === null) return "N/A";
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
     return count.toString();
   };
   const displayValue = formatFollowersDisplay(totalFollowers);
 
+  const calculatePixelHeight = (value: number, max: number, chartHeight: number): number => {
+    if (value <= 0) return 0;
+    const proportion = value / Math.max(1, max); // Avoid division by zero if max is 0
+    return Math.max(2, proportion * chartHeight); // Ensure minimum 2px height for visibility
+  };
+
   return (
-    <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black"> {/* Window container */}
+    <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black">
       {/* Title Bar */}
       <div className="title-bar flex items-center justify-between bg-[#000080] text-white px-1 py-0.5 h-6 select-none">
         <div className="flex items-center">
@@ -97,48 +105,55 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
         </div>
       </div>
 
-      {/* Content Area Wrapper - this helps manage the border appearance with the tab */}
       <div className="tab-content-wrapper p-0.5 pt-0 bg-[#C0C0C0]">
-        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[220px]">
+        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[220px] flex flex-col">
           <h4 className="text-base font-semibold text-black mb-1 text-center">Total Estimated Spotify Reach</h4>
+
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full py-4">
+            <div className="flex flex-col items-center justify-center flex-grow py-4">
                <ProgressBar text="Calculating reach..." />
             </div>
           ) : error ? (
-            <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center">
+            <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center flex-grow">
               <p>Error: {error}</p>
             </div>
           ) : (
             <>
               <p className="text-3xl text-black font-bold my-3 text-center">{displayValue}</p>
               <div
-                className="graph-area h-20 bg-[#B0B0B0] win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative"
+                className="pixel-chart-area win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32" // h-32 = 128px
                 style={{
-                  backgroundImage: "repeating-linear-gradient(to right, #A0A0A0, #A0A0A0 1px, transparent 1px, transparent 19px), repeating-linear-gradient(to bottom, #A0A0A0, #A0A0A0 1px, transparent 1px, transparent 19px)",
-                  backgroundSize: "20px 20px"
+                  backgroundColor: CHART_BACKGROUND_COLOR,
+                  backgroundImage: `
+                    linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px),
+                    linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px)
+                  `,
+                  backgroundSize: "10px 10px"
                 }}
                 role="img"
-                aria-label={`Follower graph representing ${displayValue} followers`}
+                aria-label={`Follower chart representing ${displayValue} followers`}
               >
-                {Array.from({ length: MAX_GRAPH_BARS }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="graph-bar-segment flex-1 transition-all duration-300 ease-out"
-                    style={{
-                      backgroundColor: i < animatedBars ? BAR_COLORS[i % BAR_COLORS.length] : 'transparent',
-                      borderTop: i < animatedBars ? '1px solid #DFDFDF' : '1px solid transparent', // Lighter top
-                      borderLeft: i < animatedBars ? '1px solid #DFDFDF' : '1px solid transparent', // Lighter left
-                      borderBottom: i < animatedBars ? '1px solid #555555' : '1px solid transparent', // Darker bottom
-                      borderRight: i < animatedBars ? '1px solid #555555' : '1px solid transparent', // Darker right
-                      height: i < animatedBars ? '100%' : '0%', // Animate height
-                      transitionDelay: `${i * 25}ms`, // Staggered animation
-                      alignSelf: 'flex-end', // Grow from bottom
-                    }}
-                  ></div>
-                ))}
+                {chartData.map((value, i) => {
+                  const pixelHeight = calculatePixelHeight(value, currentMaxFollowers, CHART_HEIGHT_PX - 4); // -4 for padding
+                  return (
+                    <div
+                      key={i}
+                      className="chart-column flex-1 h-full relative" // Each column takes equal width
+                    >
+                      <div
+                        className="pixel-line absolute bottom-0 left-[1px] right-[1px]" // Small gap between lines
+                        style={{
+                          backgroundColor: PIXEL_LINE_COLOR,
+                          height: `${pixelHeight}px`,
+                          transition: 'height 0.3s ease-out',
+                           boxShadow: pixelHeight > 0 ? `0 0 2px ${PIXEL_LINE_COLOR}, 0 0 5px ${PIXEL_LINE_COLOR}`: 'none', // Add a subtle glow
+                        }}
+                      ></div>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-xs text-gray-700 mt-2 text-center">Graph visualizes follower count. Max visual representation at {formatFollowersDisplay(1000000)}.</p>
+              <p className="text-xs text-gray-700 mt-2 text-center">Chart scrolls right to left. Max visual representation at {formatFollowersDisplay(currentMaxFollowers)}.</p>
             </>
           )}
         </div>
@@ -149,7 +164,6 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({ totalFollow
         <span className="win95-border-inset px-2 py-0 h-[18px] flex items-center">Ready.</span>
         <div className="flex space-x-0.5 h-[18px]">
            <div className="win95-border-inset w-16 px-1 flex items-center justify-center">
-             {/* Could put a fake progress or icon here */}
              <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 1 H9 V9 H1Z" fill="#008000" stroke="#000000" strokeWidth="0.5"/></svg>
            </div>
            <div className="win95-border-inset w-12 px-1 flex items-center justify-center">
