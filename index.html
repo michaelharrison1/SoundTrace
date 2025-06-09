@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/vite.svg"> <!-- Kept from new version -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoundTrace</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <title>SoundTrace</title> <!-- Restored from old version -->
+  <script src="https://cdn.tailwindcss.com"></script> <!-- Restored from old version -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"> <!-- Restored from old version -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> <!-- Restored from old version -->
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet"> <!-- Restored from old version -->
+  <script src="https://sdk.scdn.co/spotify-player.js"></script> <!-- Kept from new version -->
   <style>
     body {
       background-color: #C0C0C0; /* Windows 95 gray */
@@ -36,7 +38,7 @@
       border-style: solid;
       border-width: 2px;
       border-top-color: #808080;
-      border-left-color: #808080; /* Corrected from border-left--color */
+      border-left-color: #808080;
       border-bottom-color: #FFFFFF;
       border-right-color: #FFFFFF;
     }
@@ -46,33 +48,57 @@
     }
 
     /* Progress Bar Animation */
-    @keyframes progressBarMarqueeAnim {
+    @keyframes progressBarMarqueeAnim { /* Restored from old version */
       0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); } /* Assumes the inner block container is 200% width */
+      100% { transform: translateX(-50%); }
     }
 
     .progress-bar-blocks-container {
-      width: 200%; /* Make it twice as wide as the viewable area for seamless looping */
-      animation: progressBarMarqueeAnim 1.2s linear infinite;
+      width: 200%;
+      animation: progressBarMarqueeAnim 1.2s linear infinite; /* Restored from old version */
     }
 
     /* Styles for Win95-like buttons in the FollowerReachMonitor title bar */
     .win95-button-sm {
+      font-family: inherit; /* Added from new version to ensure font consistency in buttons */
+      background-color: #c0c0c0; /* Added from new version */
+      color: #000000; /* Added from new version */
       border-style: solid;
-      border-width: 1px;
+      border-width: 1px; /* Old was 1px, new was 2px. Sticking to old for title bar buttons */
       border-top-color: #FFFFFF;
       border-left-color: #FFFFFF;
       border-bottom-color: #808080;
       border-right-color: #808080;
-      box-shadow: 0.5px 0.5px 0px #000000;
+      box-shadow: 0.5px 0.5px 0px #000000; /* Old was 0.5px, new had 1px for general buttons */
+      padding: 1px 3px; /* Added from new version, old had no explicit padding here */
+      font-size: 1em; /* Added from new version */
+      line-height: 1; /* Added from new version */
+      align-items: center; /* Added from new version */
+      justify-content: center; /* Added from new version */
+      display: inline-flex; /* Added from new version */
+      min-width: 20px; /* Added from new version */
+      min-height: 20px; /* Added from new version */
     }
-    .win95-button-sm:active {
+    .win95-button-sm:active:not(:disabled) { /* Merged for consistency */
       border-top-color: #808080;
       border-left-color: #808080;
       border-bottom-color: #FFFFFF;
       border-right-color: #FFFFFF;
       box-shadow: none;
-      transform: translate(0.5px, 0.5px);
+      transform: translate(0.5px, 0.5px); /* Old had 0.5px, new had 1px. Sticking to old for -sm buttons */
+    }
+     .win95-button-sm:disabled { /* Added from new for completeness */
+        color: #808080;
+        text-shadow: 1px 1px 0 #ffffff;
+        cursor: default;
+    }
+    .win95-button-sm:disabled:active { /* Added from new for completeness */
+        transform: none;
+        box-shadow: 0.5px 0.5px 0px #000000;
+        border-top-color: #FFFFFF;
+        border-left-color: #FFFFFF;
+        border-bottom-color: #808080;
+        border-right-color: #808080;
     }
   </style>
 

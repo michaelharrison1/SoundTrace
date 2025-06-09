@@ -1,4 +1,3 @@
-
 {
   "name": "SoundTrace",
   "description": "An application for music producers to upload their instrumentals, scan for public uses via simulated ACRCloud, and track results. This app uses a mock login and simulates external API calls.",
