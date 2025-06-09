@@ -1,8 +1,8 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import PlayIcon from '../icons/PlayIcon';
-import PauseIcon from '../icons/PauseIcon';
-import SkipNextIcon from '../icons/SkipNextIcon';
+import PlayIcon from '../icons/PlayIcon.tsx';
+import PauseIcon from '../icons/PauseIcon.tsx';
+import SkipNextIcon from '../icons/SkipNextIcon.tsx';
 
 interface AudioPlayerProps {
   src: string | null;
