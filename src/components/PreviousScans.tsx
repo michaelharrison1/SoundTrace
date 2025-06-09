@@ -2,13 +2,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { TrackScanLog, AcrCloudMatch, SpotifyTrackDetails, SpotifyFollowerResult } from '../types'; // Uses TrackScanLog
 import Button from './common/Button';
-import TrashIcon from './icons/TrashIcon';
+import TrashIcon from '../icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
 // import { SpotifyFollowerResult } from '../types'; // Import for follower data type from types.ts (already in first line)
-import HeadphonesIcon from './icons/HeadphonesIcon';
+import HeadphonesIcon from '../icons/HeadphonesIcon';
 import AudioPlayer from './common/AudioPlayer';
-import PlayIcon from './icons/PlayIcon'; // For disabling button feedback
-import PauseIcon from './icons/PauseIcon'; // Added import for PauseIcon
+import PlayIcon from '../icons/PlayIcon'; // For disabling button feedback
+import PauseIcon from '../icons/PauseIcon'; // Added import for PauseIcon
 import ProgressBar from './common/ProgressBar';
 
 
