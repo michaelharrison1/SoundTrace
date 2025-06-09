@@ -83,36 +83,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
+  // Perform critical environment variable checks early
   if (!JWT_SECRET) {
     console.error("FATAL ERROR: JWT_SECRET is not defined in Spotify callback.");
-    return res.status(500).send("Server configuration error: JWT_SECRET missing.");
+    // For critical config errors, a direct 500 might be more revealing than a redirect.
+    return res.status(500).json({ message: "Server configuration error: JWT_SECRET missing." });
   }
   if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET || !SPOTIFY_REDIRECT_URI || !FRONTEND_URL) {
-    console.error("CRITICAL: Spotify API credentials, Redirect URI, or Frontend URL not configured on server for token exchange in callback.");
-    return res.redirect(302, `${FRONTEND_URL}/spotify-callback-receiver?status=error&message=ServerConfigError`);
+    console.error("CRITICAL: Spotify/Frontend URL config missing in callback.");
+     // If FRONTEND_URL itself is missing, we can't reliably redirect.
+    return res.status(500).json({ message: "Server configuration error: Spotify/Frontend URL(s) missing." });
   }
 
   const soundTraceUserId = await getAuthenticatedUserId(req);
   if (!soundTraceUserId) {
     console.error("[spotifyAuth/callback.ts] User not authenticated with SoundTrace. Cannot process Spotify callback.");
-    // This situation implies the main session cookie might have expired or is missing.
-    // Redirecting to frontend, which should then prompt for SoundTrace login.
     return res.redirect(302, `${FRONTEND_URL}/spotify-callback-receiver?status=error&message=UserSessionExpired`);
   }
   console.log(`[spotifyAuth/callback.ts] SoundTrace User ID from auth: ${soundTraceUserId}`);
-
 
   const { code, state, error: spotifyError } = req.query;
   const storedState = req.cookies.spotify_auth_state;
   const codeVerifier = req.cookies.spotify_code_verifier;
 
+  // Clear cookies regardless of outcome after this point
   const cookieClearOpts = getSpotifyCookieOptions(0);
   const cookiesToClear = [
     getCookieString('spotify_auth_state', '', cookieClearOpts),
     getCookieString('spotify_code_verifier', '', cookieClearOpts)
   ];
   res.setHeader('Set-Cookie', cookiesToClear);
-  console.log('[spotifyAuth/callback.ts] Attempting to clear cookies: spotify_auth_state and spotify_code_verifier');
+  console.log('[spotifyAuth/callback.ts] Cleared cookies: spotify_auth_state and spotify_code_verifier');
+
 
   if (spotifyError) {
     console.error('Spotify returned an error during authorization:', spotifyError);
@@ -198,7 +200,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     user.spotifyAccessToken = access_token;
-    if (refresh_token) user.spotifyRefreshToken = refresh_token;
+    if (refresh_token) user.spotifyRefreshToken = refresh_token; // Only update if a new one is provided
     user.spotifyTokenExpiresAt = new Date(Date.now() + expires_in * 1000);
     user.spotifyUserId = spotifyProfile.id;
     user.spotifyDisplayName = spotifyProfile.display_name || spotifyProfile.id;
@@ -210,10 +212,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.redirect(302, `${FRONTEND_URL}/spotify-callback-receiver?status=success`);
 
-  } catch (error) {
-    console.error('Spotify callback processing error in serverless function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'CallbackProcessingError';
-    res.redirect(302, `${FRONTEND_URL}/spotify-callback-receiver?status=error&message=${encodeURIComponent(errorMessage)}`);
+  } catch (error) { // This will catch errors from connectDB, fetch calls, user.save(), etc.
+    console.error('Critical error in Spotify callback processing:', error);
+    const errorMessage = error instanceof Error ? error.message : 'CallbackProcessingError_Unknown';
+    // If FRONTEND_URL is somehow undefined here despite earlier check, this redirect might fail.
+    // However, the initial check should prevent that.
+    return res.redirect(302, `${FRONTEND_URL}/spotify-callback-receiver?status=error&message=${encodeURIComponent(errorMessage)}`);
   }
 }
-
