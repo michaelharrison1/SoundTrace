@@ -49,7 +49,27 @@ const FollowerReachGraph: React.FC<FollowerReachGraphProps> = ({ totalFollowers,
   };
 
   const displayValue = formatFollowersDisplay(totalFollowers);
-  const peopleUnits = totalFollowers && totalFollowers > 0 ? Math.floor(totalFollowers / 10000) : 0;
+
+  let iconValue = 10000; // Default
+  let iconUnitText = "10,000";
+
+  if (typeof totalFollowers === 'number' && totalFollowers >= 0) {
+    if (totalFollowers < 10000) {
+      iconValue = 1000;
+      iconUnitText = "1,000";
+    } else if (totalFollowers < 100000) {
+      iconValue = 10000;
+      iconUnitText = "10,000";
+    } else if (totalFollowers < 1000000) {
+      iconValue = 50000;
+      iconUnitText = "50,000";
+    } else { // >= 1,000,000
+      iconValue = 100000;
+      iconUnitText = "100,000";
+    }
+  }
+
+  const peopleUnits = typeof totalFollowers === 'number' && totalFollowers > 0 && iconValue > 0 ? Math.floor(totalFollowers / iconValue) : 0;
   const displayIconCount = Math.min(peopleUnits, MAX_ICONS_TO_DISPLAY);
 
   return (
@@ -74,7 +94,7 @@ const FollowerReachGraph: React.FC<FollowerReachGraphProps> = ({ totalFollowers,
             <div
               className="flex flex-wrap justify-center items-center my-2 p-2 min-h-[80px] win95-border-inset bg-black"
               role="figure"
-              aria-label={`Follower representation: ${peopleUnits} groups of 10,000`}
+              aria-label={`Follower representation: ${peopleUnits} groups of ${iconUnitText}`}
             >
               {typeof totalFollowers === 'number' && totalFollowers >= 0 && displayIconCount > 0 && (
                 Array.from({ length: displayIconCount }).map((_, i) => (
@@ -85,7 +105,7 @@ const FollowerReachGraph: React.FC<FollowerReachGraphProps> = ({ totalFollowers,
                 <span className="text-white text-lg ml-2 p-1">+{peopleUnits - MAX_ICONS_TO_DISPLAY} more groups</span>
               )}
               {typeof totalFollowers === 'number' && peopleUnits === 0 && totalFollowers > 0 && (
-                 <span className="text-xs text-gray-400 italic p-1">Less than 10,000 (no full icon)</span>
+                 <span className="text-xs text-gray-400 italic p-1">Less than {iconUnitText} (no full icon)</span>
               )}
                {typeof totalFollowers === 'number' && totalFollowers === 0 && (
                  <span className="text-xs text-gray-400 italic p-1">0 followers</span>
@@ -98,7 +118,7 @@ const FollowerReachGraph: React.FC<FollowerReachGraphProps> = ({ totalFollowers,
             <p className="text-xs text-gray-700 text-center mt-1">
               Combined Spotify followers. Each
               <PixelPersonIcon className="inline align-middle mx-1 -mt-1" />
-              represents 10,000 people.
+              represents {iconUnitText} people.
             </p>
           </>
         )}
