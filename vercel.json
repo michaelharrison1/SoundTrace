@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "../backend/server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    { "src": "/api/auth/(.*)", "dest": "../backend/server.js" },
+    { "src": "/api/auth", "dest": "../backend/server.js" },
+    { "src": "/api/scanlogs/(.*)", "dest": "../backend/server.js" },
+    { "src": "/api/scanlogs", "dest": "../backend/server.js" },
+    { "src": "/api/spotify-track-details", "dest": "../backend/server.js" },
+
+    { "src": "/assets/(.*)", "dest": "/dist/assets/$1" },
+    { "src": "/vite.svg", "dest": "/dist/vite.svg" },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/dist/index.html"
+    }
+  ]
+}
