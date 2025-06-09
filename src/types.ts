@@ -41,3 +41,30 @@ export interface TrackScanLog {
   matches: AcrCloudMatch[]; // Deduplicated matches from all its snippets
   status: 'matches_found' | 'no_matches_found' | 'error_processing' | 'partially_completed';
 }
+
+// Types for Spotify Follower Data Fetching moved from DashboardViewPage.tsx
+export interface SpotifyFollowerSuccess {
+  status: 'success';
+  artistId: string;
+  followers: number | undefined;
+  popularity?: number;
+  genres?: string[];
+}
+
+export interface SpotifyFollowerError {
+  status: 'error';
+  artistId: string;
+  reason: string;
+}
+
+export interface SpotifyFollowerLoading {
+    status: 'loading';
+    artistId: string;
+}
+
+export interface SpotifyFollowerCancelled {
+  status: 'cancelled';
+  artistId: string;
+}
+
+export type SpotifyFollowerResult = SpotifyFollowerSuccess | SpotifyFollowerError | SpotifyFollowerLoading | SpotifyFollowerCancelled;

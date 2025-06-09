@@ -4,7 +4,7 @@ import { TrackScanLog, AcrCloudMatch } from '../types'; // Uses TrackScanLog
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
-import { SpotifyFollowerResult } from './DashboardViewPage'; // Import for follower data type
+import { SpotifyFollowerResult } from '../types'; // Import for follower data type from types.ts
 
 type SortableColumn =
   | 'title'
@@ -143,7 +143,11 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
       setSortColumn(column);
-      setSortDirection('asc'); // Default to ascending for new column
+      if (column === 'title' || column === 'artist' || column === 'album') {
+        setSortDirection('asc');
+      } else {
+        setSortDirection('desc'); // Default to descending for numeric/date types
+      }
     }
   };
 

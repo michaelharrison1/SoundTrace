@@ -8,12 +8,17 @@ interface SpotifyTokenResponse {
   expires_in: number;
 }
 
-interface SpotifyArtistDetailsResponse {
+// Update this interface to include popularity and genres
+interface SpotifyArtistApiResponse {
   followers: {
     href: string | null;
     total: number;
   };
-  // other artist details can be added here if needed
+  popularity: number; // Typically 0-100
+  genres: string[];   // Array of genre strings
+  // other artist details can be added here if needed like name, images etc.
+  id: string;
+  name: string;
 }
 
 // Simple in-memory cache for the Spotify access token
@@ -98,10 +103,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(artistResponse.status).json({ message: spotifyErrorMessage });
     }
 
-    const artistData = (await artistResponse.json()) as SpotifyArtistDetailsResponse;
+    const artistData = (await artistResponse.json()) as SpotifyArtistApiResponse;
 
+    // Return followers, popularity, and genres
     return res.status(200).json({
       followers: artistData.followers?.total,
+      popularity: artistData.popularity,
+      genres: artistData.genres,
     });
 
   } catch (error: any) {

@@ -1,8 +1,7 @@
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import ProgressBar from './ProgressBar'; // For loading state inside the content area
-import { TrackScanLog, AcrCloudMatch } from '../../types';
-import { SpotifyFollowerResult } from '../DashboardViewPage';
+import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult } from '../../types'; // Corrected import path for SpotifyFollowerResult
 import ArtistFollowers from './ArtistFollowers'; // Re-use for consistency
 
 interface FollowerReachMonitorProps {
@@ -353,7 +352,7 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
   // --- Tab Rendering ---
   const renderTabContent = () => {
     if (activeMonitorTab === 'reach') {
-      return ( /* ... Total Reach JSX remains the same ... */
+      return (
         <>
           <h4 className="text-base font-semibold text-black mb-1 text-center">Total Estimated Spotify Reach</h4>
           {isLoadingTotalFollowers ? (
@@ -422,7 +421,7 @@ const FollowerReachMonitor: React.FC<FollowerReachMonitorProps> = ({
         </>
       );
     } else if (activeMonitorTab === 'artistStats') {
-      if (isLoadingTotalFollowers && aggregatedArtistData.length === 0) {
+      if (isLoadingTotalFollowers && aggregatedArtistData.length === 0) { // Still show loading if follower data overall is loading for the first time
          return (<div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Loading artist data..." /></div>);
       }
       if (aggregatedArtistData.length === 0) {

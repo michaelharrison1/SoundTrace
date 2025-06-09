@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, TrackScanLog, AcrCloudMatch } from '../types';
+import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult } from '../types'; // Updated imports
 import PreviousScans from './PreviousScans';
 import FollowerReachGraph from './common/FollowerReachGraph'; // This is FollowerReachMonitor
+import ProgressBar from './common/ProgressBar'; // Corrected import
+import ArtistFollowers from './common/ArtistFollowers'; // Corrected import
 
 interface DashboardViewPageProps {
   user: User;
@@ -11,31 +13,7 @@ interface DashboardViewPageProps {
   onClearAllScans: () => void;
 }
 
-export interface SpotifyFollowerSuccess {
-  status: 'success';
-  artistId: string;
-  followers: number | undefined;
-  popularity?: number; // Added optional popularity
-  genres?: string[];   // Added optional genres
-}
-
-export interface SpotifyFollowerError {
-  status: 'error';
-  artistId: string;
-  reason: string;
-}
-
-export interface SpotifyFollowerLoading {
-    status: 'loading';
-    artistId: string;
-}
-
-export interface SpotifyFollowerCancelled {
-  status: 'cancelled';
-  artistId: string;
-}
-
-export type SpotifyFollowerResult = SpotifyFollowerSuccess | SpotifyFollowerError | SpotifyFollowerLoading | SpotifyFollowerCancelled;
+// SpotifyFollowerResult and related types moved to types.ts
 
 
 const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousScans, onDeleteScan, onClearAllScans }) => {
@@ -50,7 +28,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     const ids = new Set<string>();
     previousScans.forEach(log => {
       if (log.status === 'matches_found' || log.status === 'partially_completed') {
-        log.matches.forEach(match => {
+        log.matches.forEach((match: AcrCloudMatch) => { // Typed 'match'
           if (match.spotifyArtistId) {
             ids.add(match.spotifyArtistId);
           }
@@ -113,7 +91,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
       if (!isMounted) return;
 
-      const newFollowerResults = new Map<string, SpotifyFollowerResult>(followerResults);
+      const newFollowerResults = new Map<string, SpotifyFollowerResult>(followerResults); // Start with current or initial loading states
       let sum = 0;
       let errorsEncountered = 0;
       let successfulFetches = 0;
@@ -134,15 +112,15 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
                 errorsEncountered++;
             }
         } else if (result.status === 'rejected') {
-            console.error("A follower fetch promise was unexpectedly rejected:", result.reason);
-            // Find the artistId for the rejected promise to update its status
-            const rejectedPromiseIndex = followerPromises.findIndex(p =>
-              (p as any) === (result as any)._promise // This is a bit hacky, relies on internal structure
-            );
-            if (rejectedPromiseIndex !== -1 && uniqueArtistIds[rejectedPromiseIndex]) {
-                const artistId = uniqueArtistIds[rejectedPromiseIndex];
-                newFollowerResults.set(artistId, { status: 'error', artistId, reason: 'Promise rejected unexpectedly' });
+            // This part handles promises that were outright rejected (e.g. network issues before a response)
+            // We need to find which artistId this rejection corresponds to.
+            // This is a simplified way; robustly tracking needs more complex promise management.
+            const artistsWithLoadingOrInitial = Array.from(newFollowerResults.values()).filter(r => r.status === 'loading');
+            if (artistsWithLoadingOrInitial.length > 0) { // Try to attribute the error if possible
+                const artistToUpdate = artistsWithLoadingOrInitial[0]; // Simplistic: assign to the first loading one
+                newFollowerResults.set(artistToUpdate.artistId, { status: 'error', artistId: artistToUpdate.artistId, reason: 'Network or promise error' });
             }
+            console.error("A follower fetch promise was unexpectedly rejected:", result.reason);
             errorsEncountered++;
         }
       });
@@ -157,8 +135,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         } else if (errorsEncountered > 0) {
              setFollowerFetchError("Could not load data for some artists. Total may be incomplete.");
         } else if (successfulFetches === 0 && uniqueArtistIds.length > 0 && errorsEncountered === 0) {
-             // This case means successful calls but no countable followers (e.g., all artists had undefined followers)
-            setFollowerFetchError(null);
+            setFollowerFetchError(null); // No errors, but also no countable followers
         }
          else {
             setFollowerFetchError(null);
@@ -169,7 +146,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
     fetchAllFollowers();
     return () => { isMounted = false; };
-  }, [uniqueArtistIds]);
+  }, [uniqueArtistIds]); // Removed followerResults from dependency array to avoid re-triggering on its own update
 
 
   if (previousScans.length === 0 && !isFollowerLoading) {
