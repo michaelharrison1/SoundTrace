@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult } from '../types'; // Updated imports
+import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult } from '../types';
 import PreviousScans from './PreviousScans';
-import FollowerReachGraph from './common/FollowerReachGraph'; // This is FollowerReachMonitor
-import ProgressBar from './common/ProgressBar'; // Corrected import
-import ArtistFollowers from './common/ArtistFollowers'; // Corrected import
+import ReachAnalyzer from './common/ReachAnalyzer'; // Renamed from FollowerReachGraph
+import ProgressBar from './common/ProgressBar';
+// ArtistFollowers is used within ReachAnalyzer and PreviousScans, not directly here anymore unless for a specific summary.
 
 interface DashboardViewPageProps {
   user: User;
@@ -12,9 +12,6 @@ interface DashboardViewPageProps {
   onDeleteScan: (logId: string) => void;
   onClearAllScans: () => void;
 }
-
-// SpotifyFollowerResult and related types moved to types.ts
-
 
 const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousScans, onDeleteScan, onClearAllScans }) => {
   const containerStyles = "p-4 win95-border-outset bg-[#C0C0C0] text-center";
@@ -28,7 +25,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     const ids = new Set<string>();
     previousScans.forEach(log => {
       if (log.status === 'matches_found' || log.status === 'partially_completed') {
-        log.matches.forEach((match: AcrCloudMatch) => { // Typed 'match'
+        log.matches.forEach((match: AcrCloudMatch) => {
           if (match.spotifyArtistId) {
             ids.add(match.spotifyArtistId);
           }
@@ -67,7 +64,6 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
               return { status: 'error', artistId, reason: errorBody.message || `Failed to fetch artist details (${response.status})` };
             }
             const data = await response.json();
-            // Extract followers, popularity, and genres
             const followersData = typeof data.followers === 'number' ? data.followers : undefined;
             const popularityData = typeof data.popularity === 'number' ? data.popularity : undefined;
             const genresData = Array.isArray(data.genres) ? data.genres.filter((g: any) => typeof g === 'string') : undefined;
@@ -91,7 +87,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
       if (!isMounted) return;
 
-      const newFollowerResults = new Map<string, SpotifyFollowerResult>(followerResults); // Start with current or initial loading states
+      const newFollowerResults = new Map<string, SpotifyFollowerResult>(followerResults);
       let sum = 0;
       let errorsEncountered = 0;
       let successfulFetches = 0;
@@ -100,9 +96,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         if (result.status === 'fulfilled' && result.value) {
             const resValue = result.value;
             if (resValue.status === 'cancelled') return;
-
             newFollowerResults.set(resValue.artistId, resValue);
-
             if (resValue.status === 'success') {
                 if (typeof resValue.followers === 'number') {
                     sum += resValue.followers;
@@ -112,12 +106,9 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
                 errorsEncountered++;
             }
         } else if (result.status === 'rejected') {
-            // This part handles promises that were outright rejected (e.g. network issues before a response)
-            // We need to find which artistId this rejection corresponds to.
-            // This is a simplified way; robustly tracking needs more complex promise management.
             const artistsWithLoadingOrInitial = Array.from(newFollowerResults.values()).filter(r => r.status === 'loading');
-            if (artistsWithLoadingOrInitial.length > 0) { // Try to attribute the error if possible
-                const artistToUpdate = artistsWithLoadingOrInitial[0]; // Simplistic: assign to the first loading one
+            if (artistsWithLoadingOrInitial.length > 0) {
+                const artistToUpdate = artistsWithLoadingOrInitial[0];
                 newFollowerResults.set(artistToUpdate.artistId, { status: 'error', artistId: artistToUpdate.artistId, reason: 'Network or promise error' });
             }
             console.error("A follower fetch promise was unexpectedly rejected:", result.reason);
@@ -128,16 +119,14 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
       if (isMounted) {
         setFollowerResults(newFollowerResults);
         setTotalFollowers(sum);
-
         if (errorsEncountered > 0 && successfulFetches === 0 && uniqueArtistIds.length > 0) {
             setFollowerFetchError("Could not load artist data for any artist.");
             setTotalFollowers(null);
         } else if (errorsEncountered > 0) {
              setFollowerFetchError("Could not load data for some artists. Total may be incomplete.");
         } else if (successfulFetches === 0 && uniqueArtistIds.length > 0 && errorsEncountered === 0) {
-            setFollowerFetchError(null); // No errors, but also no countable followers
-        }
-         else {
+            setFollowerFetchError(null);
+        } else {
             setFollowerFetchError(null);
         }
         setIsFollowerLoading(false);
@@ -146,7 +135,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
     fetchAllFollowers();
     return () => { isMounted = false; };
-  }, [uniqueArtistIds]); // Removed followerResults from dependency array to avoid re-triggering on its own update
+  }, [uniqueArtistIds]);
 
 
   if (previousScans.length === 0 && !isFollowerLoading) {
@@ -162,7 +151,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
   return (
     <div>
-      <FollowerReachGraph
+      <ReachAnalyzer
         totalFollowers={totalFollowers}
         isLoading={isFollowerLoading}
         error={followerFetchError}

@@ -5,13 +5,14 @@ import FileUpload from './FileUpload';
 import { acrCloudService } from '../services/acrCloudService';
 import { scanLogService } from '../services/scanLogService';
 import { generateSnippetsForFile } from '../utils/audioProcessing';
-import ProgressBar from './common/ProgressBar'; // Import ProgressBar
+import ProgressBar from './common/ProgressBar';
+import Button from './common/Button'; // Added Button import
 
 interface ScanPageProps {
   user: User;
-  previousScans: TrackScanLog[]; // To check for existing original file names
+  previousScans: TrackScanLog[];
   onNewScanLogsSaved: (newLogs: TrackScanLog[]) => void;
-  onLogout: () => void; // Add onLogout prop
+  onLogout: () => void;
 }
 
 const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsSaved, onLogout }) => {
@@ -20,6 +21,9 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
   const [scanProgressMessage, setScanProgressMessage] = useState<string>('');
   const [scanCompletionMessage, setScanCompletionMessage] = useState<string | null>(null);
   const [alreadyScannedMessage, setAlreadyScannedMessage] = useState<string | null>(null);
+  const [manualSpotifyLink, setManualSpotifyLink] = useState<string>('');
+  const [isAddingManualLink, setIsAddingManualLink] = useState<boolean>(false);
+  const [manualAddMessage, setManualAddMessage] = useState<string | null>(null);
 
 
   const handleScan = useCallback(async (originalFiles: File[]) => {
@@ -140,9 +144,9 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
                             (typeof saveError.message === 'string' && saveError.message.toLowerCase().includes('token is not valid'));
         if (isAuthError) {
           console.warn("Authentication error while saving scan log. Logging out.", saveError.message);
-          onLogout(); // Call onLogout on auth error
-          setIsLoading(false); // Stop loading as we are logging out
-          return; // Exit handleScan early
+          onLogout();
+          setIsLoading(false);
+          return;
         }
         const newError = `Failed to save results for ${originalFile.name}: ${saveError.message}`;
         setError(prev => prev ? `${prev}\\n${newError}` : newError);
@@ -174,11 +178,69 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
     setScanProgressMessage('');
   }, [onNewScanLogsSaved, user, previousScans, onLogout]);
 
+  const handleManualAddSpotifyLink = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!manualSpotifyLink.trim()) {
+        setManualAddMessage("Please enter a Spotify track link.");
+        return;
+    }
+    setIsAddingManualLink(true);
+    setManualAddMessage(null);
+    setError(null); // Clear general errors
+
+    try {
+        const newLog = await scanLogService.addSpotifyTrackToLog(manualSpotifyLink);
+        onNewScanLogsSaved([newLog]);
+        setManualAddMessage(`Successfully added "${newLog.matches[0]?.title || 'Track'}" to your scan log.`);
+        setManualSpotifyLink('');
+    } catch (err: any) {
+        console.error("Error manually adding Spotify link:", err);
+        setManualAddMessage(`Error: ${err.message || "Could not add Spotify track."}`);
+         const isAuthError = (err.status === 401 || err.status === 403) ||
+                            (typeof err.message === 'string' && err.message.toLowerCase().includes('token is not valid'));
+        if (isAuthError) {
+          onLogout();
+        }
+    } finally {
+        setIsAddingManualLink(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <section>
         <FileUpload onScan={handleScan} isLoading={isLoading} />
       </section>
+
+      <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
+        <div className="p-3 bg-[#C0C0C0]">
+            <h3 className="text-lg font-normal text-black mb-2">Manually Add Spotify Track</h3>
+            <form onSubmit={handleManualAddSpotifyLink} className="space-y-2">
+                <div>
+                    <label htmlFor="spotifyLink" className="block text-sm text-black mb-0.5">Spotify Track Link:</label>
+                    <input
+                        id="spotifyLink"
+                        type="url"
+                        value={manualSpotifyLink}
+                        onChange={(e) => setManualSpotifyLink(e.target.value)}
+                        placeholder="https://open.spotify.com/track/..."
+                        className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+                        disabled={isAddingManualLink}
+                        aria-label="Spotify Track Link"
+                    />
+                </div>
+                <Button type="submit" size="md" isLoading={isAddingManualLink} disabled={isAddingManualLink || !manualSpotifyLink.trim()}>
+                    {isAddingManualLink ? 'Adding...' : 'Add to Scan Log'}
+                </Button>
+            </form>
+            {manualAddMessage && (
+                <div className={`mt-2 p-1.5 text-xs border ${manualAddMessage.startsWith("Error:") ? "bg-red-100 border-red-700 text-red-700" : "bg-green-100 border-green-700 text-green-700"}`}>
+                    {manualAddMessage}
+                </div>
+            )}
+        </div>
+      </section>
+
 
       {isLoading && (
         <div className="p-3 win95-border-outset bg-[#C0C0C0]">
@@ -212,11 +274,11 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         </div>
       )}
 
-      {!isLoading && !error && !scanCompletionMessage && !alreadyScannedMessage && (
+      {!isLoading && !isAddingManualLink && !error && !scanCompletionMessage && !alreadyScannedMessage && !manualAddMessage && (
          <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
             <span className="text-4xl text-gray-500" aria-hidden="true">♫</span>
             <h2 className="text-lg font-normal text-black mt-1">Ready to Scan?</h2>
-            <p className="text-gray-700 mt-0.5 text-sm">Upload instrumentals above to begin.</p>
+            <p className="text-gray-700 mt-0.5 text-sm">Upload instrumentals or add a Spotify link above to begin.</p>
          </div>
       )}
     </div>

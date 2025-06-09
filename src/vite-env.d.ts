@@ -93,11 +93,12 @@ declare namespace Spotify {
     volume?: number;
   }
 
-  interface Error {
+  // Error interface is distinct from ErrorTypes
+  interface Error { // This 'Error' is for event payloads, not the type union below
     message: string;
-    // Add other properties if specific error types are distinguished further
   }
 
+  // This 'ErrorTypes' is a union of strings for event names or error categories
   type ErrorTypes =
     | 'initialization_error'
     | 'authentication_error'
@@ -105,17 +106,19 @@ declare namespace Spotify {
     | 'playback_error';
     // Add other known error types if needed
 
+
   interface PlayerEventsMap {
     ready: (data: { device_id: string }) => void;
     not_ready: (data: { device_id: string }) => void;
     player_state_changed: (state: PlaybackState | null) => void;
-    initialization_error: (error: Error) => void;
-    authentication_error: (error: Error) => void;
-    account_error: (error: Error) => void;
-    playback_error: (error: Error) => void;
+    initialization_error: (error: Spotify.Error) => void; // Use Spotify.Error for clarity
+    authentication_error: (error: Spotify.Error) => void;
+    account_error: (error: Spotify.Error) => void;
+    playback_error: (error: Spotify.Error) => void;
     // Define other events like 'autoplay_failed' if you handle them
   }
 
+  // This 'Player' class is the SDK's player object
   class Player {
     constructor(options: PlayerInit);
     connect(): Promise<boolean>;

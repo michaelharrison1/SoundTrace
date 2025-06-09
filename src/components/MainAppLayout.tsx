@@ -3,10 +3,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User, TrackScanLog } from '../types';
 import { scanLogService } from '../services/scanLogService';
 import Button from './common/Button';
-// LogoutIcon is now in App.tsx's global header
 import ScanPage from './ScanPage';
 import DashboardViewPage from './DashboardViewPage';
 import ProgressBar from './common/ProgressBar';
+import UploadIcon from './icons/UploadIcon'; // Placeholder for export icon
 
 interface MainAppLayoutProps {
   user: User;
@@ -17,8 +17,8 @@ type ActiveView = 'scan' | 'dashboard';
 
 const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
   const [previousScans, setPreviousScans] = useState<TrackScanLog[]>([]);
-  const [activeView, setActiveView] = useState<ActiveView>('scan');
-  const [isLoadingScans, setIsLoadingScans] = useState<boolean>(true); // Start true to load initially
+  const [activeView, setActiveView] = useState<ActiveView>('dashboard'); // Default to dashboard
+  const [isLoadingScans, setIsLoadingScans] = useState<boolean>(true);
   const [scanError, setScanError] = useState<string | null>(null);
 
   const fetchScanLogs = useCallback(async () => {
@@ -30,10 +30,8 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
       setPreviousScans(logs.sort((a,b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
     } catch (error: any) {
       console.error("Failed to fetch scan logs:", error);
-
       const isAuthError = (error.status === 401 || error.status === 403) ||
                           (typeof error.message === 'string' && error.message.toLowerCase().includes('token is not valid'));
-
       if (isAuthError) {
         console.warn("Authentication error during scan log fetch. Logging out.", error.message);
         onLogout();
@@ -51,11 +49,11 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
 
   const handleClearAllScans = async () => {
     if (window.confirm("Are you sure you want to delete ALL scan records from the server? This action cannot be undone.")) {
-      setIsLoadingScans(true); // Indicate loading for this operation as well
+      setIsLoadingScans(true);
       setScanError(null);
       try {
         await scanLogService.clearAllScanLogs();
-        setPreviousScans([]); // Update state immediately
+        setPreviousScans([]);
       } catch (error: any) {
         console.error("Failed to clear all scan logs:", error);
         if ((error.status === 401 || error.status === 403) || (typeof error.message === 'string' && error.message.toLowerCase().includes('token is not valid'))) {
@@ -94,12 +92,16 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
   };
 
   const getNavButtonClass = (viewType: ActiveView) => {
-    return `px-3 py-0.5 ${activeView === viewType ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' : 'win95-border-outset'}`;
+    return `px-3 py-0.5 hover:bg-gray-300 ${activeView === viewType ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' : 'win95-border-outset'}`;
+  };
+
+  const handleExportAllData = () => {
+    alert("Full data export (CSV/PDF) functionality is coming soon!");
   };
 
   return (
     <>
-      <nav className="flex justify-start space-x-0.5 p-1 bg-[#C0C0C0] border-t-2 border-[#DFDFDF] mb-2">
+      <nav className="flex justify-start items-center space-x-0.5 p-1 bg-[#C0C0C0] border-t-2 border-[#DFDFDF] mb-2">
         <Button
           onClick={() => setActiveView('scan')}
           size="sm"
@@ -116,6 +118,17 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         >
           Dashboard ({previousScans.length})
         </Button>
+        <div className="ml-auto"> {/* Pushes export button to the right */}
+            <Button
+              onClick={handleExportAllData}
+              size="sm"
+              className="win95-border-outset hover:bg-gray-300"
+              icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>} // Using upload icon rotated as a placeholder
+              title="Export all data (coming soon)"
+            >
+                Export Data
+            </Button>
+        </div>
       </nav>
 
       {isLoadingScans && !scanError && (
@@ -128,7 +141,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
           <p className="font-semibold text-center">Error loading scan history:</p>
           <p className="text-center mb-1">{scanError}</p>
           <div className="flex justify-center">
-            <Button onClick={fetchScanLogs} size="sm">Retry</Button>
+            <Button onClick={fetchScanLogs} size="sm" className="hover:bg-gray-300">Retry</Button>
           </div>
         </div>
       )}
@@ -137,7 +150,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
           user={user}
           previousScans={previousScans}
           onNewScanLogsSaved={addMultipleScanLogsToState}
-          onLogout={onLogout} // Pass onLogout down
+          onLogout={onLogout}
         />
       )}
       {!isLoadingScans && !scanError && activeView === 'dashboard' && (

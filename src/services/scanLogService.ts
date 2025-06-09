@@ -1,7 +1,6 @@
 
 import { TrackScanLog } from '../types';
 
-// Ensure VITE_API_BASE_URL is set in your environment for production.
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
 const BASE_URL = `${API_BASE_URL}/api/scanlogs`;
@@ -25,10 +24,10 @@ const handleApiResponse = async (response: Response) => {
     }
     const errorMessage = errorData.message || `Request failed with status ${response.status}: ${response.statusText || 'Unknown error'}`;
     const error = new Error(errorMessage);
-    (error as any).status = response.status; // Attach status
+    (error as any).status = response.status;
     throw error;
   }
-  if (response.status === 204) { // Handle No Content for DELETE operations
+  if (response.status === 204) {
     return;
   }
   return response.json();
@@ -36,21 +35,16 @@ const handleApiResponse = async (response: Response) => {
 
 export const scanLogService = {
   getScanLogs: async (): Promise<TrackScanLog[]> => {
-    const token = getAuthToken(); // JWT for Bearer
+    const token = getAuthToken();
     if (!token) {
-      console.warn("No auth token found, cannot fetch scan logs.");
       const authError = new Error("Not authenticated. Cannot fetch scan logs.");
       (authError as any).status = 401;
       throw authError;
     }
-
     const response = await fetch(BASE_URL, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      credentials: 'include', // Ensures HttpOnly session cookie is sent
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
     });
     return handleApiResponse(response);
   },
@@ -62,15 +56,11 @@ export const scanLogService = {
       (authError as any).status = 401;
       throw authError;
     }
-
     const response = await fetch(BASE_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify(logData),
-      credentials: 'include', // Ensures HttpOnly session cookie is sent
+      credentials: 'include',
     });
     return handleApiResponse(response);
   },
@@ -82,13 +72,10 @@ export const scanLogService = {
       (authError as any).status = 401;
       throw authError;
     }
-
     const response = await fetch(`${BASE_URL}/${logId}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      credentials: 'include', // Ensures HttpOnly session cookie is sent
+      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
     });
     await handleApiResponse(response);
   },
@@ -100,14 +87,33 @@ export const scanLogService = {
       (authError as any).status = 401;
       throw authError;
     }
-
     const response = await fetch(BASE_URL, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      credentials: 'include', // Ensures HttpOnly session cookie is sent
+      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
     });
     await handleApiResponse(response);
   },
+
+  addSpotifyTrackToLog: async (spotifyTrackLink: string): Promise<TrackScanLog> => {
+    const token = getAuthToken();
+    if (!token) {
+        const authError = new Error("Not authenticated. Cannot add Spotify track.");
+        (authError as any).status = 401;
+        throw authError;
+    }
+    // This endpoint (`/manual-spotify-add`) would need to be created on the backend.
+    // It would take the spotifyTrackLink, fetch details from Spotify,
+    // create AcrCloudMatch-like data, and save a new TrackScanLog.
+    const response = await fetch(`${BASE_URL}/manual-spotify-add`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ spotifyTrackLink }),
+        credentials: 'include',
+    });
+    return handleApiResponse(response);
+  }
 };

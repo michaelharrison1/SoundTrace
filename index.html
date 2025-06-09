@@ -3,23 +3,29 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" type="image/svg+xml" href="/vite.svg"> <!-- From new version, ensure vite.svg exists or update path -->
+  <link rel="icon" type="image/svg+xml" href="/vite.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoundTrace</title> <!-- Restored from old version -->
-  <script src="https://cdn.tailwindcss.com"></script> <!-- Restored from old version -->
-  <link rel="preconnect" href="https://fonts.googleapis.com"> <!-- Restored from old version -->
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> <!-- Restored from old version -->
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet"> <!-- Restored from old version -->
-  <!-- Spotify Web Playback SDK script removed -->
+  <title>SoundTrace</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <link rel="preload" as="image" href="/src/components/background.jpg">
+
   <style>
     body {
       background-color: #C0C0C0; /* Windows 95 gray */
       font-family: 'VT323', monospace;
       color: #000000; /* Default text black */
       font-size: 16px; /* VT323 looks better a bit larger */
-      margin: 0; /* From new version for basic reset */
-      -webkit-font-smoothing: antialiased; /* From new version */
-      -moz-osx-font-smoothing: grayscale; /* From new version */
+      margin: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-image: url('/src/components/background.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
     }
     /* Revert to browser default scrollbars */
     ::-webkit-scrollbar {
@@ -51,30 +57,27 @@
       stroke: #000000 !important;
     }
 
-    /* Progress Bar Animation - Restored from old version */
     @keyframes progressBarMarqueeAnim {
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
     }
 
-    .progress-bar-blocks-container { /* Old naming progressBarMarqueeAnim uses -50%, new marqueeBlocks uses -100% with 200% width*/
-      width: 200%; /* Ensures the animation appears seamless */
+    .progress-bar-blocks-container {
+      width: 200%;
       animation: progressBarMarqueeAnim 1.2s linear infinite;
     }
 
-    /* Styles for Win95-like buttons (general purpose, can be overridden by Button component's own styles) */
-    /* This is for smaller buttons like in title bars, as per old .win95-button-sm */
     .win95-button-sm {
       font-family: inherit;
       background-color: #c0c0c0;
       color: #000000;
       border-style: solid;
-      border-width: 1px; /* Original .win95-button-sm was 1px */
+      border-width: 1px;
       border-top-color: #FFFFFF;
       border-left-color: #FFFFFF;
       border-bottom-color: #808080;
       border-right-color: #808080;
-      box-shadow: 0.5px 0.5px 0px #000000; /* Original .win95-button-sm was 0.5px */
+      box-shadow: 0.5px 0.5px 0px #000000;
       padding: 1px 3px;
       font-size: 1em;
       line-height: 1;
@@ -90,7 +93,7 @@
       border-bottom-color: #FFFFFF;
       border-right-color: #FFFFFF;
       box-shadow: none;
-      transform: translate(0.5px, 0.5px); /* Original .win95-button-sm was 0.5px */
+      transform: translate(0.5px, 0.5px);
     }
      .win95-button-sm:disabled {
         color: #808080;
@@ -104,6 +107,33 @@
         border-left-color: #FFFFFF;
         border-bottom-color: #808080;
         border-right-color: #808080;
+    }
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: max-content;
+      background-color: #fefee0; /* Windows 95 tooltip yellow */
+      color: #000000;
+      text-align: center;
+      border: 1px solid #000000;
+      padding: 3px 5px;
+      font-size: 0.8rem; /* Smaller font for tooltips */
+      position: absolute;
+      z-index: 100;
+      bottom: 125%; /* Position above the element */
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+      box-shadow: 1px 1px 0px #808080;
+    }
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
     }
   </style>
 
