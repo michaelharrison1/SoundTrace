@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import ProgressBar from './ProgressBar';
 import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult } from '../../types';
 import ArtistFollowers from './ArtistFollowers';
-import CollaborationRadarGraph from './CollaborationRadarGraph'; // New component
+import CollaborationRadarGrap from './CollaborationRadarGrap.tsx'; // New component
 
 interface ReachAnalyzerProps {
   totalFollowers: number | null | undefined;
@@ -635,7 +635,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         </div>
       );
     } else if (activeMonitorTab === 'collaborationRadar') {
-        return <CollaborationRadarGraph scanLogs={scanLogs} />;
+        return <CollaborationRadarGrap scanLogs={scanLogs} />;
     }
     return null;
   };
