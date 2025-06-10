@@ -438,7 +438,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                         onClick={handleLevelUp}
                         className="px-3 py-1 bg-yellow-400 text-black font-semibold win95-border-outset hover:bg-yellow-300 active:translate-y-px"
                     >
-                        Level Up Available! ✨
+                        Scanner Level Up available
                     </button>
                 </div>
               )}
@@ -447,7 +447,11 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               <div className={`p-0.5 ${crtLevelingUpClass}`}> {/* Only apply pulse border during leveling up animation */}
                 <div
                   className={crtElementBaseClass}
-                  style={{ backgroundColor: CHART_BACKGROUND_COLOR, backgroundImage: `linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px), linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px)`, backgroundSize: "10px 10px" }}
+                  style={{
+                    backgroundColor: CHART_BACKGROUND_COLOR,
+                    backgroundImage: isLevelingUp ? 'none' : `linear-gradient(to right, ${GRID_COLOR} 1px, transparent 1px), linear-gradient(to bottom, ${GRID_COLOR} 1px, transparent 1px)`,
+                    backgroundSize: "10px 10px"
+                  }}
                   role="img"
                   aria-label={`Performance chart. Current total follower reach: ${displayTotalReachValue}. ${reachBarConfig.unitLabel ? 'Each bar segment represents ' + reachBarConfig.unitLabel + ' followers.' : ''}`}
                 >
@@ -461,7 +465,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                           {((totalFollowers ?? 0) > 0 || levelUpAvailable) && (
                             <div
                               className="active-bar-fill relative win95-border-outset"
-                              style={{ backgroundColor: barIsActive ? activeBarAndLineColor : 'transparent', height: barHeight, width: '80%', transition: 'height 0.1s linear', boxShadow: barIsActive ? `0 0 3px ${activeBarAndLineColor}, 0 0 6px ${activeBarAndLineColor}` : 'none' }}
+                              style={{ backgroundColor: barIsActive ? activeBarAndLineColor : 'transparent', height: barHeight, width: '80%', transition: 'height 0.5s ease-out', boxShadow: barIsActive ? `0 0 3px ${activeBarAndLineColor}, 0 0 6px ${activeBarAndLineColor}` : 'none' }}
                             ></div>
                           )}
                         </div>
@@ -622,4 +626,3 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   );
 };
 export default ReachAnalyzer;
-
