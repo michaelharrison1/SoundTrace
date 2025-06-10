@@ -27,8 +27,8 @@ const handleAnalyticsApiResponse = async (response: Response) => {
     (error as any).status = response.status; // Attach status
     throw error;
   }
-  if (response.status === 204) {
-    return;
+  if (response.status === 204) { // Handle 204 No Content specifically for DELETE
+    return; // Nothing to parse
   }
   return response.json();
 };
@@ -83,5 +83,25 @@ export const analyticsService = {
         date: item.date, // Assuming backend sends it as 'YYYY-MM-DD'
         cumulativeFollowers: item.cumulativeFollowers
     }));
+  },
+
+  deleteFollowerHistory: async (): Promise<void> => {
+    const token = getAuthToken();
+    if (!token) {
+      const authError = new Error("Not authenticated. Cannot delete follower history.");
+      (authError as any).status = 401;
+      throw authError;
+    }
+
+    const response = await fetch(`${ANALYTICS_BASE_URL}/follower-history`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      credentials: 'include',
+    });
+    // For DELETE, 204 No Content is a success and won't have a body to parse.
+    // handleAnalyticsApiResponse will throw on actual errors.
+    await handleAnalyticsApiResponse(response);
   },
 };

@@ -178,6 +178,24 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
   const isLoadingOverall = isFollowerLoading || isHistoryLoading;
 
+  const handleDeleteFollowerHistory = async () => {
+    if (window.confirm("Are you sure you want to delete all your follower history? This action cannot be undone.")) {
+        setIsHistoryLoading(true); // Indicate loading during deletion
+        try {
+            await analyticsService.deleteFollowerHistory();
+            setHistoricalFollowerData([]); // Clear local state immediately
+            // If totalFollowers relies on history, you might need to re-evaluate or set it to 0/null
+            // For now, just clearing history display.
+            alert("Follower history deleted successfully.");
+        } catch (error: any) {
+            console.error("Failed to delete follower history:", error);
+            alert(`Error deleting history: ${error.message}`);
+        } finally {
+            setIsHistoryLoading(false);
+        }
+    }
+  };
+
   if (previousScans.length === 0 && !isLoadingOverall) {
     return (
       <div className={containerStyles}>
@@ -207,6 +225,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         scanLogs={previousScans}
         followerResults={followerResults}
         historicalFollowerData={historicalFollowerData}
+        onDeleteFollowerHistory={handleDeleteFollowerHistory}
       />
       <PreviousScans
         scanLogs={previousScans}

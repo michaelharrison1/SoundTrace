@@ -4,6 +4,7 @@ import ProgressBar from './ProgressBar';
 import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, FollowerSnapshot } from '../../types';
 import ArtistFollowers from './ArtistFollowers';
 import CollaborationRadarGraph from './CollaborationRadarGraph';
+import Button from './Button'; // Import Button
 
 interface ReachAnalyzerProps {
   totalFollowers: number | null | undefined;
@@ -12,6 +13,7 @@ interface ReachAnalyzerProps {
   scanLogs: TrackScanLog[];
   followerResults: Map<string, SpotifyFollowerResult>;
   historicalFollowerData: FollowerSnapshot[];
+  onDeleteFollowerHistory: () => Promise<void>; // Callback to delete history
 }
 
 const MAX_BAR_SLOTS = 30;
@@ -146,7 +148,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   error: totalFollowersError,
   scanLogs,
   followerResults,
-  historicalFollowerData
+  historicalFollowerData,
+  onDeleteFollowerHistory
 }) => {
   const [activeMonitorTab, setActiveMonitorTab] = useState<MonitorTab>('reach');
   const [lineProgress, setLineProgress] = useState(0);
@@ -368,12 +371,24 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
         return (
             <div className="mt-4">
-                <h4 className="text-base font-semibold text-black mb-1 text-center">Time-Based Reach Graph</h4>
+              <div className="flex justify-center items-center mb-1">
+                <h4 className="text-base font-semibold text-black text-center">Time-Based Reach Graph</h4>
+                {historicalFollowerData.length > 0 && (
+                   <Button
+                    onClick={onDeleteFollowerHistory}
+                    size="sm"
+                    className="!text-xs !px-1 !py-0 ml-2 win95-button-sm !bg-red-200 hover:!bg-red-300 !border-red-500 !shadow-[0.5px_0.5px_0px_#800000]"
+                    title="Delete all follower history data. This action cannot be undone."
+                  >
+                    Delete History
+                  </Button>
+                )}
+              </div>
                 <p className="text-xs text-gray-600 text-center mb-2">Track follower growth over time (last {dataToDisplay.length} records), updates daily.</p>
                  <div className={`p-0.5 ${isLevelingUp ? 'animate-pulse !border-yellow-400' : 'border-transparent'} border-2`}>
                     <div className="flex">
                         {/* Y-Axis Labels */}
-                        <div className="flex flex-col justify-between items-end pr-1 text-xs text-gray-400" style={{ height: '192px' /* h-48 */, minWidth: '30px' }}>
+                        <div className="flex flex-col justify-between items-end pr-1 text-xs text-black" style={{ height: '192px' /* h-48 */, minWidth: '30px' }}>
                             {yAxisTicks.reverse().map(tick => (
                                 <span key={tick.value}>{tick.label}</span>
                             ))}
@@ -405,7 +420,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                         </div>
                     </div>
                      {/* X-Axis Labels */}
-                    <div className="flex justify-between pl-[34px] text-xs text-gray-400 mt-1 pr-1"> {/* Adjust pl to align with graph */}
+                    <div className="flex justify-between pl-[34px] text-xs text-black mt-1 pr-1"> {/* Adjust pl to align with graph */}
                         {formattedXAxisTicks.map((label, index) => (
                              <span key={index}>{label}</span>
                         ))}
@@ -417,6 +432,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
   const crtElementBaseClass = "win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32";
   const crtLevelingUpClass = isLevelingUp ? "animate-pulse !border-yellow-400 border-2" : "border-transparent border-0"; // For the temporary flash during level up.
+  const barTransitionDuration = reachBarConfig.numberOfBarsToActivate < 4 ? '0.2s' : '0.5s';
+
 
   const renderTabContent = () => {
     if (activeMonitorTab === 'reach') {
@@ -465,7 +482,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                           {((totalFollowers ?? 0) > 0 || levelUpAvailable) && (
                             <div
                               className="active-bar-fill relative win95-border-outset"
-                              style={{ backgroundColor: barIsActive ? activeBarAndLineColor : 'transparent', height: barHeight, width: '80%', transition: 'height 0.5s ease-out', boxShadow: barIsActive ? `0 0 3px ${activeBarAndLineColor}, 0 0 6px ${activeBarAndLineColor}` : 'none' }}
+                              style={{ backgroundColor: barIsActive ? activeBarAndLineColor : 'transparent', height: barHeight, width: '80%', transition: `height ${barTransitionDuration} ease-out`, boxShadow: barIsActive ? `0 0 3px ${activeBarAndLineColor}, 0 0 6px ${activeBarAndLineColor}` : 'none' }}
                             ></div>
                           )}
                         </div>
