@@ -106,7 +106,7 @@ const generateSingleSnippetFromBuffer = async (
     }
 };
 
-export const generateSnippetsForFile = async (file: File): Promise<File[] | null> => {
+export const generateSnippetsForFile = async (file: File, numberOfSegmentsToScan: number): Promise<File[] | null> => {
     let mainAudioContext: AudioContext | null = null;
     try {
       mainAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -116,17 +116,14 @@ export const generateSnippetsForFile = async (file: File): Promise<File[] | null
       const snippets: File[] = [];
       const processedStartTimes: number[] = [];
 
-      // Segment 1: Start of the file
+      // Segment 1: Start of the file (always generate if possible)
       const firstSnippet = await generateSingleSnippetFromBuffer(originalAudioBuffer, 0, file.name, 1);
       if (firstSnippet) {
         snippets.push(firstSnippet);
         processedStartTimes.push(0);
       } else {
         console.warn(`[audioProcessing] Could not generate first snippet for ${file.name}.`);
-        // If the first snippet fails, it might indicate a problem with the file or it's too short.
-        // Return null to indicate failure for this file if no snippets could be generated.
-        // Alerting is better handled by the caller (ScanPage).
-        return null;
+        return null; // If the first snippet fails, treat as an error for this file
       }
 
       const totalDuration = originalAudioBuffer.duration;
@@ -134,13 +131,13 @@ export const generateSnippetsForFile = async (file: File): Promise<File[] | null
       const maxAttemptsPerRandomSnippet = 10;
 
       // Segment 2 (Random)
-      if (snippets.length < MAX_SNIPPETS_PER_FILE && totalDuration >= MIN_AUDIO_DURATION_FOR_ADDITIONAL_SNIPPETS) {
+      if (numberOfSegmentsToScan >= 2 && snippets.length < numberOfSegmentsToScan && snippets.length < MAX_SNIPPETS_PER_FILE && totalDuration >= MIN_AUDIO_DURATION_FOR_ADDITIONAL_SNIPPETS) {
         attempts = 0;
-        while(attempts < maxAttemptsPerRandomSnippet && snippets.length < 2) {
+        while(attempts < maxAttemptsPerRandomSnippet && snippets.length < Math.min(numberOfSegmentsToScan, MAX_SNIPPETS_PER_FILE)) {
           const proposedStartS2 = SNIPPET_DURATION_SECONDS * 0.5 + Math.random() * (totalDuration - SNIPPET_DURATION_SECONDS * 1.5);
           if (proposedStartS2 >= 0 && (totalDuration - proposedStartS2) >= SNIPPET_DURATION_SECONDS * 0.5) {
             if (Math.abs(proposedStartS2 - processedStartTimes[0]) > SNIPPET_DURATION_SECONDS * 0.75) {
-                const secondSnippet = await generateSingleSnippetFromBuffer(originalAudioBuffer, proposedStartS2, file.name, 2);
+                const secondSnippet = await generateSingleSnippetFromBuffer(originalAudioBuffer, proposedStartS2, file.name, snippets.length + 1);
                 if (secondSnippet) {
                     snippets.push(secondSnippet);
                     processedStartTimes.push(proposedStartS2);
@@ -153,9 +150,9 @@ export const generateSnippetsForFile = async (file: File): Promise<File[] | null
       }
 
       // Segment 3 (Random, distinct from S1 and S2)
-      if (snippets.length < MAX_SNIPPETS_PER_FILE && totalDuration >= SNIPPET_DURATION_SECONDS * 2.5) {
+      if (numberOfSegmentsToScan >= 3 && snippets.length < numberOfSegmentsToScan && snippets.length < MAX_SNIPPETS_PER_FILE && totalDuration >= SNIPPET_DURATION_SECONDS * 2.5) {
         attempts = 0;
-        while(attempts < maxAttemptsPerRandomSnippet && snippets.length < 3) {
+        while(attempts < maxAttemptsPerRandomSnippet && snippets.length < Math.min(numberOfSegmentsToScan, MAX_SNIPPETS_PER_FILE)) {
             const proposedStartS3 = Math.random() * (totalDuration - SNIPPET_DURATION_SECONDS);
             let isDistinct = true;
             for(const prevStart of processedStartTimes) {
@@ -165,9 +162,10 @@ export const generateSnippetsForFile = async (file: File): Promise<File[] | null
                 }
             }
             if (isDistinct && (totalDuration - proposedStartS3) >= SNIPPET_DURATION_SECONDS * 0.5) {
-                 const thirdSnippet = await generateSingleSnippetFromBuffer(originalAudioBuffer, proposedStartS3, file.name, 3);
+                 const thirdSnippet = await generateSingleSnippetFromBuffer(originalAudioBuffer, proposedStartS3, file.name, snippets.length + 1);
                  if (thirdSnippet) {
                     snippets.push(thirdSnippet);
+                    // processedStartTimes.push(proposedStartS3); // Not strictly needed to store this if no further distinct segments
                     break;
                  }
             }
@@ -179,7 +177,6 @@ export const generateSnippetsForFile = async (file: File): Promise<File[] | null
 
     } catch (error) {
       console.error(`[audioProcessing] General error processing file ${file.name}:`, error);
-      // Alerting should be handled by the caller (ScanPage) based on the null return.
       return null;
     } finally {
         if (mainAudioContext && mainAudioContext.state !== 'closed') {

@@ -26,7 +26,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
   const [manualAddMessage, setManualAddMessage] = useState<string | null>(null);
 
 
-  const handleScan = useCallback(async (originalFiles: File[]) => {
+  const handleScan = useCallback(async (originalFiles: File[], numberOfSegments: number) => {
     setIsLoading(true);
     setError(null);
     setScanCompletionMessage(null);
@@ -84,7 +84,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
       let snippetsScannedCount = 0;
       let snippetErrors = 0;
 
-      const snippets = await generateSnippetsForFile(originalFile);
+      const snippets = await generateSnippetsForFile(originalFile, numberOfSegments);
 
       if (!snippets || snippets.length === 0) {
         trackStatus = 'error_processing';

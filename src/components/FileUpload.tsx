@@ -5,7 +5,7 @@ import UploadIcon from './icons/UploadIcon';
 import { TARGET_SAMPLE_RATE } from '../utils/audioProcessing'; // Import for note text
 
 interface FileUploadProps {
-  onScan: (files: File[]) => void; // Expects original files
+  onScan: (files: File[], numberOfSegments: number) => void; // Expects original files and number of segments
   isLoading: boolean; // This isLoading is for the overall scanning process in ScanPage
 }
 
@@ -17,8 +17,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
   const [selectedOriginalFiles, setSelectedOriginalFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [processingMessage, setProcessingMessage] = useState<string>(''); // For UI feedback if needed
-
+  const [processingMessage, setProcessingMessage] = useState<string>('');
+  const [selectedSegments, setSelectedSegments] = useState<number>(3); // Default to 3 segments
 
   const addFiles = (newInputFiles: FileList | File[]) => {
     const inputFilesArray = Array.from(newInputFiles);
@@ -84,8 +84,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
   }, []);
 
   const handleScanClick = () => {
-    if (selectedOriginalFiles.length > 0 && !isLoading) { // Pass original files
-      onScan(selectedOriginalFiles);
+    if (selectedOriginalFiles.length > 0 && !isLoading) {
+      onScan(selectedOriginalFiles, selectedSegments); // Pass selected number of segments
     }
   };
 
@@ -107,6 +107,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(i > 1 ? 1 : 0)) + ' ' + sizes[i];
+  };
+
+  const handleSegmentChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedSegments(parseInt(event.target.value, 10));
   };
 
   return (
@@ -137,7 +141,23 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
             Drag & drop audio files or <span className="font-semibold underline">click here</span>.
           </p>
           <p className="text-xs text-gray-700 mt-0.5">Supports: MP3, WAV, AAC, etc. (Originals up to ${MAX_ORIGINAL_FILE_SIZE_MB}MB)</p>
-          <p className="text-xs text-black font-semibold mt-0.5">Note: We analyze multiple segments of your track (stereo, ${TARGET_SAMPLE_RATE / 1000}kHz) to improve match accuracy.</p>
+          <p className="text-xs text-black font-semibold mt-0.5">Note: Analyzing more segments can improve match accuracy but takes longer. All segments are stereo, ${TARGET_SAMPLE_RATE / 1000}kHz.</p>
+        </div>
+
+        <div className="mt-2 mb-1">
+          <span className="text-sm text-black mr-2 font-normal">Scan Intensity:</span>
+          <label className="mr-2 text-sm text-black">
+            <input type="radio" name="segments" value="1" checked={selectedSegments === 1} onChange={handleSegmentChange} className="mr-0.5 align-middle"/>
+            1 Segment (Fastest)
+          </label>
+          <label className="mr-2 text-sm text-black">
+            <input type="radio" name="segments" value="2" checked={selectedSegments === 2} onChange={handleSegmentChange} className="mr-0.5 align-middle"/>
+            2 Segments (Balanced)
+          </label>
+          <label className="text-sm text-black">
+            <input type="radio" name="segments" value="3" checked={selectedSegments === 3} onChange={handleSegmentChange} className="mr-0.5 align-middle"/>
+            3 Segments (Thorough)
+          </label>
         </div>
 
         {processingMessage && (
@@ -184,7 +204,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
             className="w-full mt-3"
             size="md"
           >
-            {isLoading ? 'Scanning...' : `Scan ${selectedOriginalFiles.length} Track(s)`}
+            {isLoading ? 'Scanning...' : `Scan ${selectedOriginalFiles.length} Track(s) (${selectedSegments} Segments)`}
           </Button>
         )}
       </div>
