@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { User } from '../types';
 import { authService } from '../services/authService';
 import Button from './common/Button';
@@ -7,7 +6,6 @@ import ProgressBar from './common/ProgressBar';
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
-  // onNavigateToRegister prop is removed as navigation is handled by global App header
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
@@ -16,7 +14,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setIsLoading(true);
@@ -31,18 +29,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [username, password, onLogin]);
 
   return (
-    // The outer container with blurb is now in App.tsx
-    // This component is now just the form part for the right column
     <div className="bg-[#C0C0C0] p-0.5 win95-border-outset w-full h-full flex flex-col">
       <div className="bg-[#C0C0C0] p-4 border-2 border-transparent h-full flex flex-col justify-center flex-grow">
         <div className="flex justify-center mb-4">
           <span className="text-3xl text-[#084B8A]" aria-hidden="true">♫</span>
         </div>
         <h2 className="text-2xl font-normal text-center text-black mb-1">Account Login</h2>
-        {/* Sub-description for login form */}
         <p className="text-sm text-center text-black mb-5">
             Enter your credentials to access your dashboard.
         </p>
@@ -113,10 +108,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 Demo: user <span className="font-semibold text-black">producer</span>, pass <span className="font-semibold text-black">password123</span>
             </p>
         )}
-        {/* Navigation to register is now in the global header in App.tsx */}
       </div>
     </div>
   );
 };
 
-export default LoginPage;
+export default React.memo(LoginPage);

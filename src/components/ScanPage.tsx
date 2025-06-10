@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { User, TrackScanLog, SnippetScanResult, AcrCloudMatch } from '../types';
 import FileUpload from './FileUpload';
@@ -6,7 +5,8 @@ import { acrCloudService } from '../services/acrCloudService';
 import { scanLogService } from '../services/scanLogService';
 import { generateSnippetsForFile } from '../utils/audioProcessing';
 import ProgressBar from './common/ProgressBar';
-import Button from './common/Button'; // Added Button import
+import ManualSpotifyAddForm from './scanPage/ManualSpotifyAddForm';
+import ScanMessages from './scanPage/ScanMessages';
 
 interface ScanPageProps {
   user: User;
@@ -21,8 +21,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
   const [scanProgressMessage, setScanProgressMessage] = useState<string>('');
   const [scanCompletionMessage, setScanCompletionMessage] = useState<string | null>(null);
   const [alreadyScannedMessage, setAlreadyScannedMessage] = useState<string | null>(null);
-  const [manualSpotifyLink, setManualSpotifyLink] = useState<string>('');
-  const [isAddingManualLink, setIsAddingManualLink] = useState<boolean>(false);
   const [manualAddMessage, setManualAddMessage] = useState<string | null>(null);
 
 
@@ -31,6 +29,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
     setError(null);
     setScanCompletionMessage(null);
     setAlreadyScannedMessage(null);
+    setManualAddMessage(null);
     setScanProgressMessage('Preparing tracks...');
 
     if (originalFiles.length === 0) {
@@ -167,32 +166,28 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         } else if (successfullySavedLogs.length > 0) {
             finalCompletionMsg += `No new matches found in the processed tracks. `;
         }
-    } else if (alreadyScannedFileNames.length === originalFiles.length && originalFiles.length > 0) {
-        // This state is handled before the loop now.
-    } else {
-        finalCompletionMsg = "No new tracks were processed.";
     }
     setScanCompletionMessage(finalCompletionMsg.trim() || null);
 
     setIsLoading(false);
     setScanProgressMessage('');
-  }, [onNewScanLogsSaved, user, previousScans, onLogout]);
+  }, [onNewScanLogsSaved, previousScans, onLogout]);
 
-  const handleManualAddSpotifyLink = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!manualSpotifyLink.trim()) {
+  const handleManualAddSpotifyTrack = useCallback(async (link: string) => {
+    if (!link.trim()) {
         setManualAddMessage("Please enter a Spotify track link.");
-        return;
+        return false;
     }
-    setIsAddingManualLink(true);
+    setError(null);
+    setScanCompletionMessage(null);
+    setAlreadyScannedMessage(null);
     setManualAddMessage(null);
-    setError(null); // Clear general errors
 
     try {
-        const newLog = await scanLogService.addSpotifyTrackToLog(manualSpotifyLink);
+        const newLog = await scanLogService.addSpotifyTrackToLog(link);
         onNewScanLogsSaved([newLog]);
         setManualAddMessage(`Successfully added "${newLog.matches[0]?.title || 'Track'}" to your scan log.`);
-        setManualSpotifyLink('');
+        return true; // Indicate success for form clearing
     } catch (err: any) {
         console.error("Error manually adding Spotify link:", err);
         setManualAddMessage(`Error: ${err.message || "Could not add Spotify track."}`);
@@ -201,10 +196,10 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         if (isAuthError) {
           onLogout();
         }
-    } finally {
-        setIsAddingManualLink(false);
+        return false; // Indicate failure
     }
-  };
+  }, [onNewScanLogsSaved, onLogout]);
+
 
   return (
     <div className="space-y-3">
@@ -212,35 +207,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         <FileUpload onScan={handleScan} isLoading={isLoading} />
       </section>
 
-      <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
-        <div className="p-3 bg-[#C0C0C0]">
-            <h3 className="text-lg font-normal text-black mb-2">Manually Add Spotify Track</h3>
-            <form onSubmit={handleManualAddSpotifyLink} className="space-y-2">
-                <div>
-                    <label htmlFor="spotifyLink" className="block text-sm text-black mb-0.5">Spotify Track Link:</label>
-                    <input
-                        id="spotifyLink"
-                        type="url"
-                        value={manualSpotifyLink}
-                        onChange={(e) => setManualSpotifyLink(e.target.value)}
-                        placeholder="https://open.spotify.com/track/..."
-                        className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
-                        disabled={isAddingManualLink}
-                        aria-label="Spotify Track Link"
-                    />
-                </div>
-                <Button type="submit" size="md" isLoading={isAddingManualLink} disabled={isAddingManualLink || !manualSpotifyLink.trim()}>
-                    {isAddingManualLink ? 'Adding...' : 'Add to Scan Log'}
-                </Button>
-            </form>
-            {manualAddMessage && (
-                <div className={`mt-2 p-1.5 text-xs border ${manualAddMessage.startsWith("Error:") ? "bg-red-100 border-red-700 text-red-700" : "bg-green-100 border-green-700 text-green-700"}`}>
-                    {manualAddMessage}
-                </div>
-            )}
-        </div>
-      </section>
-
+      <ManualSpotifyAddForm onAddTrack={handleManualAddSpotifyTrack} />
 
       {isLoading && (
         <div className="p-3 win95-border-outset bg-[#C0C0C0]">
@@ -248,33 +215,16 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
           <p className="text-xs text-gray-700 text-center">Please wait.</p>
         </div>
       )}
+      
+      <ScanMessages
+        isLoading={isLoading}
+        error={error}
+        scanCompletionMessage={scanCompletionMessage}
+        alreadyScannedMessage={alreadyScannedMessage}
+        manualAddMessage={manualAddMessage}
+      />
 
-      {!isLoading && (error || scanCompletionMessage || alreadyScannedMessage) && (
-        <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
-            <div className="p-2 bg-[#C0C0C0] space-y-1.5">
-            {scanCompletionMessage && (
-                <div className="p-2 bg-green-200 text-black border border-black">
-                <p className="font-semibold">Scan Status:</p>
-                <p>{scanCompletionMessage}</p>
-                </div>
-            )}
-            {alreadyScannedMessage && (
-                <div className="p-2 bg-blue-200 text-black border border-black">
-                <p className="font-semibold">Already Scanned:</p>
-                <p>{alreadyScannedMessage}</p>
-                </div>
-            )}
-            {error && (
-                <div className="p-2 bg-yellow-200 text-black border border-black">
-                <p className="font-semibold">Notifications/Errors:</p>
-                <p style={{whiteSpace: 'pre-line'}}>{error}</p>
-                </div>
-            )}
-            </div>
-        </div>
-      )}
-
-      {!isLoading && !isAddingManualLink && !error && !scanCompletionMessage && !alreadyScannedMessage && !manualAddMessage && (
+      {!isLoading && !error && !scanCompletionMessage && !alreadyScannedMessage && !manualAddMessage && (
          <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
             <span className="text-4xl text-gray-500" aria-hidden="true">♫</span>
             <h2 className="text-lg font-normal text-black mt-1">Ready to Scan?</h2>
@@ -285,4 +235,4 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
   );
 };
 
-export default ScanPage;
+export default React.memo(ScanPage);

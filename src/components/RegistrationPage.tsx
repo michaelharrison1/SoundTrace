@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { User } from '../types';
 import { authService } from '../services/authService';
 import Button from './common/Button';
@@ -7,7 +6,6 @@ import ProgressBar from './common/ProgressBar';
 
 interface RegistrationPageProps {
   onRegister: (user: User) => void;
-  // onNavigateToLogin prop is removed as navigation is handled by global App header
 }
 
 const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister }) => {
@@ -17,7 +15,7 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
@@ -46,10 +44,9 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [username, password, confirmPassword, onRegister]);
 
   return (
-    // This component is now just the form part for the right column
     <div className="bg-[#C0C0C0] p-0.5 win95-border-outset w-full h-full flex flex-col">
       <div className="bg-[#C0C0C0] p-4 border-2 border-transparent h-full flex flex-col justify-center flex-grow">
         <div className="flex justify-center mb-4">
@@ -139,10 +136,9 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister }) => {
             </p>
           </div>
         )}
-        {/* Navigation to login is now in the global header in App.tsx */}
       </div>
     </div>
   );
 };
 
-export default RegistrationPage;
+export default React.memo(RegistrationPage);

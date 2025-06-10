@@ -43,7 +43,7 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <button
       type="button"
-      className={`${baseStyles} ${win95Base} ${sizeStyles[size]} ${variantSpecificStyles} ${className || ''}`}
+      className={`${baseStyles} ${win95Base} ${sizeStyles[size]} ${variantSpecificStyles} ${props.disabled ? 'text-gray-500 opacity-70 cursor-not-allowed active:!shadow-[1px_1px_0px_#000000] active:!border-t-white active:!border-l-white active:!border-b-[#808080] active:!border-r-[#808080] active:!translate-x-0 active:!translate-y-0' : ''} ${className || ''}`}
       disabled={isLoading || props.disabled}
       {...props}
     >
@@ -58,4 +58,4 @@ const Button: React.FC<ButtonProps> = ({
   );
 };
 
-export default Button;
+export default React.memo(Button);

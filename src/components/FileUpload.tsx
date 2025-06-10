@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef } from 'react';
 import Button from './common/Button';
 import UploadIcon from './icons/UploadIcon';
@@ -17,10 +16,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
   const [selectedOriginalFiles, setSelectedOriginalFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [processingMessage, setProcessingMessage] = useState<string>('');
+  const [processingMessage, setProcessingMessage] = useState<string>(''); // This seems unused, consider removal if not planned.
   const [selectedSegments, setSelectedSegments] = useState<number>(3); // Default to 3 segments
 
-  const addFiles = (newInputFiles: FileList | File[]) => {
+  const addFiles = useCallback((newInputFiles: FileList | File[]) => {
     const inputFilesArray = Array.from(newInputFiles);
     const validAudioFiles: File[] = [];
     const nonAudioFiles: string[] = [];
@@ -52,15 +51,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
         return updatedFiles;
       });
     }
-  };
+  }, []);
 
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       addFiles(event.target.files);
-      event.target.value = ''; // Allow selecting the same file again
+      event.target.value = '';
     }
-  };
+  }, [addFiles]);
 
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -69,7 +68,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
     if (event.dataTransfer.files) {
       addFiles(event.dataTransfer.files);
     }
-  }, []); // addFiles is stable
+  }, [addFiles]);
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -83,25 +82,25 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
     setDragOver(false);
   }, []);
 
-  const handleScanClick = () => {
+  const handleScanClick = useCallback(() => {
     if (selectedOriginalFiles.length > 0 && !isLoading) {
-      onScan(selectedOriginalFiles, selectedSegments); // Pass selected number of segments
+      onScan(selectedOriginalFiles, selectedSegments);
     }
-  };
+  }, [selectedOriginalFiles, isLoading, onScan, selectedSegments]);
 
-  const openFileDialog = () => {
+  const openFileDialog = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
-  const handleRemoveFile = (fileToRemove: File) => {
+  const handleRemoveFile = useCallback((fileToRemove: File) => {
     setSelectedOriginalFiles(prevFiles => prevFiles.filter(file => file.name !== fileToRemove.name || file.size !== fileToRemove.size));
-  };
+  }, []);
 
-  const handleClearAllFiles = () => {
+  const handleClearAllFiles = useCallback(() => {
     setSelectedOriginalFiles([]);
-  };
+  }, []);
 
-  const formatFileSize = (bytes: number): string => {
+  const formatFileSize = (bytes: number): string => { // This can be moved to a utils file if used elsewhere
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
@@ -109,9 +108,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(i > 1 ? 1 : 0)) + ' ' + sizes[i];
   };
 
-  const handleSegmentChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSegmentChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedSegments(parseInt(event.target.value, 10));
-  };
+  }, []);
 
   return (
     <div className="bg-[#C0C0C0] p-0.5 win95-border-outset">
@@ -160,9 +159,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
           </label>
         </div>
 
-        {processingMessage && (
+        {/* {processingMessage && ( // This state seems unused
             <div className="mt-2 text-sm text-black">{processingMessage}</div>
-        )}
+        )} */}
 
         {selectedOriginalFiles.length > 0 && (
           <div className="mt-3">
@@ -199,7 +198,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
         {selectedOriginalFiles.length > 0 && (
           <Button
             onClick={handleScanClick}
-            isLoading={isLoading} // Controlled by ScanPage
+            isLoading={isLoading}
             disabled={selectedOriginalFiles.length === 0 || isLoading}
             className="w-full mt-3"
             size="md"
@@ -212,4 +211,4 @@ const FileUpload: React.FC<FileUploadProps> = ({ onScan, isLoading }) => {
   );
 };
 
-export default FileUpload;
+export default React.memo(FileUpload);

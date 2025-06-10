@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, TrackScanLog } from '../types';
 import { scanLogService } from '../services/scanLogService';
@@ -6,7 +5,7 @@ import Button from './common/Button';
 import ScanPage from './ScanPage';
 import DashboardViewPage from './DashboardViewPage';
 import ProgressBar from './common/ProgressBar';
-import UploadIcon from './icons/UploadIcon'; // Placeholder for export icon
+import UploadIcon from './icons/UploadIcon';
 
 interface MainAppLayoutProps {
   user: User;
@@ -17,7 +16,7 @@ type ActiveView = 'scan' | 'dashboard';
 
 const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
   const [previousScans, setPreviousScans] = useState<TrackScanLog[]>([]);
-  const [activeView, setActiveView] = useState<ActiveView>('dashboard'); // Default to dashboard
+  const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [isLoadingScans, setIsLoadingScans] = useState<boolean>(true);
   const [scanError, setScanError] = useState<string | null>(null);
 
@@ -47,7 +46,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
     fetchScanLogs();
   }, [fetchScanLogs]);
 
-  const handleClearAllScans = async () => {
+  const handleClearAllScans = useCallback(async () => {
     if (window.confirm("Are you sure you want to delete ALL scan records from the server? This action cannot be undone.")) {
       setIsLoadingScans(true);
       setScanError(null);
@@ -65,9 +64,9 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         setIsLoadingScans(false);
       }
     }
-  };
+  }, [onLogout]);
 
-  const handleDeleteScan = async (logIdToDelete: string) => {
+  const handleDeleteScan = useCallback(async (logIdToDelete: string) => {
      if (window.confirm("Are you sure you want to delete this scan record and all its associated matches from the server?")) {
         setIsLoadingScans(true);
         setScanError(null);
@@ -85,19 +84,19 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
           setIsLoadingScans(false);
         }
      }
-  };
+  }, [onLogout]);
 
-   const addMultipleScanLogsToState = (newLogs: TrackScanLog[]) => {
+   const addMultipleScanLogsToState = useCallback((newLogs: TrackScanLog[]) => {
     setPreviousScans(prevLogs => [...newLogs, ...prevLogs].sort((a,b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
-  };
+  }, []);
 
   const getNavButtonClass = (viewType: ActiveView) => {
     return `px-3 py-0.5 hover:bg-gray-300 ${activeView === viewType ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' : 'win95-border-outset'}`;
   };
 
-  const handleExportAllData = () => {
+  const handleExportAllData = useCallback(() => {
     alert("Full data export (e.g., combined CSV/PDF of all sections) is coming soon! Individual tables may have their own export options.");
-  };
+  }, []);
 
   return (
     <>
@@ -118,7 +117,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         >
           Dashboard ({previousScans.length})
         </Button>
-        <div className="ml-auto"> {/* Pushes export button to the right */}
+        <div className="ml-auto">
             <Button
               onClick={handleExportAllData}
               size="sm"
@@ -165,4 +164,4 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
   );
 };
 
-export default MainAppLayout;
+export default React.memo(MainAppLayout);

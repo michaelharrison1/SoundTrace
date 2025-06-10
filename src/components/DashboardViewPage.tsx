@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, FollowerSnapshot } from '../types';
 import PreviousScans from './PreviousScans';
 import ReachAnalyzer from './common/ReachAnalyzer';
 import ProgressBar from './common/ProgressBar';
-// Removed useLocalStorage import
-import { analyticsService } from '../services/analyticsService'; // Import analyticsService
+import { analyticsService } from '../services/analyticsService';
 
 interface DashboardViewPageProps {
   user: User;
@@ -38,7 +36,6 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     return Array.from(ids);
   }, [previousScans]);
 
-  // Fetch full history on mount or when user changes
   useEffect(() => {
     let isMounted = true;
     const fetchHistory = async () => {
@@ -51,9 +48,6 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         }
       } catch (error: any) {
         console.error("Failed to fetch follower history:", error);
-        if (isMounted) {
-          // Optionally set an error state for history fetching
-        }
       } finally {
         if (isMounted) {
           setIsHistoryLoading(false);
@@ -71,8 +65,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
       setFollowerResults(new Map());
       setFollowerFetchError(null);
       setIsFollowerLoading(false);
-      // Save 0 followers for today if no artists
-      if (user) { // Ensure user is available before trying to save
+      if (user) {
           analyticsService.saveFollowerSnapshot(0)
             .then(savedSnapshot => {
                  setHistoricalFollowerData(prevHistory => {
@@ -145,18 +138,17 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         setFollowerResults(newFollowerResults);
         setTotalFollowers(sum);
 
-        if (typeof sum === 'number' && !isNaN(sum) && user) { // Check user available for saving
+        if (typeof sum === 'number' && !isNaN(sum) && user) {
           analyticsService.saveFollowerSnapshot(sum)
             .then(savedSnapshot => {
-                // Optimistically update local history state
                 setHistoricalFollowerData(prevHistory => {
                     const newHistory = [...prevHistory];
                     const entryIndex = newHistory.findIndex(entry => entry.date === savedSnapshot.date);
-                    if (entryIndex > -1) { // Entry for today exists
+                    if (entryIndex > -1) {
                         if (newHistory[entryIndex].cumulativeFollowers !== savedSnapshot.cumulativeFollowers) {
-                           newHistory[entryIndex] = savedSnapshot; // Update if different
-                        } else { return prevHistory; } // No change needed
-                    } else { // No entry for today, add new
+                           newHistory[entryIndex] = savedSnapshot;
+                        } else { return prevHistory; }
+                    } else {
                         newHistory.push(savedSnapshot);
                     }
                     return newHistory.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -174,18 +166,16 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
     fetchAllFollowers();
     return () => { isMounted = false; };
-  }, [uniqueArtistIds, user]); // Removed setHistoricalFollowerData as it's managed via analyticsService now
+  }, [uniqueArtistIds, user]);
 
   const isLoadingOverall = isFollowerLoading || isHistoryLoading;
 
-  const handleDeleteFollowerHistory = async () => {
+  const handleDeleteFollowerHistory = useCallback(async () => {
     if (window.confirm("Are you sure you want to delete all your follower history? This action cannot be undone.")) {
-        setIsHistoryLoading(true); // Indicate loading during deletion
+        setIsHistoryLoading(true);
         try {
             await analyticsService.deleteFollowerHistory();
-            setHistoricalFollowerData([]); // Clear local state immediately
-            // If totalFollowers relies on history, you might need to re-evaluate or set it to 0/null
-            // For now, just clearing history display.
+            setHistoricalFollowerData([]);
             alert("Follower history deleted successfully.");
         } catch (error: any) {
             console.error("Failed to delete follower history:", error);
@@ -194,7 +184,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
             setIsHistoryLoading(false);
         }
     }
-  };
+  }, []);
 
   if (previousScans.length === 0 && !isLoadingOverall) {
     return (
@@ -220,7 +210,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     <div>
       <ReachAnalyzer
         totalFollowers={totalFollowers}
-        isLoading={isLoadingOverall} // Pass combined loading state
+        isLoading={isLoadingOverall}
         error={followerFetchError}
         scanLogs={previousScans}
         followerResults={followerResults}
@@ -237,4 +227,4 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   );
 };
 
-export default DashboardViewPage;
+export default React.memo(DashboardViewPage);

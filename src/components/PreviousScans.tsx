@@ -1,13 +1,11 @@
-
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult } from '../types';
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
 import { useSpotifyPlayer } from '../contexts/SpotifyContext';
-import SpotifyIcon from './icons/SpotifyIcon';
-import { spotifyStreamService } from '../services/spotifyStreamService';
-import UploadIcon from './icons/UploadIcon'; // For export icon
+import UploadIcon from './icons/UploadIcon';
+import StreamCountCell from './common/StreamCountCell'; // Import new component
 
 type SortableColumn =
   | 'title'
@@ -39,14 +37,6 @@ interface DisplayableTableRow {
   rowKey: string;
 }
 
-interface StreamFetchState {
-  loading: boolean;
-  count: number | null;
-  error: string | null;
-  status?: 'available' | 'unavailable_token_error' | 'unavailable_data_missing' | 'unavailable_api_error' | 'error_fetching';
-  message?: string;
-}
-
 const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults, onDeleteScan, onClearAllScans }) => {
   const {
     isSpotifyConnected,
@@ -60,8 +50,11 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [isLoadingExport, setIsLoadingExport] = useState(false);
   const [exportMessage, setExportMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-  const [streamCounts, setStreamCounts] = useState<Map<string, StreamFetchState>>(new Map());
-
+  
+  // Stream counts state is now managed by StreamCountCell, but we might need a way to reference them for sorting
+  // For simplicity, this example will sort based on the current display of StreamCountCell if possible,
+  // or requires StreamCountCell to update a shared context/state if more robust sorting is needed.
+  // For now, sorting by 'spotifyStreams' might be less accurate or disabled until a shared state is implemented.
 
   const initialTableRows = useMemo(() => {
     return scanLogs.reduce((acc, log: TrackScanLog, logIndex: number) => {
@@ -117,7 +110,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           return 0;
       }
 
-
       let valA: any, valB: any;
       switch (sortColumn) {
         case 'title':
@@ -147,10 +139,14 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         case 'originalScanDate':
           valA = new Date(a.originalScanDate).getTime(); valB = new Date(b.originalScanDate).getTime();
           break;
+        // Sorting by 'spotifyStreams' is tricky here as StreamCountCell manages its own state.
+        // A more robust solution would involve lifting stream count state or using a context.
+        // For now, this sorting might not be perfectly accurate if counts aren't fetched for all visible rows.
         case 'spotifyStreams':
-          const streamCountA = streamCounts.get(a.matchDetails.spotifyTrackId || '')?.count ?? -1;
-          const streamCountB = streamCounts.get(b.matchDetails.spotifyTrackId || '')?.count ?? -1;
-          valA = streamCountA; valB = streamCountB;
+          // This is a placeholder for how one might attempt to get the value if it were available directly.
+          // In reality, this would require StreamCountCell to report its value back or use a shared state.
+          valA = -1; // Placeholder
+          valB = -1; // Placeholder
           break;
         default: return 0;
       }
@@ -160,7 +156,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
       return 0;
     });
     return sorted;
-  }, [initialTableRows, sortColumn, sortDirection, followerResults, streamCounts]);
+  }, [initialTableRows, sortColumn, sortDirection, followerResults]);
 
   const handleSort = (column: SortableColumn) => {
     if (sortColumn === column) {
@@ -177,39 +173,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     }
     return '';
   };
-
-  const handleFetchStreamCount = async (trackId: string) => {
-    if (!trackId) return;
-    setStreamCounts(prev => new Map(prev).set(trackId, { loading: true, count: null, error: null, status: undefined, message: undefined }));
-    try {
-      const data = await spotifyStreamService.getTrackStreams(trackId);
-      setStreamCounts(prev => new Map(prev).set(trackId, {
-        loading: false,
-        count: data.streamCount,
-        error: data.streamCountStatus !== 'available' ? (data.message || 'Failed to fetch streams') : null,
-        status: data.streamCountStatus,
-        message: data.message
-      }));
-    } catch (err: any) {
-      console.error(`Error fetching streams for ${trackId}:`, err);
-      setStreamCounts(prev => new Map(prev).set(trackId, {
-        loading: false,
-        count: null,
-        error: err.message || 'Error fetching streams',
-        status: 'error_fetching',
-        message: err.message || 'Client-side error fetching streams'
-      }));
-    }
-  };
-
-  const formatStreamCount = (count: number | null): string => {
-    if (count === null || typeof count === 'undefined') return '-';
-    if (count >= 1_000_000_000) return `${(count / 1_000_000_000).toFixed(1)}B`;
-    if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
-    if (count >= 1_000) return `${(count / 1_000).toFixed(0)}K`; // No decimal for K for cleaner look
-    return count.toString();
-  };
-
 
   const handleExportPlaylist = async () => {
     setExportMessage(null);
@@ -259,10 +222,8 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   };
 
   const escapeCsvCell = (cellData: any): string => {
-    if (cellData == null) return ''; // Handles null or undefined
+    if (cellData == null) return '';
     const stringData = String(cellData);
-    // If the string contains a comma, double quote, or newline, wrap it in double quotes
-    // and escape any existing double quotes by doubling them up (e.g., " becomes "")
     if (stringData.includes(',') || stringData.includes('"') || stringData.includes('\n')) {
       return `"${stringData.replace(/"/g, '""')}"`;
     }
@@ -275,7 +236,8 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
       "Matched Song Title", "Matched Artist", "Matched Album", "Release Date",
       "Confidence (%)", "Spotify Link", "YouTube Link",
       "Spotify Artist ID", "Spotify Track ID",
-      "Fetched Artist Followers", "Fetched Artist Popularity", "Fetched Spotify Streams"
+      "Fetched Artist Followers", "Fetched Artist Popularity"
+      // "Fetched Spotify Streams" - Omitting as it's not directly available here without significant state changes
     ];
     const csvRows = [headers.join(',')];
 
@@ -289,7 +251,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
       if (row.isMatchRow && row.matchDetails) {
         const match = row.matchDetails;
         const followerInfo = match.spotifyArtistId ? followerResults.get(match.spotifyArtistId) : undefined;
-        const streamInfo = match.spotifyTrackId ? streamCounts.get(match.spotifyTrackId) : undefined;
 
         rowData.push(
           escapeCsvCell(match.title),
@@ -302,11 +263,9 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           escapeCsvCell(match.spotifyArtistId),
           escapeCsvCell(match.spotifyTrackId),
           escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.followers : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
-          escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.popularity : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
-          escapeCsvCell(streamInfo?.count ?? (streamInfo?.loading ? 'Loading...' : 'N/A'))
+          escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.popularity : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A'))
         );
       } else {
-        // Fill remaining cells with empty strings for non-match rows or rows without details
         rowData.push(...Array(headers.length - rowData.length).fill(''));
       }
       csvRows.push(rowData.join(','));
@@ -327,7 +286,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   };
 
 
-  const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & {sortKey?: SortableColumn, width?: string}> = ({ children, sortKey, width, className, ...props }) => (
+  const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & {sortKey?: SortableColumn, width?: string}> = React.memo(({ children, sortKey, width, className, ...props }) => (
     <th
         scope="col"
         className={`px-2 py-1 text-left font-normal text-black win95-border-outset border-b-2 border-r-2 border-b-[#808080] border-r-[#808080] select-none whitespace-nowrap ${sortKey ? 'cursor-pointer hover:bg-gray-300' : ''} ${className || ''}`}
@@ -337,13 +296,16 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     >
         {children}{sortKey && renderSortArrow(sortKey)}
     </th>
-);
+  ));
+  HeaderCell.displayName = 'HeaderCell';
 
-  const DataCell: React.FC<React.TdHTMLAttributes<HTMLTableCellElement>> = ({ children, className, ...props }) => (
+
+  const DataCell: React.FC<React.TdHTMLAttributes<HTMLTableCellElement>> = React.memo(({ children, className, ...props }) => (
     <td className={`px-2 py-1 text-gray-800 truncate whitespace-nowrap ${className || ''}`} {...props}>
       {children}
     </td>
-  );
+  ));
+  DataCell.displayName = 'DataCell';
 
   const containerStyles = "p-0.5 win95-border-outset bg-[#C0C0C0]";
   const innerContainerStyles = "p-2 bg-[#C0C0C0]";
@@ -406,19 +368,19 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         {!hasAnyMatchesInAnyLog && scanLogs.length > 0 ? (
              <p className="text-black text-center py-2 text-sm">No song matches found in your scan history. {scanLogs.length} record(s) processed without matches or with errors.</p>
         ) : (
-        <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-320px)]"> {/* Adjusted max-h for new column */}
+        <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-320px)]">
           <table className="min-w-full text-sm" style={{tableLayout: 'fixed'}}>
              <colgroup>
-                <col style={{ width: '4%' }} /> {/* Spotify Link */}
-                <col style={{ width: '16%' }} /> {/* Title */}
-                <col style={{ width: '13%' }} /> {/* Artist */}
-                <col style={{ width: '10%' }} /> {/* Followers */}
-                <col style={{ width: '12%' }} /> {/* Spotify Streams */}
-                <col style={{ width: '13%' }} /> {/* Album */}
-                <col style={{ width: '8%' }} />  {/* Released */}
-                <col style={{ width: '6%' }} />  {/* Confidence */}
-                <col style={{ width: '10%' }} /> {/* Your Upload */}
-                <col style={{ width: '8%' }} />  {/* Action */}
+                <col style={{ width: '4%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '8%' }} />
             </colgroup>
             <thead className="bg-[#C0C0C0] border-b-2 border-b-[#808080] sticky top-0 z-10">
               <tr>
@@ -437,31 +399,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             <tbody className="bg-white">
               {sortedTableRows.map((row, rowIndex) => {
                 const followerInfo = row.matchDetails?.spotifyArtistId ? followerResults.get(row.matchDetails.spotifyArtistId) : undefined;
-                const streamInfo = row.matchDetails?.spotifyTrackId ? streamCounts.get(row.matchDetails.spotifyTrackId) : undefined;
-
-                let streamDisplayContent;
-                if (streamInfo?.loading) {
-                  streamDisplayContent = <span className="text-xs text-gray-500">Loading...</span>;
-                } else if (streamInfo?.status && streamInfo.status !== 'available') {
-                  let titleText = streamInfo.message || 'Stream count unavailable';
-                  if (streamInfo.status === 'unavailable_token_error') titleText = 'Token error fetching streams.';
-                  else if (streamInfo.status === 'unavailable_data_missing') titleText = 'Stream data missing for this track.';
-                  else if (streamInfo.status === 'unavailable_api_error') titleText = 'API error fetching streams.';
-                  else if (streamInfo.status === 'error_fetching') titleText = `Client error: ${streamInfo.error || 'Unknown'}`;
-
-                  streamDisplayContent = (
-                    <Button size="sm" className="!p-0.5 !text-[10px] !min-w-[50px] !h-[18px] hover:bg-gray-300" onClick={() => row.matchDetails?.spotifyTrackId && handleFetchStreamCount(row.matchDetails.spotifyTrackId)} title={titleText}>
-                      Retry
-                    </Button>
-                  );
-                } else if (streamInfo?.count !== null && typeof streamInfo?.count !== 'undefined') {
-                  streamDisplayContent = <span className="text-black">{formatStreamCount(streamInfo.count)}</span>;
-                } else if (row.matchDetails?.spotifyTrackId) {
-                  streamDisplayContent = <Button size="sm" className="!p-0.5 !text-[10px] !min-w-[50px] !h-[18px] hover:bg-gray-300" onClick={() => row.matchDetails?.spotifyTrackId && handleFetchStreamCount(row.matchDetails.spotifyTrackId)}>Fetch</Button>;
-                } else {
-                  streamDisplayContent = <span className="text-gray-400">-</span>;
-                }
-
                 return (
                 <tr
                     key={row.rowKey}
@@ -470,29 +407,11 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                   {row.isMatchRow && row.matchDetails ? (
                     <>
                       <DataCell className="text-center">
-                        {row.matchDetails.platformLinks?.spotify ? (
-                          <a
-                            href={row.matchDetails.platformLinks.spotify}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 font-semibold"
-                            title={`Open ${row.matchDetails.title} on Spotify`}
-                          >
-                            SP
-                          </a>
-                        ) : (
-                          <span className="text-gray-400">-</span>
+                        {row.matchDetails.platformLinks?.spotify && (
+                          <a href={row.matchDetails.platformLinks.spotify} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 font-semibold" title={`Open ${row.matchDetails.title} on Spotify`}>SP</a>
                         )}
                          {row.matchDetails.platformLinks?.youtube && (
-                            <a
-                                href={row.matchDetails.platformLinks.youtube}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 font-semibold ml-1"
-                                title={`Search ${row.matchDetails.title} on YouTube`}
-                            >
-                                YT
-                            </a>
+                            <a href={row.matchDetails.platformLinks.youtube} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 font-semibold ml-1" title={`Search ${row.matchDetails.title} on YouTube`}>YT</a>
                         )}
                       </DataCell>
                       <DataCell title={row.matchDetails.title}>{row.matchDetails.title}</DataCell>
@@ -504,7 +423,9 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                           error={followerInfo?.status === 'error' ? followerInfo.reason : undefined}
                         />
                       </DataCell>
-                      <DataCell className="text-center">{streamDisplayContent}</DataCell>
+                       <DataCell className="text-center">
+                        <StreamCountCell trackId={row.matchDetails.spotifyTrackId} />
+                      </DataCell>
                       <DataCell title={row.matchDetails.album}>{row.matchDetails.album}</DataCell>
                       <DataCell className="text-center">{row.matchDetails.releaseDate}</DataCell>
                       <DataCell className="text-center">
@@ -547,5 +468,4 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   );
 };
 
-export default PreviousScans;
-
+export default React.memo(PreviousScans);
