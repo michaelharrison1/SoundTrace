@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, TrackScanLog, ScanJob } from '../types'; 
+import { User, TrackScanLog, ScanJob } from '../types';
 import { scanLogService } from '../services/scanLogService';
 import Button from './common/Button';
 import ScanPage from './ScanPage';
 import DashboardViewPage from './DashboardViewPage';
-import JobConsole from './jobConsole/JobConsole'; 
+import JobConsole from './jobConsole/JobConsole';
 import ProgressBar from './common/ProgressBar';
 import UploadIcon from './icons/UploadIcon';
 
@@ -14,13 +14,27 @@ interface MainAppLayoutProps {
   onLogout: () => void;
 }
 
-type ActiveView = 'scan' | 'dashboard' | 'jobs'; 
+type ActiveView = 'scan' | 'dashboard' | 'jobs';
+
+// Helper function for Promise with timeout
+function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError = new Error('Promise timed out')): Promise<T> {
+  // Create a new promise that rejects in <ms> milliseconds
+  const timeout = new Promise<never>((_, reject) => {
+    const id = setTimeout(() => {
+      clearTimeout(id);
+      reject(timeoutError);
+    }, ms);
+  });
+
+  // Returns a race between the timeout and the original promise
+  return Promise.race([promise, timeout]);
+}
 
 const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
-  const [previousScans, setPreviousScans] = useState<TrackScanLog[]>([]); 
-  const [jobs, setJobs] = useState<ScanJob[]>([]); 
+  const [previousScans, setPreviousScans] = useState<TrackScanLog[]>([]);
+  const [jobs, setJobs] = useState<ScanJob[]>([]);
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
-  const [isLoading, setIsLoading] = useState<boolean>(true); 
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -28,16 +42,27 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const [logs, userJobs] = await Promise.all([
+      const dataFetchPromise = Promise.all([
         scanLogService.getScanLogs(),
         scanLogService.getAllJobs()
       ]);
+
+      const [logs, userJobs] = await promiseWithTimeout(
+        dataFetchPromise,
+        30000, // 30 seconds timeout
+        new Error('Failed to load app data in time. Please check your connection or try again later.')
+      );
+
       setPreviousScans(logs.sort((a, b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
       setJobs(userJobs.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (err: any) {
       console.error("Failed to fetch initial data:", err);
       const isAuthError = (err.status === 401 || err.status === 403) ||
-                          (typeof err.message === 'string' && err.message.toLowerCase().includes('token is not valid'));
+                          (typeof err.message === 'string' && (
+                            err.message.toLowerCase().includes('token is not valid') ||
+                            err.message.toLowerCase().includes('not authenticated') ||
+                            err.message.toLowerCase().includes('authorization denied')
+                          ));
       if (isAuthError) {
         console.warn("Authentication error during data fetch. Logging out.", err.message);
         onLogout();
@@ -62,7 +87,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
     // For simplicity, just refetch all jobs and logs.
     refreshAllData();
   }, [refreshAllData]);
-  
+
   // For manual log additions (e.g., single Spotify track add) or individual log deletions if still supported
   const handleIndividualLogUpdate = useCallback(() => {
      refreshAllData(); // Re-fetch logs and jobs as jobs might aggregate log data
@@ -78,8 +103,8 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
   }, []);
 
   const totalJobs = jobs.length;
-  const activeOrPendingJobs = jobs.filter(job => 
-    job.status !== 'completed' && 
+  const activeOrPendingJobs = jobs.filter(job =>
+    job.status !== 'completed' &&
     job.status !== 'aborted' &&
     !job.status.startsWith('failed_') &&
     job.status !== 'completed_with_errors'
@@ -146,14 +171,14 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
           {activeView === 'scan' && (
             <ScanPage
               user={user}
-              onJobCreated={handleJobUpdate} 
+              onJobCreated={handleJobUpdate}
               onLogout={onLogout}
             />
           )}
           {activeView === 'jobs' && (
             <JobConsole
               jobs={jobs}
-              onJobAction={handleJobUpdate} 
+              onJobAction={handleJobUpdate}
               isLoading={isLoading}
               onRefreshJobs={refreshAllData}
               onLogout={onLogout}
@@ -162,9 +187,9 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
           {activeView === 'dashboard' && (
             <DashboardViewPage
               user={user}
-              previousScans={previousScans} 
-              onDeleteScan={handleIndividualLogUpdate} 
-              onClearAllScans={refreshAllData} 
+              previousScans={previousScans}
+              onDeleteScan={handleIndividualLogUpdate}
+              onClearAllScans={refreshAllData}
             />
           )}
         </>
