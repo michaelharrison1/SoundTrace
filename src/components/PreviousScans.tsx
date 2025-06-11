@@ -1,10 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
-import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, PlatformSource } from '../types';
+import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, PlatformSource, TrackScanLogStatus } from '../types';
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
-import { useSpotifyPlayer } from '../contexts/SpotifyContext'; // Corrected path
+import { useSpotifyPlayer } from '../contexts/SpotifyContext'; 
 import UploadIcon from './icons/UploadIcon';
 import StreamCountCell from './common/StreamCountCell';
 import MusicNoteIcon from './icons/MusicNoteIcon';
@@ -48,20 +48,16 @@ interface DisplayableTableRow {
 
 const formatPlatformSource = (source: PlatformSource): string => {
   switch (source) {
-    case 'file_upload': return 'File Upload';
-    case 'youtube_instrumental': return 'YT Instrumental';
-    case 'youtube_song': return 'YT Song';
-    case 'spotify_track': return 'Spotify Track';
-    case 'spotify_playlist_track': return 'SP Playlist Track';
-    case 'youtube_channel_instrumental_batch': return 'YT Channel Batch';
-    case 'youtube_playlist_instrumental_batch': return 'YT Playlist Batch';
+    case 'file_upload_batch_item': return 'File Upload';
+    case 'youtube_channel_instrumental_batch_item': return 'YT Channel';
+    case 'youtube_playlist_instrumental_batch_item': return 'YT Playlist';
+    case 'spotify_playlist_import_item': return 'Spotify Import';
     default:
       // This will cause a compile-time error if 'source' is not 'never',
       // i.e., if a case for a PlatformSource member was missed.
       const _exhaustiveCheck: never = source;
-      console.error(`[formatPlatformSource] Unhandled PlatformSource value: ${_exhaustiveCheck}.`);
       // Fallback for runtime, though theoretically unreachable with correct typing and all cases handled.
-      return "Unknown Source";
+      return "Unknown Source"; 
   }
 };
 
@@ -69,11 +65,11 @@ const SourceIcon: React.FC<{ source: PlatformSource, url?: string, title?: strin
     let icon = <MusicNoteIcon className="w-3.5 h-3.5 text-gray-600" />;
     let defaultTitle = formatPlatformSource(source);
 
-    if (source === 'file_upload') {
+    if (source === 'file_upload_batch_item') {
         icon = <UploadIcon className="w-3.5 h-3.5 text-blue-600" />;
-    } else if (source.includes('spotify')) {
+    } else if (source === 'spotify_playlist_import_item') {
         icon = <SpotifyIcon className="w-3.5 h-3.5 text-green-600" />;
-    } else if (source.includes('youtube')) {
+    } else if (source === 'youtube_channel_instrumental_batch_item' || source === 'youtube_playlist_instrumental_batch_item') {
         icon = <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />;
     }
 
@@ -104,8 +100,8 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   
   const initialTableRows = useMemo((): DisplayableTableRow[] => {
     return scanLogs.reduce((acc, log: TrackScanLog, logIndex: number) => {
-      const isManuallyAddedSongType = log.platformSource === 'youtube_song' || log.platformSource === 'spotify_track' || log.platformSource === 'spotify_playlist_track';
-      const hasActualMatches = log.matches.length > 0 && (log.status === 'matches_found' || log.status === 'partially_completed' || log.status === 'manually_added');
+      const relevantMatchStatuses: TrackScanLogStatus[] = ['completed_match_found', 'scanned_match_found', 'imported_spotify_track'];
+      const hasActualMatches = log.matches && log.matches.length > 0 && relevantMatchStatuses.includes(log.status);
 
       if (hasActualMatches) {
         log.matches.forEach((match: AcrCloudMatch, matchIndex: number) => {
@@ -116,7 +112,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             originalFileName: log.originalFileName,
             originalScanDate: log.scanDate,
             matchDetails: match,
-            statusMessage: log.status === 'partially_completed' ? "Partial Scan" : (isManuallyAddedSongType ? "Manually Added" : undefined),
+            statusMessage: undefined, // Specific statuses like imported_spotify_track are clear enough
             rowKey: `${log.logId}-match-${match.id || matchIndex}`,
             platformSource: log.platformSource,
             sourceUrl: log.sourceUrl || match.platformLinks?.spotify || match.platformLinks?.youtube,
@@ -125,8 +121,13 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         });
       } else {
         let message = "No Matches Found";
-        if (log.status === 'error_processing') message = "Error Processing Track";
-        else if (log.status === 'partially_completed') message = "Partial Scan (no matches)";
+        if (log.status === 'error_processing_item') message = "Error Processing Track";
+        else if (log.status === 'error_acr_scan') message = "ACR Scan Error";
+        else if (log.status === 'error_youtube_dl') message = "YouTube Download Error";
+        else if (log.status === 'error_ffmpeg') message = "Audio Processing Error (FFmpeg)";
+        else if (log.status === 'skipped_previously_scanned') message = "Skipped (Previously Scanned)";
+        // Add more specific error messages based on TrackScanLogStatus if needed
+        
         acc.push({
           isMatchRow: false,
           hasAnyMatchesInLog: false,
@@ -287,7 +288,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const innerContainerStyles = "p-2 bg-[#C0C0C0]";
 
   if (scanLogs.length === 0 && sortedTableRows.length === 0) return null;
-  const hasAnyMatchesInAnyLog = scanLogs.some(log => log.matches.length > 0 && (log.status === 'matches_found' || log.status === 'partially_completed' || log.status === 'manually_added'));
+  const hasAnyMatchesInAnyLog = scanLogs.some(log => log.matches.length > 0 && (log.status === 'completed_match_found' || log.status === 'scanned_match_found' || log.status === 'imported_spotify_track'));
 
   return (
     <div className={containerStyles}>

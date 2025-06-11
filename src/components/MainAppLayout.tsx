@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, TrackScanLog } from '../types';
+import { User, TrackScanLog, ScanJob } from '../types'; 
 import { scanLogService } from '../services/scanLogService';
 import Button from './common/Button';
 import ScanPage from './ScanPage';
 import DashboardViewPage from './DashboardViewPage';
+import JobConsole from './jobConsole/JobConsole'; 
 import ProgressBar from './common/ProgressBar';
 import UploadIcon from './icons/UploadIcon';
 
@@ -13,83 +14,60 @@ interface MainAppLayoutProps {
   onLogout: () => void;
 }
 
-type ActiveView = 'scan' | 'dashboard';
+type ActiveView = 'scan' | 'dashboard' | 'jobs'; 
 
 const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
-  const [previousScans, setPreviousScans] = useState<TrackScanLog[]>([]);
+  const [previousScans, setPreviousScans] = useState<TrackScanLog[]>([]); 
+  const [jobs, setJobs] = useState<ScanJob[]>([]); 
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
-  const [isLoadingScans, setIsLoadingScans] = useState<boolean>(true);
-  const [scanError, setScanError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true); 
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchScanLogs = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
-    setIsLoadingScans(true);
-    setScanError(null);
+    setIsLoading(true);
+    setError(null);
     try {
-      const logs = await scanLogService.getScanLogs();
-      setPreviousScans(logs.sort((a,b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
-    } catch (error: any) {
-      console.error("Failed to fetch scan logs:", error);
-      const isAuthError = (error.status === 401 || error.status === 403) ||
-                          (typeof error.message === 'string' && error.message.toLowerCase().includes('token is not valid'));
+      const [logs, userJobs] = await Promise.all([
+        scanLogService.getScanLogs(),
+        scanLogService.getAllJobs()
+      ]);
+      setPreviousScans(logs.sort((a, b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
+      setJobs(userJobs.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (err: any) {
+      console.error("Failed to fetch initial data:", err);
+      const isAuthError = (err.status === 401 || err.status === 403) ||
+                          (typeof err.message === 'string' && err.message.toLowerCase().includes('token is not valid'));
       if (isAuthError) {
-        console.warn("Authentication error during scan log fetch. Logging out.", error.message);
+        console.warn("Authentication error during data fetch. Logging out.", err.message);
         onLogout();
       } else {
-        setScanError(error.message || "Could not load scan history.");
+        setError(err.message || "Could not load initial app data.");
       }
     } finally {
-      setIsLoadingScans(false);
+      setIsLoading(false);
     }
   }, [user, onLogout]);
 
   useEffect(() => {
-    fetchScanLogs();
-  }, [fetchScanLogs]);
+    fetchData();
+  }, [fetchData]);
 
-  const handleClearAllScans = useCallback(async () => {
-    if (window.confirm("Are you sure you want to delete ALL scan records from the server? This action cannot be undone.")) {
-      setIsLoadingScans(true);
-      setScanError(null);
-      try {
-        await scanLogService.clearAllScanLogs();
-        setPreviousScans([]);
-      } catch (error: any) {
-        console.error("Failed to clear all scan logs:", error);
-        if ((error.status === 401 || error.status === 403) || (typeof error.message === 'string' && error.message.toLowerCase().includes('token is not valid'))) {
-            onLogout();
-        } else {
-            setScanError(error.message || "Could not clear scan history.");
-        }
-      } finally {
-        setIsLoadingScans(false);
-      }
-    }
-  }, [onLogout]);
+  const refreshAllData = useCallback(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const handleDeleteScan = useCallback(async (logIdToDelete: string) => {
-     if (window.confirm("Are you sure you want to delete this scan record and all its associated matches from the server?")) {
-        setIsLoadingScans(true);
-        setScanError(null);
-        try {
-          await scanLogService.deleteScanLog(logIdToDelete);
-          setPreviousScans(prevScans => prevScans.filter(log => log.logId !== logIdToDelete));
-        } catch (error: any) {
-          console.error(`Failed to delete scan log ${logIdToDelete}:`, error);
-          if ((error.status === 401 || error.status === 403) || (typeof error.message === 'string' && error.message.toLowerCase().includes('token is not valid'))) {
-            onLogout();
-          } else {
-            setScanError(error.message || `Could not delete scan log.`);
-          }
-        } finally {
-          setIsLoadingScans(false);
-        }
-     }
-  }, [onLogout]);
+  // Called by ScanPage when a new job is successfully initiated, or by JobConsole after actions.
+  const handleJobUpdate = useCallback((updatedJob?: ScanJob) => {
+    // For simplicity, just refetch all jobs and logs.
+    refreshAllData();
+  }, [refreshAllData]);
+  
+  // For manual log additions (e.g., single Spotify track add) or individual log deletions if still supported
+  const handleIndividualLogUpdate = useCallback(() => {
+     refreshAllData(); // Re-fetch logs and jobs as jobs might aggregate log data
+  }, [refreshAllData]);
 
-   const addMultipleScanLogsToState = useCallback((newLogs: TrackScanLog[]) => {
-    setPreviousScans(prevLogs => [...newLogs, ...prevLogs].sort((a,b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
-  }, []);
 
   const getNavButtonClass = (viewType: ActiveView) => {
     return `px-3 py-0.5 hover:bg-gray-300 ${activeView === viewType ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' : 'win95-border-outset'}`;
@@ -98,6 +76,15 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
   const handleExportAllData = useCallback(() => {
     alert("Full data export (e.g., combined CSV/PDF of all sections) is coming soon! Individual tables may have their own export options.");
   }, []);
+
+  const totalJobs = jobs.length;
+  const activeOrPendingJobs = jobs.filter(job => 
+    job.status !== 'completed' && 
+    job.status !== 'aborted' &&
+    !job.status.startsWith('failed_') &&
+    job.status !== 'completed_with_errors'
+  ).length;
+
 
   return (
     <>
@@ -108,7 +95,15 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
           className={getNavButtonClass('scan')}
           aria-pressed={activeView === 'scan'}
         >
-          Scan Tracks
+          New Scan Job
+        </Button>
+        <Button
+          onClick={() => setActiveView('jobs')}
+          size="sm"
+          className={getNavButtonClass('jobs')}
+          aria-pressed={activeView === 'jobs'}
+        >
+          Job Console ({activeOrPendingJobs > 0 ? `${activeOrPendingJobs} Active / ` : ''}{totalJobs} Total)
         </Button>
         <Button
           onClick={() => setActiveView('dashboard')}
@@ -116,7 +111,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
           className={getNavButtonClass('dashboard')}
           aria-pressed={activeView === 'dashboard'}
         >
-          Dashboard ({previousScans.length})
+          Dashboard ({previousScans.length} Logs)
         </Button>
         <div className="ml-auto">
             <Button
@@ -131,36 +126,48 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         </div>
       </nav>
 
-      {isLoadingScans && !scanError && (
+      {isLoading && !error && (
         <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
-          <ProgressBar text="Loading scan history..." />
+          <ProgressBar text="Loading SoundTrace data..." />
           <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
         </div>
       )}
-      {scanError && !isLoadingScans && (
+      {error && !isLoading && (
         <div className="p-3 win95-border-outset bg-yellow-200 text-black border border-black mb-2">
-          <p className="font-semibold text-center">Error loading scan history:</p>
-          <p className="text-center mb-1">{scanError}</p>
+          <p className="font-semibold text-center">Error:</p>
+          <p className="text-center mb-1">{error}</p>
           <div className="flex justify-center">
-            <Button onClick={fetchScanLogs} size="sm" className="hover:bg-gray-300">Retry</Button>
+            <Button onClick={refreshAllData} size="sm" className="hover:bg-gray-300">Retry</Button>
           </div>
         </div>
       )}
-      {!isLoadingScans && !scanError && activeView === 'scan' && (
-        <ScanPage
-          user={user}
-          previousScans={previousScans}
-          onNewScanLogsSaved={addMultipleScanLogsToState}
-          onLogout={onLogout}
-        />
-      )}
-      {!isLoadingScans && !scanError && activeView === 'dashboard' && (
-        <DashboardViewPage
-          user={user}
-          previousScans={previousScans}
-          onDeleteScan={handleDeleteScan}
-          onClearAllScans={handleClearAllScans}
-        />
+      {!isLoading && !error && (
+        <>
+          {activeView === 'scan' && (
+            <ScanPage
+              user={user}
+              onJobCreated={handleJobUpdate} 
+              onLogout={onLogout}
+            />
+          )}
+          {activeView === 'jobs' && (
+            <JobConsole
+              jobs={jobs}
+              onJobAction={handleJobUpdate} 
+              isLoading={isLoading}
+              onRefreshJobs={refreshAllData}
+              onLogout={onLogout}
+            />
+          )}
+          {activeView === 'dashboard' && (
+            <DashboardViewPage
+              user={user}
+              previousScans={previousScans} 
+              onDeleteScan={handleIndividualLogUpdate} 
+              onClearAllScans={refreshAllData} 
+            />
+          )}
+        </>
       )}
     </>
   );

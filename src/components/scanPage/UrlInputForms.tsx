@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import Button from '../common/Button';
 import { YouTubeUploadType } from '../../types';
@@ -14,7 +15,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
   isLoading,
 }) => {
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [youtubeType, setYoutubeType] = useState<YouTubeUploadType>('youtube_instrumental');
+  const [youtubeType, setYoutubeType] = useState<YouTubeUploadType>('youtube_channel_instrumental_batch'); // Default to a valid batch type
   const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState('');
 
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
@@ -63,16 +64,16 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
       {/* YouTube URL Processing */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">
-          <h3 className="text-lg font-normal text-black mb-2">Process YouTube Link</h3>
+          <h3 className="text-lg font-normal text-black mb-2">Process YouTube Link (Batch Jobs)</h3>
           <form onSubmit={handleYouTubeSubmit} className="space-y-2">
             <div>
-              <label htmlFor="youtubeUrl" className="block text-sm text-black mb-0.5">YouTube URL:</label>
+              <label htmlFor="youtubeUrl" className="block text-sm text-black mb-0.5">YouTube Channel or Playlist URL:</label>
               <input
                 id="youtubeUrl"
                 type="url"
                 value={youtubeUrl}
                 onChange={(e) => { setYoutubeUrl(e.target.value); setYoutubeError(null); }}
-                placeholder="Enter YouTube video, channel, or playlist URL"
+                placeholder="Enter YouTube channel or playlist URL"
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
                 disabled={isLoading}
                 aria-label="YouTube URL"
@@ -88,20 +89,17 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
                 disabled={isLoading}
                 aria-label="YouTube Processing Type"
               >
-                <option value="youtube_instrumental">Single Instrumental (Scan for matches)</option>
-                <option value="youtube_song">Single Song (Add to log)</option>
                 <option value="youtube_channel_instrumental_batch">Channel - Instrumentals (Scan all videos)</option>
                 <option value="youtube_playlist_instrumental_batch">Playlist - Instrumentals (Scan all videos)</option>
               </select>
             </div>
             {youtubeError && <p className="text-xs text-red-700 mt-1">{youtubeError}</p>}
             <Button type="submit" size="md" isLoading={isLoading} disabled={isLoading || !youtubeUrl.trim()}>
-              {isLoading ? 'Processing...' : 'Process YouTube Link'}
+              {isLoading ? 'Initiating Job...' : 'Create YouTube Scan Job'}
             </Button>
           </form>
            <p className="text-xs text-gray-700 mt-1">
-            Note: For 'Instrumental' types, audio will be scanned. For 'Song', it's added directly to your log.
-            Channel/Playlist scanning can take time. Scans first 20s of audio for instrumentals.
+            Note: Channel/Playlist scanning can take time. Backend processes videos to find matches.
           </p>
         </div>
       </section>
@@ -109,7 +107,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
       {/* Spotify Playlist URL Processing */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">
-          <h3 className="text-lg font-normal text-black mb-2">Add Spotify Playlist Tracks</h3>
+          <h3 className="text-lg font-normal text-black mb-2">Import Spotify Playlist Tracks</h3>
           <form onSubmit={handleSpotifyPlaylistSubmit} className="space-y-2">
             <div>
               <label htmlFor="spotifyPlaylistUrl" className="block text-sm text-black mb-0.5">Spotify Playlist URL:</label>
@@ -126,9 +124,12 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
             </div>
             {spotifyPlaylistError && <p className="text-xs text-red-700 mt-1">{spotifyPlaylistError}</p>}
             <Button type="submit" size="md" isLoading={isLoading} disabled={isLoading || !spotifyPlaylistUrl.trim()}>
-              {isLoading ? 'Processing...' : 'Add Playlist Tracks to Log'}
+              {isLoading ? 'Initiating Job...' : 'Create Playlist Import Job'}
             </Button>
           </form>
+           <p className="text-xs text-gray-700 mt-1">
+            Note: This creates a job to import all tracks from the playlist into your scan log.
+          </p>
         </div>
       </section>
     </div>

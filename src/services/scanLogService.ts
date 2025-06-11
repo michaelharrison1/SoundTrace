@@ -1,115 +1,162 @@
-import { TrackScanLog, YouTubeUploadType, ScanJobState, ActiveScanJobResponse, InitiateBatchScanResponse } from '../types';
+
+import { TrackScanLog, YouTubeUploadType, ScanJob, JobCreationResponse, AllJobsResponse, SingleJobResponse, JobFileState, FileUploadResponse, JobType } from '../types';
 
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
-const BASE_URL = `${API_BASE_URL}/api/scanlogs`;
+const JOBS_BASE_URL = `${API_BASE_URL}/api/scan-jobs`; 
+const LOGS_BASE_URL = `${API_BASE_URL}/api/scan-logs`; 
 
 const getAuthToken = (): string | null => {
   try { return localStorage.getItem('authToken'); } catch (error) { console.error("Error accessing authToken:", error); return null; }
 };
 
-const handleApiResponse = async (response: Response) => {
+const handleApiResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     let errorData: { message?: string } = {};
     try { errorData = await response.json(); } catch (e) { /* ignore */ }
     const errorMessage = errorData.message || `Request failed: ${response.status} ${response.statusText || 'Unknown error'}`;
     const error = new Error(errorMessage); (error as any).status = response.status;
-    if (response.status === 499) (error as any).isCancellation = true;
+    if (response.status === 499) (error as any).isCancellation = true; 
     throw error;
   }
-  if (response.status === 204) return; // No Content
+  if (response.status === 204) return undefined as unknown as T; // No Content
   const contentType = response.headers.get("content-type");
   if (contentType?.includes("application/json")) return response.json();
-  return response.text();
+  return response.text() as unknown as T; // Should ideally not happen for JSON APIs
 };
 
+
 export const scanLogService = {
-  getScanLogs: async (): Promise<TrackScanLog[]> => {
+  // --- Job Management ---
+  initiateFileUploadJob: async (filesMetadata: {fileName: string, fileSize: number}[]): Promise<JobCreationResponse> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(BASE_URL, { headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
-    return handleApiResponse(response);
-  },
-
-  saveScanLog: async (logData: Omit<TrackScanLog, 'logId' | 'scanDate' | 'scanJobId'>): Promise<TrackScanLog> => {
-    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(BASE_URL, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify(logData), credentials: 'include',
+    const response = await fetch(`${JOBS_BASE_URL}/initiate/files`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ files: filesMetadata }), credentials: 'include',
     });
-    return handleApiResponse(response);
+    return handleApiResponse<JobCreationResponse>(response);
   },
 
-  deleteScanLog: async (logId: string): Promise<void> => {
+  uploadFileForJob: async (jobId: string, file: File, onProgress?: (loaded: number, total: number) => void): Promise<FileUploadResponse> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${BASE_URL}/${logId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
-    await handleApiResponse(response);
-  },
+    const formData = new FormData();
+    formData.append('audioFile', file); 
 
-  clearAllScanLogs: async (): Promise<void> => {
-    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(BASE_URL, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
-    await handleApiResponse(response);
-  },
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${JOBS_BASE_URL}/${jobId}/upload-file/${encodeURIComponent(file.name)}`, true); 
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.withCredentials = true;
 
-  addSpotifyTrackToLog: async (spotifyTrackLink: string): Promise<TrackScanLog> => {
-    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${BASE_URL}/manual-spotify-add`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ spotifyTrackLink }), credentials: 'include',
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable && onProgress) {
+                onProgress(event.loaded, event.total);
+            }
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try { resolve(JSON.parse(xhr.responseText)); }
+                catch (e) { reject(new Error("Invalid JSON response from server after file upload.")); }
+            } else {
+                let errorMsg = `File upload failed: ${xhr.status}`;
+                try { const errResp = JSON.parse(xhr.responseText); if (errResp.message) errorMsg = errResp.message; }
+                catch (e) { /* use default */ }
+                const error = new Error(errorMsg); (error as any).status = xhr.status;
+                reject(error);
+            }
+        };
+        xhr.onerror = () => {
+            const error = new Error("Network error during file upload."); (error as any).status = 0; 
+            reject(error);
+        };
+        xhr.send(formData);
     });
-    return handleApiResponse(response);
   },
 
-  // Updated to handle both single and batch initiation
-  processYouTubeUrl: async (url: string, processType: YouTubeUploadType): Promise<TrackScanLog | InitiateBatchScanResponse> => {
+  initiateYouTubeScanJob: async (url: string, jobType: YouTubeUploadType): Promise<JobCreationResponse> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const body = { youtubeUrl: url, processType };
-    const response = await fetch(`${BASE_URL}/process-youtube-url`, {
+    const body = { youtubeUrl: url, jobType: jobType as JobType }; 
+    const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(body), credentials: 'include',
     });
-    // If it's a batch operation, backend now responds with { scanJobId, message, initialJobStatus }
-    // If single, it responds with TrackScanLog
-    return handleApiResponse(response);
+    return handleApiResponse<JobCreationResponse>(response);
   },
 
-  processSpotifyPlaylistUrl: async (url: string): Promise<TrackScanLog[]> => {
+  initiateSpotifyPlaylistJob: async (playlistUrl: string): Promise<JobCreationResponse> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${BASE_URL}/process-spotify-playlist-url`, {
+    const response = await fetch(`${JOBS_BASE_URL}/initiate/spotify-playlist`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ spotifyPlaylistUrl: url }), credentials: 'include',
+        body: JSON.stringify({ spotifyPlaylistUrl: playlistUrl }), credentials: 'include',
     });
-    return handleApiResponse(response);
+    return handleApiResponse<JobCreationResponse>(response);
+  },
+  
+  getAllJobs: async (): Promise<ScanJob[]> => {
+    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
+    const response = await fetch(JOBS_BASE_URL, { headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
+    const data = await handleApiResponse<AllJobsResponse>(response);
+    return data.jobs;
   },
 
-  // New ScanJob specific methods
-  getActiveScanJob: async (): Promise<ActiveScanJobResponse> => {
+  getJob: async (jobId: string): Promise<ScanJob> => { 
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${BASE_URL}/youtube/active-job`, { headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
-    return handleApiResponse(response);
+    const response = await fetch(`${JOBS_BASE_URL}/${jobId}`, { headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
+    return handleApiResponse<SingleJobResponse>(response); 
   },
 
-  getScanJobStatus: async (scanJobId: string): Promise<ScanJobState> => {
+  resumeJob: async (jobId: string): Promise<ScanJob> => { 
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${BASE_URL}/youtube/job/status/${scanJobId}`, { headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
-    return handleApiResponse(response);
+    const response = await fetch(`${JOBS_BASE_URL}/${jobId}/resume`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
+    return handleApiResponse<SingleJobResponse>(response);
   },
 
-  pauseScanJob: async (scanJobId: string): Promise<{ message: string, jobStatus: ScanJobState['status'] }> => {
+  deleteJob: async (jobId: string): Promise<void> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${BASE_URL}/youtube/job/pause/${scanJobId}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
-    return handleApiResponse(response);
+    const response = await fetch(`${JOBS_BASE_URL}/${jobId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
+    await handleApiResponse<void>(response);
+  },
+  
+  // --- Direct Log Management (less common, jobs manage their logs) ---
+  getScanLogs: async (): Promise<TrackScanLog[]> => {
+    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
+    const response = await fetch(LOGS_BASE_URL, { headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
+    return handleApiResponse<TrackScanLog[]>(response);
   },
 
-  resumeScanJob: async (scanJobId: string): Promise<{ message: string, jobStatus: ScanJobState['status'] }> => {
+  // This might be used if a job item processing results in a direct log save, 
+  // or for truly manual, non-job-related logs.
+  saveScanLog: async (logData: Omit<TrackScanLog, 'logId' | 'scanDate' >): Promise<TrackScanLog> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${BASE_URL}/youtube/job/resume/${scanJobId}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
-    return handleApiResponse(response);
+    const response = await fetch(LOGS_BASE_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(logData), credentials: 'include',
+    });
+    return handleApiResponse<TrackScanLog>(response);
   },
 
-  abortScanJob: async (scanJobId: string): Promise<{ message: string }> => { // Updated from void
+   addSpotifyTrackToLog: async (spotifyTrackLink: string): Promise<TrackScanLog> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${BASE_URL}/youtube/job/abort/${scanJobId}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
-    return handleApiResponse(response);
+    // This endpoint might need to change if it also needs to create a minimal job.
+    // For now, assuming it's a direct log add for simplicity.
+    const response = await fetch(`${LOGS_BASE_URL}/manual-spotify-add`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ spotifyTrackLink }), credentials: 'include',
+    });
+    return handleApiResponse<TrackScanLog>(response);
   },
+  
+  deleteScanLog: async (logId: string): Promise<void> => { 
+    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
+    const response = await fetch(`${LOGS_BASE_URL}/${logId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
+    await handleApiResponse<void>(response);
+  },
+
+  clearAllScanLogs: async (): Promise<void> => { 
+    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
+    const response = await fetch(LOGS_BASE_URL, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
+    await handleApiResponse<void>(response); // Note: Backend should clarify if this also clears jobs or just logs.
+  },
+
 };
