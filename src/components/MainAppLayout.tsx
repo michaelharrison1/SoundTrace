@@ -18,15 +18,12 @@ type ActiveView = 'scan' | 'dashboard' | 'jobs';
 
 // Helper function for Promise with timeout
 function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError = new Error('Promise timed out')): Promise<T> {
-  // Create a new promise that rejects in <ms> milliseconds
   const timeout = new Promise<never>((_, reject) => {
     const id = setTimeout(() => {
       clearTimeout(id);
       reject(timeoutError);
     }, ms);
   });
-
-  // Returns a race between the timeout and the original promise
   return Promise.race([promise, timeout]);
 }
 
@@ -39,24 +36,33 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
 
   const fetchData = useCallback(async () => {
     if (!user) return;
+    console.log('[MainAppLayout] Starting fetchData...');
     setIsLoading(true);
     setError(null);
     try {
-      const dataFetchPromise = Promise.all([
+      console.log('[MainAppLayout] Attempting to fetch scan logs...');
+      const logs = await promiseWithTimeout(
         scanLogService.getScanLogs(),
-        scanLogService.getAllJobs()
-      ]);
-
-      const [logs, userJobs] = await promiseWithTimeout(
-        dataFetchPromise,
-        30000, // 30 seconds timeout
-        new Error('Failed to load app data in time. Please check your connection or try again later.')
+        25000, // 25 seconds timeout for logs
+        new Error('Failed to load scan logs in time. Please check your connection or try again later.')
       );
-
+      console.log(`[MainAppLayout] Scan logs fetched: ${logs.length} items.`);
       setPreviousScans(logs.sort((a, b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
-      setJobs(userJobs.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+
+      console.log('[MainAppLayout] Attempting to fetch scan jobs...');
+      // scanLogService.getAllJobs() is expected to return ScanJob[] directly
+      const userJobs = await promiseWithTimeout(
+        scanLogService.getAllJobs(),
+        25000, // 25 seconds timeout for jobs
+        new Error('Failed to load scan jobs in time. Please check your connection or try again later.')
+      );
+      console.log(`[MainAppLayout] Scan jobs fetched: ${userJobs.length} items.`);
+      setJobs(userJobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+
+      console.log('[MainAppLayout] FetchData completed successfully.');
+
     } catch (err: any) {
-      console.error("Failed to fetch initial data:", err);
+      console.error("[MainAppLayout] Error during fetchData:", err);
       const isAuthError = (err.status === 401 || err.status === 403) ||
                           (typeof err.message === 'string' && (
                             err.message.toLowerCase().includes('token is not valid') ||
@@ -64,13 +70,14 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
                             err.message.toLowerCase().includes('authorization denied')
                           ));
       if (isAuthError) {
-        console.warn("Authentication error during data fetch. Logging out.", err.message);
+        console.warn("[MainAppLayout] Authentication error during data fetch. Logging out.", err.message);
         onLogout();
       } else {
         setError(err.message || "Could not load initial app data.");
       }
     } finally {
       setIsLoading(false);
+      console.log('[MainAppLayout] Finished fetchData (finally block).');
     }
   }, [user, onLogout]);
 
@@ -82,15 +89,12 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
     fetchData();
   }, [fetchData]);
 
-  // Called by ScanPage when a new job is successfully initiated, or by JobConsole after actions.
   const handleJobUpdate = useCallback((updatedJob?: ScanJob) => {
-    // For simplicity, just refetch all jobs and logs.
     refreshAllData();
   }, [refreshAllData]);
 
-  // For manual log additions (e.g., single Spotify track add) or individual log deletions if still supported
   const handleIndividualLogUpdate = useCallback(() => {
-     refreshAllData(); // Re-fetch logs and jobs as jobs might aggregate log data
+     refreshAllData();
   }, [refreshAllData]);
 
 
