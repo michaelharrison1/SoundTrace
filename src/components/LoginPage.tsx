@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { User } from '../types';
 import { authService } from '../services/authService';
@@ -97,8 +98,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         {isLoading && (
           <div className="mt-4">
             <ProgressBar text="Logging in..." />
-            <p className="mt-1 text-xs text-center text-black">
-              Please be patient.
+            <p className="mt-1 text-xs text-center text-gray-700">
+              This may take up to a minute.
             </p>
           </div>
         )}

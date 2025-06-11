@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import ProgressBar from './ProgressBar';
 import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, FollowerSnapshot } from '../../types';
@@ -181,6 +182,15 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
 
   const renderTabContent = () => {
+    if (isLoadingTotalFollowers && activeMonitorTab !== 'collaborationRadar' && activeMonitorTab !== 'beatStats' && aggregatedArtistData.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center flex-grow py-4">
+                <ProgressBar text={`Loading ${activeMonitorTab === 'reach' ? 'reach data' : 'artist statistics'}...`} />
+                <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
+            </div>
+        );
+    }
+
     switch (activeMonitorTab) {
       case 'reach':
         return (
@@ -218,6 +228,10 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
           />
         );
       case 'beatStats':
+        // Beat stats don't directly depend on isLoadingTotalFollowers, so they show if data is present.
+        if (aggregatedBeatData.length === 0 && scanLogs.length > 0) {
+            return <p className="text-center text-gray-700 py-8">No beat data available from current scans.</p>;
+        }
         return (
           <BeatStatsTable
             aggregatedBeatData={aggregatedBeatData}

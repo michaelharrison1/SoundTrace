@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { User } from '../types';
 import { authService } from '../services/authService';
@@ -131,8 +132,8 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister }) => {
         {isLoading && (
           <div className="mt-4">
             <ProgressBar text="Creating Account..." />
-            <p className="mt-1 text-xs text-center text-black">
-              Please wait...
+            <p className="mt-1 text-xs text-center text-gray-700">
+              This may take up to a minute.
             </p>
           </div>
         )}

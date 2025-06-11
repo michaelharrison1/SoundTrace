@@ -21,12 +21,19 @@
       margin: 0;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      background-image: url('/src/components/background.jpg');
+      /* Default background removed from body, will be applied by class */
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
       background-attachment: fixed;
     }
+    body.logged-out-background {
+      background-image: url('/src/components/background.jpg');
+    }
+    body.logged-in-background {
+      background-image: none;
+    }
+
     /* Revert to browser default scrollbars */
     ::-webkit-scrollbar {
       all: unset;
@@ -59,13 +66,22 @@
 
     @keyframes progressBarMarqueeAnim {
       0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
+      100% { transform: translateX(-50%); } /* Translates by half its own width, which is 100% of viewport */
     }
 
     .progress-bar-blocks-container {
-      width: 200%;
+      width: 200%; /* Make the container twice as wide as its parent */
       animation: progressBarMarqueeAnim 1.2s linear infinite;
+      will-change: transform; /* Hint for smoother animation */
     }
+
+    /* Individual blocks styling for the progress bar */
+    .progress-bar-block {
+      height: 100%;
+      background-color: #084B8A;
+      /* Removed margin, using flex gap or direct adjacency */
+    }
+
 
     .win95-button-sm {
       font-family: inherit;

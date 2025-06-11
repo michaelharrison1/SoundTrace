@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import LoginPage from './components/LoginPage';
 import RegistrationPage from './components/RegistrationPage';
@@ -23,11 +24,18 @@ const AppContent: React.FC = React.memo(() => {
       if (token && userDetailsJson) {
         const userDetails: User = JSON.parse(userDetailsJson);
         setCurrentUser(userDetails);
+        document.body.classList.remove('logged-out-background');
+        document.body.classList.add('logged-in-background');
+      } else {
+        document.body.classList.add('logged-out-background');
+        document.body.classList.remove('logged-in-background');
       }
     } catch (error) {
       console.error("Error reading auth data from localStorage:", error);
       localStorage.removeItem('authToken');
       localStorage.removeItem('currentUserDetails');
+      document.body.classList.add('logged-out-background');
+      document.body.classList.remove('logged-in-background');
     }
     setIsLoading(false);
   }, []);
@@ -35,13 +43,14 @@ const AppContent: React.FC = React.memo(() => {
   const handleAuthSuccess = useCallback((user: User) => {
     setCurrentUser(user);
     setAuthView('login');
+    document.body.classList.remove('logged-out-background');
+    document.body.classList.add('logged-in-background');
     if (document.activeElement && typeof (document.activeElement as HTMLElement).blur === 'function') {
       (document.activeElement as HTMLElement).blur();
     }
   }, []);
 
   const handleLogout = useCallback(async () => {
-    // Spotify disconnect is now handled within AuthHeaderContent via useSpotifyPlayer hook
     await authService.logout().catch(err => console.error("Error calling backend logout (non-critical):", err));
     try {
       localStorage.removeItem('authToken');
@@ -51,6 +60,8 @@ const AppContent: React.FC = React.memo(() => {
     }
     setCurrentUser(null);
     setAuthView('login');
+    document.body.classList.add('logged-out-background');
+    document.body.classList.remove('logged-in-background');
     if (document.activeElement && typeof (document.activeElement as HTMLElement).blur === 'function') {
       (document.activeElement as HTMLElement).blur();
     }
@@ -62,6 +73,7 @@ const AppContent: React.FC = React.memo(() => {
       <div className="flex flex-col items-center justify-center min-h-screen bg-transparent p-4">
         <div className="w-full max-w-xs p-4 bg-[#C0C0C0] win95-border-outset">
           <ProgressBar text="Loading App..." />
+          <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
         </div>
       </div>
     );

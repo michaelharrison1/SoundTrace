@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import Button from '../common/Button';
 import { YouTubeUploadType } from '../../types';
@@ -15,7 +14,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
   isLoading,
 }) => {
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [youtubeType, setYoutubeType] = useState<YouTubeUploadType>('instrumental_single');
+  const [youtubeType, setYoutubeType] = useState<YouTubeUploadType>('youtube_instrumental');
   const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState('');
 
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
@@ -89,10 +88,10 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
                 disabled={isLoading}
                 aria-label="YouTube Processing Type"
               >
-                <option value="instrumental_single">Single Instrumental (Scan for matches)</option>
-                <option value="song_single">Single Song (Add to log)</option>
-                <option value="instrumental_channel">Channel - Instrumentals (Scan all videos)</option>
-                <option value="instrumental_playlist">Playlist - Instrumentals (Scan all videos)</option>
+                <option value="youtube_instrumental">Single Instrumental (Scan for matches)</option>
+                <option value="youtube_song">Single Song (Add to log)</option>
+                <option value="youtube_channel_instrumental_batch">Channel - Instrumentals (Scan all videos)</option>
+                <option value="youtube_playlist_instrumental_batch">Playlist - Instrumentals (Scan all videos)</option>
               </select>
             </div>
             {youtubeError && <p className="text-xs text-red-700 mt-1">{youtubeError}</p>}

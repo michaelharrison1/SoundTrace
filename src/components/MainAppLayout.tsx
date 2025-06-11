@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, TrackScanLog } from '../types';
 import { scanLogService } from '../services/scanLogService';
@@ -133,6 +134,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
       {isLoadingScans && !scanError && (
         <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
           <ProgressBar text="Loading scan history..." />
+          <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
         </div>
       )}
       {scanError && !isLoadingScans && (

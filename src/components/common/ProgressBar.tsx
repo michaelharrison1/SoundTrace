@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface ProgressBarProps {
@@ -7,6 +8,10 @@ interface ProgressBarProps {
 }
 
 const ProgressBar: React.FC<ProgressBarProps> = ({ text, className, textClassName }) => {
+  // Using a fixed number of blocks (e.g., 20) for smoother appearance.
+  // Each block will be 5% of the container (which is 200% of viewport).
+  const numberOfBlocks = 20;
+
   return (
     <div className={`w-full ${className || ''}`} aria-live="polite">
       {text && <p className={`text-black text-sm mb-1 text-center ${textClassName || ''}`}>{text}</p>}
@@ -18,11 +23,11 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ text, className, textClassNam
       >
         <div className="h-full w-full overflow-hidden bg-white relative">
           <div className="absolute top-0 left-0 h-full progress-bar-blocks-container flex">
-            {/* Render enough blocks to fill 2x the width for continuous marquee */}
-            {[...Array(16)].map((_, i) => ( // 16 blocks (e.g. 8 visible, 8 for loop)
+            {[...Array(numberOfBlocks)].map((_, i) => (
               <div
                 key={i}
-                className="h-full w-[6.25%] win95-border-outset bg-[#084B8A] mr-[2px]" // 100% / 16 blocks = 6.25% per block
+                className="progress-bar-block" // Class defined in index.html for consistent styling
+                style={{ width: `${100 / numberOfBlocks}%` }} // e.g., 5% if 20 blocks
               ></div>
             ))}
           </div>

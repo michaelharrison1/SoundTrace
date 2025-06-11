@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, FollowerSnapshot } from '../types';
 import PreviousScans from './PreviousScans';
@@ -201,6 +202,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
      return (
       <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
         <ProgressBar text="Loading dashboard data..." />
+        <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
       </div>
     );
   }
