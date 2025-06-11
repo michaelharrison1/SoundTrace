@@ -15,7 +15,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
   isLoading,
 }) => {
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [youtubeType, setYoutubeType] = useState<YouTubeUploadType>('youtube_channel_instrumental_batch'); // Default to a valid batch type
+  const [youtubeType, setYoutubeType] = useState<YouTubeUploadType>('youtube_video_single');
   const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState('');
 
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
@@ -30,11 +30,29 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
     }
     try {
       const parsedUrl = new URL(youtubeUrl);
-      if (!parsedUrl.hostname.includes("youtube.com") && !parsedUrl.hostname.includes("youtu.be")) {
+      const hostname = parsedUrl.hostname.toLowerCase();
+      const pathname = parsedUrl.pathname.toLowerCase();
+
+      if (!hostname.includes("youtube.com") && !hostname.includes("youtu.be")) {
          throw new Error("Invalid YouTube URL hostname.");
       }
-    } catch (e) {
-      setYoutubeError("Invalid YouTube URL format. Please enter a valid URL (e.g., https://www.youtube.com/watch?v=...).");
+
+      if (youtubeType === 'youtube_video_single') {
+        if (!((hostname.includes("youtube.com") && pathname.startsWith("/watch")) || hostname.includes("youtu.be"))) {
+          throw new Error("For single video scan, please provide a valid video URL (e.g., youtube.com/watch?v=... or youtu.be/...).");
+        }
+      } else if (youtubeType === 'youtube_channel_instrumental_batch') {
+        if (!((hostname.includes("youtube.com") && (pathname.startsWith("/channel/") || pathname.startsWith("/c/") || pathname.startsWith("/@"))))) {
+            throw new Error("For channel scan, please provide a valid channel URL (e.g., youtube.com/channel/... or youtube.com/@handle).");
+        }
+      } else if (youtubeType === 'youtube_playlist_instrumental_batch') {
+         if (!(hostname.includes("youtube.com") && pathname.startsWith("/playlist"))) {
+            throw new Error("For playlist scan, please provide a valid playlist URL (e.g., youtube.com/playlist?list=...).");
+         }
+      }
+
+    } catch (e: any) {
+      setYoutubeError(e.message || "Invalid YouTube URL format.");
       return;
     }
     onProcessYouTubeUrl(youtubeUrl, youtubeType);
@@ -64,16 +82,22 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
       {/* YouTube URL Processing */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">
-          <h3 className="text-lg font-normal text-black mb-2">Process YouTube Link (Batch Jobs)</h3>
+          <h3 className="text-lg font-normal text-black mb-2">Process YouTube Link</h3>
           <form onSubmit={handleYouTubeSubmit} className="space-y-2">
             <div>
-              <label htmlFor="youtubeUrl" className="block text-sm text-black mb-0.5">YouTube Channel or Playlist URL:</label>
+              <label htmlFor="youtubeUrl" className="block text-sm text-black mb-0.5">YouTube URL:</label>
               <input
                 id="youtubeUrl"
                 type="url"
                 value={youtubeUrl}
                 onChange={(e) => { setYoutubeUrl(e.target.value); setYoutubeError(null); }}
-                placeholder="Enter YouTube channel or playlist URL"
+                placeholder={
+                    youtubeType === 'youtube_video_single'
+                    ? "Enter a single YouTube video URL (e.g., youtube.com/watch?v=...)"
+                    : youtubeType === 'youtube_channel_instrumental_batch'
+                    ? "Enter YouTube channel URL (e.g., youtube.com/channel/... or youtube.com/@handle)"
+                    : "Enter YouTube playlist URL (e.g., youtube.com/playlist?list=...)"
+                }
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
                 disabled={isLoading}
                 aria-label="YouTube URL"
@@ -84,13 +108,17 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
               <select
                 id="youtubeType"
                 value={youtubeType}
-                onChange={(e) => setYoutubeType(e.target.value as YouTubeUploadType)}
+                onChange={(e) => {
+                  setYoutubeType(e.target.value as YouTubeUploadType);
+                  setYoutubeError(null); // Clear error when type changes as validation might differ
+                }}
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
                 disabled={isLoading}
                 aria-label="YouTube Processing Type"
               >
-                <option value="youtube_channel_instrumental_batch">Channel - Instrumentals (Scan all videos)</option>
-                <option value="youtube_playlist_instrumental_batch">Playlist - Instrumentals (Scan all videos)</option>
+                <option value="youtube_video_single">Single Video - Scan this video</option>
+                <option value="youtube_channel_instrumental_batch">Channel - Scan all videos</option>
+                <option value="youtube_playlist_instrumental_batch">Playlist - Scan all videos</option>
               </select>
             </div>
             {youtubeError && <p className="text-xs text-red-700 mt-1">{youtubeError}</p>}
@@ -99,7 +127,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
             </Button>
           </form>
            <p className="text-xs text-gray-700 mt-1">
-            Note: Channel/Playlist scanning can take time. Backend processes videos to find matches.
+            Note: Channel/Playlist scanning can take time. Single video scans are faster. Backend processes videos to find matches.
           </p>
         </div>
       </section>

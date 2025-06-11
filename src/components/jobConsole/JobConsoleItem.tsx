@@ -20,6 +20,7 @@ const formatJobType = (type: ScanJob['jobType']): string => {
     case 'youtube_channel_instrumental_batch': return 'YouTube Channel Scan';
     case 'youtube_playlist_instrumental_batch': return 'YouTube Playlist Scan';
     case 'spotify_playlist_import': return 'Spotify Playlist Import';
+    case 'youtube_video_single': return 'YouTube Video Scan';
     default: return type;
   }
 };

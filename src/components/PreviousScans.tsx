@@ -4,7 +4,7 @@ import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, PlatformSource, Tra
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
-import { useSpotifyPlayer } from '../contexts/SpotifyContext'; 
+import { useSpotifyPlayer } from '../contexts/SpotifyContext';
 import UploadIcon from './icons/UploadIcon';
 import StreamCountCell from './common/StreamCountCell';
 import MusicNoteIcon from './icons/MusicNoteIcon';
@@ -52,12 +52,10 @@ const formatPlatformSource = (source: PlatformSource): string => {
     case 'youtube_channel_instrumental_batch_item': return 'YT Channel';
     case 'youtube_playlist_instrumental_batch_item': return 'YT Playlist';
     case 'spotify_playlist_import_item': return 'Spotify Import';
+    case 'youtube_video_single_item': return 'YT Video';
     default:
-      // This will cause a compile-time error if 'source' is not 'never',
-      // i.e., if a case for a PlatformSource member was missed.
       const _exhaustiveCheck: never = source;
-      // Fallback for runtime, though theoretically unreachable with correct typing and all cases handled.
-      return "Unknown Source"; 
+      return "Unknown Source";
   }
 };
 
@@ -69,7 +67,9 @@ const SourceIcon: React.FC<{ source: PlatformSource, url?: string, title?: strin
         icon = <UploadIcon className="w-3.5 h-3.5 text-blue-600" />;
     } else if (source === 'spotify_playlist_import_item') {
         icon = <SpotifyIcon className="w-3.5 h-3.5 text-green-600" />;
-    } else if (source === 'youtube_channel_instrumental_batch_item' || source === 'youtube_playlist_instrumental_batch_item') {
+    } else if (source === 'youtube_channel_instrumental_batch_item' ||
+               source === 'youtube_playlist_instrumental_batch_item' ||
+               source === 'youtube_video_single_item') { // Added single video
         icon = <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />;
     }
 
@@ -97,7 +97,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [isLoadingExport, setIsLoadingExport] = useState(false);
   const [exportMessage, setExportMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-  
+
   const initialTableRows = useMemo((): DisplayableTableRow[] => {
     return scanLogs.reduce((acc, log: TrackScanLog, logIndex: number) => {
       const relevantMatchStatuses: TrackScanLogStatus[] = ['completed_match_found', 'scanned_match_found', 'imported_spotify_track'];
@@ -127,7 +127,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         else if (log.status === 'error_ffmpeg') message = "Audio Processing Error (FFmpeg)";
         else if (log.status === 'skipped_previously_scanned') message = "Skipped (Previously Scanned)";
         // Add more specific error messages based on TrackScanLogStatus if needed
-        
+
         acc.push({
           isMatchRow: false,
           hasAnyMatchesInLog: false,

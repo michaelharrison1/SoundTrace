@@ -41,7 +41,8 @@ export type PlatformSource =
   | 'file_upload_batch_item' // Item from a file upload batch job
   | 'youtube_channel_instrumental_batch_item' // Item from a YT channel job
   | 'youtube_playlist_instrumental_batch_item' // Item from a YT playlist job
-  | 'spotify_playlist_import_item'; // Item from a Spotify playlist import job
+  | 'spotify_playlist_import_item' // Item from a Spotify playlist import job
+  | 'youtube_video_single_item'; // Item from a single YouTube video scan job
   // Potentially older single types if data is migrated or specific single-item jobs are created:
   // | 'file_upload_single'
   // | 'youtube_instrumental_single'
@@ -57,7 +58,7 @@ export type TrackScanLogStatus =
   | 'error_acr_scan'        // File from job failed ACR scan (not credit related)
   | 'error_acr_credits_item'// Specific item failed due to ACR credits (job might also be paused)
 
-  // Statuses for items from YouTube jobs
+  // Statuses for items from YouTube jobs (batch or single)
   | 'pending_scan'          // Video identified, awaiting processing by backend
   | 'processing_scan'       // Video from batch is actively being scanned by backend
   | 'scanned_match_found'   // Video from batch scanned, matches found
@@ -92,9 +93,8 @@ export interface TrackScanLog {
 
 export type YouTubeUploadType =
   | 'youtube_channel_instrumental_batch'
-  | 'youtube_playlist_instrumental_batch';
-  // Single types 'youtube_instrumental' and 'youtube_song' might be initiated as simpler jobs or deprecated.
-  // For now, assuming batch types are the primary YouTube job initiators.
+  | 'youtube_playlist_instrumental_batch'
+  | 'youtube_video_single'; // New type for single video scans
 
 
 export interface SpotifyFollowerSuccess {
@@ -127,7 +127,8 @@ export type JobType =
   | 'file_upload_batch'
   | 'youtube_channel_instrumental_batch'
   | 'youtube_playlist_instrumental_batch'
-  | 'spotify_playlist_import';
+  | 'spotify_playlist_import'
+  | 'youtube_video_single'; // New job type
 
 export type JobStatus =
   | 'pending_setup'        // Job created, initial setup (e.g. preparing file list for YT)
