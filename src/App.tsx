@@ -6,13 +6,13 @@ import MainAppLayout from './components/MainAppLayout';
 import { User } from './types';
 import ProgressBar from './components/common/ProgressBar';
 import { SpotifyProvider, SpotifyCallbackReceiver } from './contexts/SpotifyContext';
-import { GoogleApiProvider, useGoogleAuth } from './contexts/GoogleAuthContext'; // Import Google Provider & hook
+import { GoogleApiProvider } from './contexts/GoogleAuthContext'; 
 import { authService } from './services/authService';
 import AuthHeaderContent from './components/app/AuthHeaderContent';
 import AppIntroduction from './components/app/AppIntroduction';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage'; 
 import TermsOfServicePage from './components/TermsOfServicePage';
-import YouTubeChannelSelectorModal from './components/modals/YouTubeChannelSelectorModal'; // Import the modal
+// Removed: import YouTubeChannelSelectorModal from './components/modals/YouTubeChannelSelectorModal';
 
 type AuthView = 'login' | 'register';
 
@@ -20,7 +20,7 @@ const AppContentInternal: React.FC = React.memo(() => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [authView, setAuthView] = useState<AuthView>('login');
-  const { showChannelSelectorModal } = useGoogleAuth(); // Get modal state
+  // Removed: const { showChannelSelectorModal } = useGoogleAuth(); 
 
   useEffect(() => {
     try {
@@ -45,7 +45,8 @@ const AppContentInternal: React.FC = React.memo(() => {
 
   const handleAuthSuccess = useCallback((user: User) => {
     setCurrentUser(user); setAuthView('login');
-    document.body.classList.remove('logged-out-background'); document.body.classList.add('logged-in-background');
+    document.body.classList.remove('logged-out-background');
+    document.body.classList.add('logged-in-background');
     if (document.activeElement && typeof (document.activeElement as HTMLElement).blur === 'function') (document.activeElement as HTMLElement).blur();
   }, []);
 
@@ -101,7 +102,7 @@ const AppContentInternal: React.FC = React.memo(() => {
           </div><span>Created by Michael Harrison</span>
         </footer>
       </div>
-      {showChannelSelectorModal && <YouTubeChannelSelectorModal />}
+      {/* Removed: {showChannelSelectorModal && <YouTubeChannelSelectorModal />} */}
     </>
   );
 });

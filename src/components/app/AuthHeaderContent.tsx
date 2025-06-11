@@ -35,25 +35,27 @@ SpotifyConnectButton.displayName = 'SpotifyConnectButton';
 const GoogleConnectButton: React.FC = React.memo(() => {
   const { 
     isGoogleConnected, googleUser, isLoadingGoogleAuth, 
-    connectGoogle, disconnectGoogle, 
-    selectedYouTubeChannel, changeSelectedYouTubeChannel 
+    connectGoogle, disconnectGoogle
   } = useGoogleAuth();
 
   if (isLoadingGoogleAuth && !isGoogleConnected) return <span className="text-xs text-yellow-300 hidden sm:block mr-1">(Google...)</span>;
 
   if (isGoogleConnected && googleUser) {
     const displayName = googleUser.googleDisplayName || googleUser.googleEmail || 'Google User';
+    const primaryChannelTitle = googleUser.primaryYouTubeChannelTitle; // Use primary channel info from GoogleUserProfile
+    
     let channelDisplay = null;
-    if (selectedYouTubeChannel) {
+    if (primaryChannelTitle) {
       channelDisplay = (
         <div className="flex items-center ml-1">
-          {selectedYouTubeChannel.thumbnailUrl && <img src={selectedYouTubeChannel.thumbnailUrl} alt={selectedYouTubeChannel.title} className="w-4 h-4 rounded-sm mr-0.5 win95-border-inset"/>}
-          <span className="text-xs text-red-300 hidden sm:block" title={`Selected YT Channel: ${selectedYouTubeChannel.title}`}>
-            YT: {selectedYouTubeChannel.title.substring(0,8)}{selectedYouTubeChannel.title.length > 8 ? '...' : ''}
+          {googleUser.primaryYouTubeChannelThumbnailUrl && <img src={googleUser.primaryYouTubeChannelThumbnailUrl} alt={primaryChannelTitle} className="w-4 h-4 rounded-sm mr-0.5 win95-border-inset"/>}
+          <span className="text-xs text-red-300 hidden sm:block" title={`Linked YT Channel: ${primaryChannelTitle}`}>
+            YT: {primaryChannelTitle.substring(0,10)}{primaryChannelTitle.length > 10 ? '...' : ''}
           </span>
         </div>
       );
     }
+
 
     return (
       <div className="flex items-center">
@@ -61,10 +63,8 @@ const GoogleConnectButton: React.FC = React.memo(() => {
         {!googleUser.googleAvatarUrl && <YoutubeIcon className="w-4 h-4 mr-1 text-red-400 hidden sm:inline-block" />}
         <span className="text-xs text-blue-300 hidden sm:block mr-1" title={`Connected to Google as ${displayName}`}>G: {displayName.substring(0,10)}{displayName.length > 10 ? '...' : ''}</span>
         {channelDisplay}
-        <Button onClick={changeSelectedYouTubeChannel} size="sm" className="!px-1 !py-0 !text-xs !h-5 hover:bg-gray-300 ml-1" title="Change YouTube Channel">
-          {selectedYouTubeChannel ? 'Chg YT' : 'Sel YT'}
-        </Button>
-        <Button onClick={disconnectGoogle} size="sm" className="!px-1 !py-0 !text-xs !h-5 hover:bg-gray-300 ml-0.5" title="Disconnect Google">X</Button>
+        {/* Removed Change/Select YT Channel button */}
+        <Button onClick={disconnectGoogle} size="sm" className="!px-1 !py-0 !text-xs !h-5 hover:bg-gray-300 ml-1" title="Disconnect Google">X</Button>
       </div>
     );
   }
@@ -78,11 +78,11 @@ const AuthHeaderContent: React.FC<AuthHeaderContentProps> = ({ currentUser, auth
   const { disconnectGoogle: googleDisconnectHook, isGoogleConnected: isGoogleActuallyConnected } = useGoogleAuth();
 
   const handleFullLogout = async () => {
-    if (isGoogleActuallyConnected) { // Use direct check from context
+    if (isGoogleActuallyConnected) { 
       try { await googleDisconnectHook(); } 
       catch (error) { console.error("Error during Google disconnect on logout (non-critical):", error); }
     }
-    if (isSpotifyConnected) { // Use direct check from context
+    if (isSpotifyConnected) { 
         try { await spotifyDisconnectHook(); } 
         catch (error) { console.error("Error during Spotify disconnect on logout (non-critical):", error); }
     }

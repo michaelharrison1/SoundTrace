@@ -169,20 +169,25 @@ export interface FileUploadResponse {
   jobUpdate?: ScanJob; 
 }
 
-// YouTube Channel Selection Types
-export interface YouTubeChannel {
-  id: string;
-  title: string;
-  thumbnailUrl?: string;
-}
-
-// Updated GoogleUserProfile to include selected channel details from backend
+// GoogleUserProfile updated to use primary YouTube channel fields
 export interface GoogleUserProfile {
   googleId?: string;
   googleEmail?: string;
   googleDisplayName?: string;
   googleAvatarUrl?: string;
-  selectedYouTubeChannelId?: string; // From backend if already selected
-  selectedYouTubeChannelTitle?: string;
-  selectedYouTubeChannelThumbnailUrl?: string;
+  primaryYouTubeChannelId?: string; 
+  primaryYouTubeChannelTitle?: string;
+  primaryYouTubeChannelThumbnailUrl?: string;
+}
+
+// GoogleAuthContextType updated
+export interface GoogleAuthContextType {
+  isGoogleConnected: boolean;
+  googleUser: GoogleUserProfile | null;
+  isLoadingGoogleAuth: boolean;
+  connectGoogle: () => void;
+  disconnectGoogle: () => Promise<void>;
+  checkGoogleStatus: () => Promise<void>;
+  googleAuthErrorMessage: string | null;
+  setGoogleAuthErrorMessage: (message: string | null) => void;
 }

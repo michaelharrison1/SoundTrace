@@ -23,30 +23,29 @@ interface MyYouTubeVideosProps {
 
 const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJobInitiating }) => {
     const { 
-        isGoogleConnected, googleUser, connectGoogle, 
-        selectedYouTubeChannel, changeSelectedYouTubeChannel, 
-        isLoadingYouTubeChannels 
+        isGoogleConnected, googleUser, connectGoogle, isLoadingGoogleAuth, // isLoadingYouTubeChannels is removed
+        setGoogleAuthErrorMessage // Use for displaying errors
     } = useGoogleAuth();
 
     const [videos, setVideos] = useState<YouTubeVideo[]>([]);
     const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
     const [isLoadingApiVideos, setIsLoadingApiVideos] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [nextPageToken, setNextPageToken] = useState<string | null | undefined>(undefined);
+    const [error, setError] = useState<string | null>(null); // Component-specific error for video fetching
+    const [nextPageToken, setNextPageToken] = useState<string | null | undefined>(undefined); // Undefined initially to allow first fetch
     const soundTraceAuthToken = localStorage.getItem('authToken');
 
     const fetchVideos = useCallback(async (pageToken?: string | null) => {
-        if (!soundTraceAuthToken || !isGoogleConnected || !selectedYouTubeChannel) {
-            setError("Please connect Google and select a YouTube channel to load videos.");
+        if (!soundTraceAuthToken || !isGoogleConnected) {
+            setError("Please connect Google to load your YouTube videos.");
             return;
         }
         setIsLoadingApiVideos(true);
         setError(null);
+        setGoogleAuthErrorMessage(null); // Clear global errors on new attempt
         try {
             const params = new URLSearchParams({ maxResults: '10' });
             if (pageToken) params.append('pageToken', pageToken);
 
-            // This endpoint now uses the selected channel implicitly on the backend
             const response = await fetch(`${API_BASE_URL}/api/youtube/videos?${params.toString()}`, {
                 headers: { 'Authorization': `Bearer ${soundTraceAuthToken}` },
                 credentials: 'include',
@@ -54,19 +53,24 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
             const data = await response.json();
             if (!response.ok) {
                 if (data.needsReLogin) {
-                     setError("Google session expired or token invalid. Please try re-selecting your channel or reconnecting Google.");
+                     setError("Google session expired or token invalid. Please try reconnecting Google.");
+                     setGoogleAuthErrorMessage("Google session expired. Please disconnect and reconnect Google from the header.");
                 } else {
                     throw new Error(data.message || 'Failed to fetch YouTube videos.');
                 }
             }
             setVideos(prev => pageToken ? [...prev, ...data.videos] : data.videos);
             setNextPageToken(data.nextPageToken);
+            if (data.videos?.length === 0 && !pageToken) {
+                setError("No videos found for your linked YouTube channel, or the channel couldn't be accessed.");
+            }
         } catch (err: any) {
             setError(err.message);
+            setGoogleAuthErrorMessage(err.message);
         } finally {
             setIsLoadingApiVideos(false);
         }
-    }, [soundTraceAuthToken, isGoogleConnected, selectedYouTubeChannel]);
+    }, [soundTraceAuthToken, isGoogleConnected, setGoogleAuthErrorMessage]);
 
     const handleVideoSelection = (videoId: string) => {
         setSelectedVideos(prev => {
@@ -90,18 +94,12 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
         if (selectedUrls.length > 0) onVideosSelected(selectedUrls);
     };
 
-    // Initial fetch or refetch when selected channel changes
+    // Initial fetch if Google is connected and no videos loaded yet
     useEffect(() => {
-        if (isGoogleConnected && selectedYouTubeChannel && videos.length === 0 && nextPageToken === undefined && soundTraceAuthToken) {
-            fetchVideos();
-        } else if (isGoogleConnected && selectedYouTubeChannel && videos.length > 0 && nextPageToken === undefined) {
-            // If channel changed and videos were already loaded for a different channel, clear them and refetch.
-            // This can be made more sophisticated later (e.g., store videos per channel in context).
-            setVideos([]); 
-            setNextPageToken(undefined); // Reset pagination
+        if (isGoogleConnected && soundTraceAuthToken && videos.length === 0 && nextPageToken === undefined) {
             fetchVideos();
         }
-    }, [isGoogleConnected, selectedYouTubeChannel, fetchVideos, soundTraceAuthToken]);
+    }, [isGoogleConnected, soundTraceAuthToken, videos.length, nextPageToken, fetchVideos]);
 
 
     if (!isGoogleConnected) {
@@ -110,31 +108,18 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
                 <div className="p-3 bg-[#C0C0C0] text-center">
                     <YoutubeIcon className="w-10 h-10 mx-auto mb-2 text-red-600" />
                     <p className="text-black mb-2">Connect Google to scan your YouTube videos.</p>
-                    <Button onClick={connectGoogle} size="md" disabled={isJobInitiating || isLoadingYouTubeChannels}>
+                    <Button onClick={connectGoogle} size="md" disabled={isJobInitiating || isLoadingGoogleAuth}>
                         Connect Google Account
                     </Button>
                 </div>
             </div> );
     }
-
-    if (!selectedYouTubeChannel && !isLoadingYouTubeChannels) {
-        return (
-            <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
-                <div className="p-3 bg-[#C0C0C0] text-center">
-                    <YoutubeIcon className="w-10 h-10 mx-auto mb-2 text-red-600" />
-                    <p className="text-black mb-2">Please select a YouTube channel to use with SoundTrace.</p>
-                    <Button onClick={changeSelectedYouTubeChannel} size="md" disabled={isJobInitiating || isLoadingYouTubeChannels}>
-                        Select YouTube Channel
-                    </Button>
-                </div>
-            </div> );
-    }
     
-    if (isLoadingYouTubeChannels && !selectedYouTubeChannel) {
+    if (isLoadingGoogleAuth) { // Show loading if overall Google Auth is still initializing
         return (
             <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
                 <div className="p-3 bg-[#C0C0C0] text-center">
-                     <ProgressBar text="Loading YouTube channel info..." />
+                     <ProgressBar text="Initializing Google connection..." />
                 </div>
             </div>
         );
@@ -145,15 +130,25 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
         <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
             <div className="p-3 bg-[#C0C0C0]">
                 <h3 className="text-lg font-normal text-black mb-1">My YouTube Videos</h3>
-                {selectedYouTubeChannel && <p className="text-xs text-gray-700 mb-1">Selected Channel: {selectedYouTubeChannel.title}</p>}
-                {googleUser && !selectedYouTubeChannel && <p className="text-xs text-gray-700 mb-2">Connected as: {googleUser.googleDisplayName || googleUser.googleEmail}</p>}
-
+                 {googleUser?.primaryYouTubeChannelTitle && <p className="text-xs text-gray-700 mb-1">Linked Channel: {googleUser.primaryYouTubeChannelTitle}</p>}
+                {googleUser && !googleUser.primaryYouTubeChannelTitle && isGoogleConnected && (
+                    <p className="text-xs text-yellow-600 mb-1">
+                        No primary YouTube channel could be identified for your Google account, or it hasn't been synced yet.
+                        If you recently linked your account, try refreshing. If issues persist, re-linking your Google account might help.
+                    </p>
+                )}
 
                 {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
 
-                {videos.length === 0 && !isLoadingApiVideos && selectedYouTubeChannel && (
-                    <Button onClick={() => fetchVideos()} disabled={isLoadingApiVideos || isJobInitiating || isLoadingYouTubeChannels}>Load Videos from "{selectedYouTubeChannel.title}"</Button>
+                {videos.length === 0 && !isLoadingApiVideos && isGoogleConnected && !error && (
+                    <Button onClick={() => fetchVideos()} disabled={isLoadingApiVideos || isJobInitiating || !googleUser?.primaryYouTubeChannelId}>
+                        {googleUser?.primaryYouTubeChannelId ? `Load Videos from "${googleUser.primaryYouTubeChannelTitle || 'Linked Channel'}"` : "Link Google Account to Load Videos"}
+                    </Button>
                 )}
+                {videos.length === 0 && !isLoadingApiVideos && isGoogleConnected && !googleUser?.primaryYouTubeChannelId && !error && (
+                     <p className="text-xs text-gray-700 mb-2">Link your Google account via the header to enable fetching your videos.</p>
+                )}
+
 
                 {isLoadingApiVideos && videos.length === 0 && <ProgressBar text="Loading your YouTube videos..." />}
 
