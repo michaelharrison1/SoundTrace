@@ -1,5 +1,5 @@
 
-import { TrackScanLog } from '../types';
+import { TrackScanLog, YouTubeUploadType } from '../types';
 
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
@@ -27,10 +27,16 @@ const handleApiResponse = async (response: Response) => {
     (error as any).status = response.status;
     throw error;
   }
-  if (response.status === 204) {
+  if (response.status === 204) { // No Content
     return;
   }
-  return response.json();
+  // Check if content type is JSON before parsing
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.indexOf("application/json") !== -1) {
+    return response.json();
+  } else {
+    return response.text(); // Or handle as appropriate for non-JSON responses
+  }
 };
 
 export const scanLogService = {
@@ -102,9 +108,6 @@ export const scanLogService = {
         (authError as any).status = 401;
         throw authError;
     }
-    // This endpoint (`/manual-spotify-add`) would need to be created on the backend.
-    // It would take the spotifyTrackLink, fetch details from Spotify,
-    // create AcrCloudMatch-like data, and save a new TrackScanLog.
     const response = await fetch(`${BASE_URL}/manual-spotify-add`, {
         method: 'POST',
         headers: {
@@ -112,6 +115,44 @@ export const scanLogService = {
             'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ spotifyTrackLink }),
+        credentials: 'include',
+    });
+    return handleApiResponse(response);
+  },
+
+  processYouTubeUrl: async (url: string, processType: YouTubeUploadType): Promise<TrackScanLog[] | TrackScanLog> => {
+    const token = getAuthToken();
+    if (!token) {
+        const authError = new Error("Not authenticated. Cannot process YouTube URL.");
+        (authError as any).status = 401;
+        throw authError;
+    }
+    const response = await fetch(`${BASE_URL}/process-youtube-url`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ youtubeUrl: url, processType }),
+        credentials: 'include',
+    });
+    return handleApiResponse(response);
+  },
+
+  processSpotifyPlaylistUrl: async (url: string): Promise<TrackScanLog[]> => {
+    const token = getAuthToken();
+    if (!token) {
+        const authError = new Error("Not authenticated. Cannot process Spotify Playlist URL.");
+        (authError as any).status = 401;
+        throw authError;
+    }
+    const response = await fetch(`${BASE_URL}/process-spotify-playlist-url`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ spotifyPlaylistUrl: url }),
         credentials: 'include',
     });
     return handleApiResponse(response);

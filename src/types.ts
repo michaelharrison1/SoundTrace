@@ -5,7 +5,7 @@ export interface User {
 }
 
 export interface AcrCloudMatch {
-  id:string;
+  id:string; // For ACRCloud matches, this is acrid. For manual adds, could be Spotify ID or YouTube Video ID.
   title: string;
   artist: string;
   album: string;
@@ -19,29 +19,51 @@ export interface AcrCloudMatch {
     spotify?: number;
     youtube?: number;
   };
-  matchConfidence: number; // 0-100
-  spotifyArtistId?: string; // Added for Spotify artist ID
-  spotifyTrackId?: string; // Added for Spotify track ID
+  matchConfidence: number; // 0-100. For manual adds (songs), this will be 100.
+  spotifyArtistId?: string;
+  spotifyTrackId?: string;
+  youtubeVideoId?: string;
+  youtubeVideoTitle?: string;
 }
 
-// Represents the result from the backend for a single snippet
+// Represents the result from the backend for a single snippet from ACRCloud
 export interface SnippetScanResult {
-  scanId: string; // Unique ID for the scan of a single snippet
-  instrumentalName: string; // Name of the snippet file
-  instrumentalSize: number; // in bytes
-  scanDate: string; // ISO date string for the snippet scan
+  scanId: string;
+  instrumentalName: string;
+  instrumentalSize: number;
+  scanDate: string;
   matches: AcrCloudMatch[];
 }
 
-// Represents the consolidated log for an entire original track
+export type PlatformSource =
+  | 'file_upload'
+  | 'youtube_instrumental'
+  | 'youtube_song'
+  | 'spotify_track'
+  | 'spotify_playlist_track'
+  | 'youtube_channel_instrumental_batch'
+  | 'youtube_playlist_instrumental_batch';
+
+// Represents the consolidated log for an entire original track or a manually added item
 export interface TrackScanLog {
-  logId: string; // Unique ID for this log entry (e.g., for an original track)
-  originalFileName: string;
-  originalFileSize: number;
-  scanDate: string; // ISO date string of when the scan process for this track completed
-  matches: AcrCloudMatch[]; // Deduplicated matches from all its snippets
-  status: 'matches_found' | 'no_matches_found' | 'error_processing' | 'partially_completed';
+  logId: string;
+  originalFileName: string; // For file uploads, the name. For URLs, a derived name (e.g., "YT: Video Title", "SP Playlist: Track Name")
+  originalFileSize: number; // Relevant for file uploads
+  scanDate: string; // ISO date string of when the log entry was created
+  matches: AcrCloudMatch[]; // For scanned items, ACRCloud matches. For manual adds, a single entry representing the item.
+  status: 'matches_found' | 'no_matches_found' | 'error_processing' | 'partially_completed' | 'manually_added';
+  platformSource: PlatformSource;
+  youtubeVideoId?: string;
+  youtubeVideoTitle?: string; // Can be the same as originalFileName if derived
+  sourceUrl?: string; // The original YouTube/Spotify link processed
+  spotifyTrackInfo?: { // Specifically for Spotify tracks if needed beyond AcrCloudMatch structure
+    name: string;
+    artists: string;
+  };
 }
+
+export type YouTubeUploadType = 'instrumental_single' | 'song_single' | 'instrumental_channel' | 'instrumental_playlist';
+
 
 // Types for Spotify Follower Data Fetching
 export interface SpotifyFollowerSuccess {
