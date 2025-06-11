@@ -38,7 +38,7 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
     const [isGoogleConnected, setIsGoogleConnected] = useState(false);
     const [googleUser, setGoogleUser] = useState<GoogleUserProfile | null>(null);
     const [isLoadingGoogleAuth, setIsLoadingGoogleAuth] = useState(true);
-    
+
     // YouTube Channel Selection State
     const [selectedYouTubeChannel, setSelectedYouTubeChannel] = useState<YouTubeChannel | null>(null);
     const [availableYouTubeChannels, setAvailableYouTubeChannels] = useState<YouTubeChannel[]>([]);
@@ -110,10 +110,16 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
         setIsLoadingYouTubeChannels(true); // Indicate loading while saving selection
         setGoogleAuthErrorMessage(null);
         try {
+            const payload = {
+                channelId: channel.id,
+                channelTitle: channel.title,
+                channelThumbnailUrl: channel.thumbnailUrl // Will be null if not present, backend handles this
+            };
             const response = await fetch(`${API_BASE_URL}/api/youtube/channels/select`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${soundTraceAuthToken}` },
-                body: JSON.stringify(channel), credentials: 'include',
+                body: JSON.stringify(payload),
+                credentials: 'include',
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Failed to select YouTube channel on backend.');
@@ -126,7 +132,7 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
              setIsLoadingYouTubeChannels(false);
         }
     }, [soundTraceAuthToken]);
-    
+
     const handleGoogleLoginSuccess = useCallback(async (codeResponse: Omit<CodeResponse, 'error' | 'error_description' | 'error_uri'>) => {
         if (!soundTraceAuthToken) { console.error("SoundTrace user not logged in."); return; }
         try {
@@ -167,7 +173,7 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
         } catch (error) { console.error("Error disconnecting Google account:", error); setGoogleAuthErrorMessage("Failed to disconnect Google. Please try again."); }
         finally { setIsLoadingGoogleAuth(false); }
     }, [soundTraceAuthToken]);
-    
+
     const changeSelectedYouTubeChannel = useCallback(() => {
         if (isGoogleConnected) {
             fetchUserChannels(); // This will refetch channels and show modal if >1
