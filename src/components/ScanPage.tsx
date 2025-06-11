@@ -150,6 +150,23 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     }
   }, [onJobCreated, handleAuthError]);
 
+  const handleProcessSingleYouTubeVideoUrl = useCallback(async (url: string) => {
+    resetPageMessages();
+    setIsInitiatingJob(true);
+    setCurrentOperationMessage(`Initiating single YouTube video scan...`);
+    try {
+      const job = await scanLogService.initiateSingleYouTubeVideoScanJob(url);
+      onJobCreated(job);
+      setCompletionMessage(`Single YouTube Video Job ${job.id} for "${job.jobName}" initiated. Check Job Console for progress.`);
+    } catch (err: any) {
+      handleJobInitiationError(err, `process single YouTube video URL`);
+    } finally {
+      setIsInitiatingJob(false);
+      setCurrentOperationMessage('');
+    }
+  }, [onJobCreated, handleAuthError]);
+
+
   const handleProcessSpotifyPlaylistUrl = useCallback(async (url: string) => {
     resetPageMessages();
     setIsInitiatingJob(true);
@@ -178,6 +195,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
       />
       <UrlInputForms
         onProcessYouTubeUrl={handleProcessYouTubeUrl}
+        onProcessSingleYouTubeVideoUrl={handleProcessSingleYouTubeVideoUrl} // Pass new handler
         onProcessSpotifyPlaylistUrl={handleProcessSpotifyPlaylistUrl}
         isLoading={isInitiatingJob}
       />

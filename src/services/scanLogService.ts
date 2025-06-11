@@ -84,6 +84,17 @@ export const scanLogService = {
     return handleApiResponse<JobCreationResponse>(response);
   },
 
+  initiateSingleYouTubeVideoScanJob: async (url: string): Promise<JobCreationResponse> => {
+    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
+    const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube-single-video`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ youtubeUrl: url }),
+        credentials: 'include',
+    });
+    return handleApiResponse<JobCreationResponse>(response);
+  },
+
   initiateSpotifyPlaylistJob: async (playlistUrl: string): Promise<JobCreationResponse> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
     const response = await fetch(`${JOBS_BASE_URL}/initiate/spotify-playlist`, {
