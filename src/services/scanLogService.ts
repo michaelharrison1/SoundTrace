@@ -84,24 +84,6 @@ export const scanLogService = {
     return handleApiResponse<JobCreationResponse>(response);
   },
 
-  initiateSingleYouTubeVideoScanJob: async (url: string): Promise<JobCreationResponse> => {
-    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube-video-scan`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ youtubeUrl: url }), credentials: 'include',
-    });
-    return handleApiResponse<JobCreationResponse>(response);
-  },
-
-  initiateSingleYouTubeVideoManualAddJob: async (url: string): Promise<JobCreationResponse> => {
-    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube-video-manual-add`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ youtubeUrl: url }), credentials: 'include',
-    });
-    return handleApiResponse<JobCreationResponse>(response);
-  },
-
   initiateSpotifyPlaylistJob: async (playlistUrl: string): Promise<JobCreationResponse> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
     const response = await fetch(`${JOBS_BASE_URL}/initiate/spotify-playlist`, {
@@ -143,6 +125,8 @@ export const scanLogService = {
     return handleApiResponse<TrackScanLog[]>(response);
   },
 
+  // This might be used if a job item processing results in a direct log save, 
+  // or for truly manual, non-job-related logs.
   saveScanLog: async (logData: Omit<TrackScanLog, 'logId' | 'scanDate' >): Promise<TrackScanLog> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
     const response = await fetch(LOGS_BASE_URL, {
@@ -154,6 +138,8 @@ export const scanLogService = {
 
    addSpotifyTrackToLog: async (spotifyTrackLink: string): Promise<TrackScanLog> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
+    // This endpoint might need to change if it also needs to create a minimal job.
+    // For now, assuming it's a direct log add for simplicity.
     const response = await fetch(`${LOGS_BASE_URL}/manual-spotify-add`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ spotifyTrackLink }), credentials: 'include',
@@ -170,7 +156,7 @@ export const scanLogService = {
   clearAllScanLogs: async (): Promise<void> => { 
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
     const response = await fetch(LOGS_BASE_URL, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
-    await handleApiResponse<void>(response); 
+    await handleApiResponse<void>(response); // Note: Backend should clarify if this also clears jobs or just logs.
   },
 
 };

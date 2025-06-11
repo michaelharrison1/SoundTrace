@@ -6,11 +6,11 @@ import UrlInputForms from './scanPage/UrlInputForms';
 import { scanLogService } from '../services/scanLogService';
 import ManualSpotifyAddForm from './scanPage/ManualSpotifyAddForm';
 import ScanMessages from './scanPage/ScanMessages';
-import CRTProgressBar from './common/CRTProgressBar'; 
+import CRTProgressBar from './common/CRTProgressBar'; // New CRT Progress Bar
 
 interface ScanPageProps {
   user: User;
-  onJobCreated: (job?: ScanJob) => void; 
+  onJobCreated: (job?: ScanJob) => void; // Callback when a new job is initiated
   onLogout: () => void;
 }
 
@@ -18,9 +18,10 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
   const [isInitiatingJob, setIsInitiatingJob] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [currentOperationMessage, setCurrentOperationMessage] = useState<string>('');
-  const [completionMessage, setCompletionMessage] = useState<string | null>(null); 
+  const [completionMessage, setCompletionMessage] = useState<string | null>(null); // For immediate feedback after an action
   const [manualAddMessage, setManualAddMessage] = useState<string | null>(null);
-  
+
+  // For FileUpload state
   const [fileStates, setFileStates] = useState<JobFileState[]>([]);
   const [currentUploadingFile, setCurrentUploadingFile] = useState<string | null>(null);
   const [currentUploadingProgress, setCurrentUploadingProgress] = useState(0);
@@ -36,9 +37,9 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     if (isAuthError) {
       console.warn("Authentication error detected. Logging out.", error?.message);
       onLogout();
-      return true; 
+      return true;
     }
-    return false; 
+    return false;
   }, [onLogout]);
 
   const resetPageMessages = () => {
@@ -47,7 +48,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     setManualAddMessage(null);
     setCurrentOperationMessage('');
   };
-  
+
   const handleJobInitiationError = (err: any, operation: string) => {
     console.error(`Error during ${operation}:`, err);
     if (handleAuthError(err)) return;
@@ -56,7 +57,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     setCurrentOperationMessage('');
   };
 
-  const handleFilesSelectedForJob = useCallback(async (files: File[], numberOfSegments: number) => {
+  const handleFilesSelectedForJob = useCallback(async (files: File[], numberOfSegments: number /* Not used with backend processing */) => {
     resetPageMessages();
     if (files.length === 0) return;
 
@@ -71,16 +72,16 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     try {
       job = await scanLogService.initiateFileUploadJob(filesMetadata);
       currentJobIdForFileUploadRef.current = job.id;
-      onJobCreated(job); 
+      onJobCreated(job); // Notify parent about the new job
       setCompletionMessage(`Job ${job.id} created for ${files.length} files. Starting uploads...`);
-      
+
       const newFileStates: JobFileState[] = files.map(f => ({ originalFileName: f.name, originalFileSize: f.size, status: 'pending' }));
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         setCurrentUploadingFile(file.name);
         newFileStates[i] = { ...newFileStates[i], status: 'uploading', uploadedBytes: 0 };
-        setFileStates([...newFileStates]); 
+        setFileStates([...newFileStates]); // Update UI to show current file uploading
 
         setCurrentOperationMessage(`Uploading ${file.name} (${i + 1}/${files.length})...`);
         try {
@@ -90,7 +91,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
             newFileStates[i] = { ...newFileStates[i], uploadedBytes: loaded };
             setFileStates([...newFileStates]);
           });
-          newFileStates[i] = { ...newFileStates[i], status: 'uploaded' }; 
+          newFileStates[i] = { ...newFileStates[i], status: 'uploaded' };
           setFileStates([...newFileStates]);
           setCurrentOperationMessage(`${file.name} uploaded. Job ${job.id} processing in background.`);
         } catch (uploadError: any) {
@@ -100,7 +101,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
             setFileStates([...newFileStates]);
             setError(prev => `${prev ? prev + '\n' : ''}Failed to upload ${file.name}: ${uploadError.message}`);
         }
-        setCurrentUploadingProgress(0); 
+        setCurrentUploadingProgress(0);
       }
       setCompletionMessage(`All ${files.length} files uploaded for job ${job.id}. Check Job Console for progress.`);
 
@@ -115,13 +116,13 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
 
   const handleManualAdd = async (link: string): Promise<boolean> => {
     resetPageMessages();
-    setIsInitiatingJob(true); 
+    setIsInitiatingJob(true);
     setCurrentOperationMessage("Adding Spotify track to log...");
     try {
       const newLog = await scanLogService.addSpotifyTrackToLog(link);
-      onJobCreated(); 
+      onJobCreated(); // Refresh job/log list
       setManualAddMessage(`Successfully added "${newLog.originalFileName}" to log.`);
-      setCompletionMessage(null); 
+      setCompletionMessage(null); // Clear other messages
       return true;
     } catch (err: any) {
       if (handleAuthError(err)) return false;
@@ -149,39 +150,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     }
   }, [onJobCreated, handleAuthError]);
 
-  const handleProcessSingleYouTubeVideoScan = useCallback(async (url: string) => {
-    resetPageMessages();
-    setIsInitiatingJob(true);
-    setCurrentOperationMessage("Initiating single YouTube video scan...");
-    try {
-      const job = await scanLogService.initiateSingleYouTubeVideoScanJob(url);
-      onJobCreated(job);
-      setCompletionMessage(`Single YouTube Video Scan Job ${job.id} for "${job.jobName}" initiated. Check Job Console for progress.`);
-    } catch (err: any) {
-      handleJobInitiationError(err, "scan single YouTube video");
-    } finally {
-      setIsInitiatingJob(false);
-      setCurrentOperationMessage('');
-    }
-  }, [onJobCreated, handleAuthError]);
-
-  const handleProcessSingleYouTubeVideoManualAdd = useCallback(async (url: string) => {
-    resetPageMessages();
-    setIsInitiatingJob(true);
-    setCurrentOperationMessage("Manually adding single YouTube video to log...");
-    try {
-      const job = await scanLogService.initiateSingleYouTubeVideoManualAddJob(url);
-      onJobCreated(job); // Notify parent about the new job
-      setCompletionMessage(`Single YouTube Video "${job.jobName}" manually added with Job ID ${job.id}.`);
-    } catch (err: any) {
-      handleJobInitiationError(err, "manually add single YouTube video");
-    } finally {
-      setIsInitiatingJob(false);
-      setCurrentOperationMessage('');
-    }
-  }, [onJobCreated, handleAuthError]);
-
-
   const handleProcessSpotifyPlaylistUrl = useCallback(async (url: string) => {
     resetPageMessages();
     setIsInitiatingJob(true);
@@ -201,18 +169,16 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
 
   return (
     <div className="space-y-3">
-      <FileUpload 
-        onFilesSelectedForJob={handleFilesSelectedForJob} 
-        isLoading={isInitiatingJob && !!currentUploadingFile} 
-        currentFileStates={fileStates} 
-        currentUploadingFile={currentUploadingFile} 
-        currentUploadingProgress={currentUploadingProgress} 
+      <FileUpload
+        onFilesSelectedForJob={handleFilesSelectedForJob}
+        isLoading={isInitiatingJob && !!currentUploadingFile}
+        currentFileStates={fileStates}
+        currentUploadingFile={currentUploadingFile}
+        currentUploadingProgress={currentUploadingProgress}
       />
       <UrlInputForms
         onProcessYouTubeUrl={handleProcessYouTubeUrl}
         onProcessSpotifyPlaylistUrl={handleProcessSpotifyPlaylistUrl}
-        onProcessSingleYouTubeVideoScan={handleProcessSingleYouTubeVideoScan}
-        onProcessSingleYouTubeVideoManualAdd={handleProcessSingleYouTubeVideoManualAdd}
         isLoading={isInitiatingJob}
       />
       <ManualSpotifyAddForm onAddTrack={handleManualAdd} />
@@ -222,12 +188,12 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
           <CRTProgressBar text={currentOperationMessage} isActive={isInitiatingJob} />
         </div>
       )}
-      
+
       <ScanMessages
-        isLoading={false} 
+        isLoading={false}
         error={error}
         scanCompletionMessage={completionMessage}
-        alreadyScannedMessage={null} 
+        alreadyScannedMessage={null}
         manualAddMessage={manualAddMessage}
       />
     </div>

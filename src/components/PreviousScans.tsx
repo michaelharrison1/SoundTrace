@@ -52,10 +52,11 @@ const formatPlatformSource = (source: PlatformSource): string => {
     case 'youtube_channel_instrumental_batch_item': return 'YT Channel';
     case 'youtube_playlist_instrumental_batch_item': return 'YT Playlist';
     case 'spotify_playlist_import_item': return 'Spotify Import';
-    case 'youtube_video_instrumental_single_item': return 'YT Video Scan';
-    case 'youtube_video_manual_add_item': return 'YT Video (Manual)';
     default:
+      // This will cause a compile-time error if 'source' is not 'never',
+      // i.e., if a case for a PlatformSource member was missed.
       const _exhaustiveCheck: never = source;
+      // Fallback for runtime, though theoretically unreachable with correct typing and all cases handled.
       return "Unknown Source"; 
   }
 };
@@ -68,12 +69,7 @@ const SourceIcon: React.FC<{ source: PlatformSource, url?: string, title?: strin
         icon = <UploadIcon className="w-3.5 h-3.5 text-blue-600" />;
     } else if (source === 'spotify_playlist_import_item') {
         icon = <SpotifyIcon className="w-3.5 h-3.5 text-green-600" />;
-    } else if (
-        source === 'youtube_channel_instrumental_batch_item' || 
-        source === 'youtube_playlist_instrumental_batch_item' ||
-        source === 'youtube_video_instrumental_single_item' ||
-        source === 'youtube_video_manual_add_item'
-    ) {
+    } else if (source === 'youtube_channel_instrumental_batch_item' || source === 'youtube_playlist_instrumental_batch_item') {
         icon = <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />;
     }
 
@@ -104,21 +100,11 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   
   const initialTableRows = useMemo((): DisplayableTableRow[] => {
     return scanLogs.reduce((acc, log: TrackScanLog, logIndex: number) => {
-      const relevantMatchStatuses: TrackScanLogStatus[] = ['completed_match_found', 'scanned_match_found', 'imported_spotify_track', 'manually_added_youtube_video'];
-      const hasActualMatches = log.matches && log.matches.length > 0 && (relevantMatchStatuses.includes(log.status) || log.status === 'manually_added_youtube_video'); // Manual add has "matches" for info
+      const relevantMatchStatuses: TrackScanLogStatus[] = ['completed_match_found', 'scanned_match_found', 'imported_spotify_track'];
+      const hasActualMatches = log.matches && log.matches.length > 0 && relevantMatchStatuses.includes(log.status);
 
       if (hasActualMatches) {
-        // For 'manually_added_youtube_video', there might not be "ACR" matches, but we might populate a single "match" from the video info itself if the structure allows.
-        // Assuming log.matches for manual adds will be an array with one item representing the video.
-        const matchesToDisplay = (log.status === 'manually_added_youtube_video' && log.matches.length === 0 && log.youtubeVideoTitle) ? 
-            [{
-                id: log.youtubeVideoId || `manual-${log.logId}`, title: log.youtubeVideoTitle, artist: 'N/A (Manual Add)', album: 'N/A', releaseDate: 'N/A', matchConfidence: 100, 
-                platformLinks: { youtube: log.sourceUrl }, youtubeVideoId: log.youtubeVideoId, youtubeVideoTitle: log.youtubeVideoTitle
-            } as AcrCloudMatch] 
-            : log.matches;
-
-
-        matchesToDisplay.forEach((match: AcrCloudMatch, matchIndex: number) => {
+        log.matches.forEach((match: AcrCloudMatch, matchIndex: number) => {
           acc.push({
             isMatchRow: true,
             hasAnyMatchesInLog: true,
@@ -126,7 +112,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             originalFileName: log.originalFileName,
             originalScanDate: log.scanDate,
             matchDetails: match,
-            statusMessage: log.status === 'manually_added_youtube_video' ? 'Manually Added' : undefined,
+            statusMessage: undefined, // Specific statuses like imported_spotify_track are clear enough
             rowKey: `${log.logId}-match-${match.id || matchIndex}`,
             platformSource: log.platformSource,
             sourceUrl: log.sourceUrl || match.platformLinks?.spotify || match.platformLinks?.youtube,
@@ -140,6 +126,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         else if (log.status === 'error_youtube_dl') message = "YouTube Download Error";
         else if (log.status === 'error_ffmpeg') message = "Audio Processing Error (FFmpeg)";
         else if (log.status === 'skipped_previously_scanned') message = "Skipped (Previously Scanned)";
+        // Add more specific error messages based on TrackScanLogStatus if needed
         
         acc.push({
           isMatchRow: false,
@@ -301,9 +288,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const innerContainerStyles = "p-2 bg-[#C0C0C0]";
 
   if (scanLogs.length === 0 && sortedTableRows.length === 0) return null;
-  const hasAnyMatchesInAnyLog = scanLogs.some(log => log.matches.length > 0 && (relevantMatchStatuses.includes(log.status) || log.status === 'manually_added_youtube_video'));
-  const relevantMatchStatuses: TrackScanLogStatus[] = ['completed_match_found', 'scanned_match_found', 'imported_spotify_track', 'manually_added_youtube_video'];
-
+  const hasAnyMatchesInAnyLog = scanLogs.some(log => log.matches.length > 0 && (log.status === 'completed_match_found' || log.status === 'scanned_match_found' || log.status === 'imported_spotify_track'));
 
   return (
     <div className={containerStyles}>
@@ -357,7 +342,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                 const followerInfo = row.matchDetails?.spotifyArtistId ? followerResults.get(row.matchDetails.spotifyArtistId) : undefined;
                 const displayTitle = row.isMatchRow ? (row.matchDetails?.youtubeVideoTitle || row.matchDetails?.title) : (row.youtubeVideoTitle || row.originalFileName);
                 const displayArtist = row.isMatchRow ? row.matchDetails?.artist : "N/A";
-                const isManualAdd = row.platformSource === 'youtube_video_manual_add_item';
 
                 return (
                 <tr key={row.rowKey} className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>
@@ -374,11 +358,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                       <DataCell className="text-center"> <StreamCountCell trackId={row.matchDetails.spotifyTrackId} /> </DataCell>
                       <DataCell title={row.matchDetails.album}>{row.matchDetails.album}</DataCell>
                       <DataCell className="text-center">{row.matchDetails.releaseDate}</DataCell>
-                      <DataCell className="text-center"> 
-                        {isManualAdd ? <span className="text-xs text-gray-500 italic">N/A</span> : 
-                          <span className={`px-1 ${ row.matchDetails.matchConfidence > 80 ? 'text-green-700' : row.matchDetails.matchConfidence > 60 ? 'text-yellow-700' : 'text-red-700' }`}> {row.matchDetails.matchConfidence}% </span>
-                        }
-                      </DataCell>
+                      <DataCell className="text-center"> <span className={`px-1 ${ row.matchDetails.matchConfidence > 80 ? 'text-green-700' : row.matchDetails.matchConfidence > 60 ? 'text-yellow-700' : 'text-red-700' }`}> {row.matchDetails.matchConfidence}% </span> </DataCell>
                     </>
                   ) : ( <td colSpan={8} className="px-2 py-1 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
                    <DataCell title={row.youtubeVideoTitle || row.originalFileName}> {row.youtubeVideoTitle || row.originalFileName} {row.statusMessage && row.isMatchRow && <div className="text-[10px] text-yellow-600 italic leading-tight">{row.statusMessage}</div>} </DataCell>
