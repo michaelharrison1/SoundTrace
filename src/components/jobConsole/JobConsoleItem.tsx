@@ -70,7 +70,7 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
     setIsDeleting(true);
     onInteractionStart();
     try {
-      await scanLogService.deleteJob(job.jobId);
+      await scanLogService.deleteJob(job.id); // Changed from job.jobId
       onJobAction(); // Notify parent to refresh
     } catch (err: any) {
       console.error("Error deleting job:", err);
@@ -80,14 +80,14 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
       setIsDeleting(false);
       onInteractionEnd();
     }
-  }, [job.jobId, job.jobName, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]);
+  }, [job.id, job.jobName, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]); // Changed from job.jobId
 
   const handleResume = useCallback(async () => {
     setError(null);
     setIsResuming(true);
     onInteractionStart();
     try {
-      const updatedJob = await scanLogService.resumeJob(job.jobId);
+      const updatedJob = await scanLogService.resumeJob(job.id); // Changed from job.jobId
       onJobAction(updatedJob); // Notify parent to refresh with updated job
     } catch (err: any) {
       console.error("Error resuming job:", err);
@@ -97,11 +97,11 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
       setIsResuming(false);
       onInteractionEnd();
     }
-  }, [job.jobId, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]);
+  }, [job.id, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]); // Changed from job.jobId
 
   const isResumable = job.status === 'failed_acr_credits' || job.status === 'failed_upload_incomplete';
   const isProcessing = job.status === 'in_progress_fetching' || job.status === 'in_progress_processing' || job.status === 'uploading_files' || job.status === 'queued_for_processing';
-  
+
   const progressPercent = job.totalItems > 0 ? (job.itemsProcessed / job.totalItems) * 100 : 0;
 
   let reuploadMessage = '';
@@ -118,7 +118,7 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
         <div className="flex justify-between items-start">
           <div>
             <h3 className="text-base font-semibold text-black">{job.jobName}</h3>
-            <p className="text-xs text-gray-700">ID: {job.jobId} | Type: {formatJobType(job.jobType)}</p>
+            <p className="text-xs text-gray-700">ID: {job.id} | Type: {formatJobType(job.jobType)}</p> {/* Changed from job.jobId */}
             <p className="text-xs text-gray-700">Created: {new Date(job.createdAt).toLocaleString()}</p>
           </div>
           <div className="text-right">

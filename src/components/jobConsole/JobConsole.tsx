@@ -36,7 +36,7 @@ const JobConsole: React.FC<JobConsoleProps> = ({ jobs, onJobAction, isLoading, o
           <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto pr-1">
             {jobs.map(job => (
               <JobConsoleItem
-                key={job.jobId}
+                key={job.id} // Changed from job.jobId
                 job={job}
                 onJobAction={onJobAction}
                 onInteractionStart={handleInteractionStart}

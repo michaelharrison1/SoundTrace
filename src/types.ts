@@ -5,11 +5,11 @@ export interface User {
 }
 
 export interface AcrCloudMatch {
-  id:string; 
+  id:string;
   title: string;
   artist: string;
   album: string;
-  releaseDate: string; 
+  releaseDate: string;
   platformLinks?: {
     spotify?: string;
     youtube?: string;
@@ -19,7 +19,7 @@ export interface AcrCloudMatch {
     spotify?: number;
     youtube?: number;
   };
-  matchConfidence: number; 
+  matchConfidence: number;
   spotifyArtistId?: string;
   spotifyTrackId?: string;
   youtubeVideoId?: string;
@@ -44,8 +44,8 @@ export type PlatformSource =
   | 'spotify_playlist_import_item'; // Item from a Spotify playlist import job
   // Potentially older single types if data is migrated or specific single-item jobs are created:
   // | 'file_upload_single'
-  // | 'youtube_instrumental_single' 
-  // | 'youtube_song_single'         
+  // | 'youtube_instrumental_single'
+  // | 'youtube_song_single'
   // | 'spotify_track_single';
 
 export type TrackScanLogStatus =
@@ -64,7 +64,7 @@ export type TrackScanLogStatus =
   | 'scanned_no_match'      // Video from batch scanned, no matches
   | 'error_youtube_dl'      // Error downloading from YouTube for this video
   | 'error_ffmpeg'          // Error processing audio with FFmpeg for this video
-  | 'skipped_previously_scanned' 
+  | 'skipped_previously_scanned'
 
   // Statuses for items from Spotify Playlist Import
   | 'imported_spotify_track' // Track successfully imported from Spotify playlist
@@ -77,8 +77,8 @@ export type TrackScanLogStatus =
 export interface TrackScanLog {
   logId: string;
   scanJobId: string; // Should always be present now
-  originalFileName: string; 
-  originalFileSize: number; 
+  originalFileName: string;
+  originalFileSize: number;
   scanDate: string; // Date this log entry was created/finalized
   matches: AcrCloudMatch[];
   status: TrackScanLogStatus;
@@ -90,8 +90,8 @@ export interface TrackScanLog {
   lastAttemptedAt?: string; // Timestamp of the last processing attempt for this item
 }
 
-export type YouTubeUploadType = 
-  | 'youtube_channel_instrumental_batch' 
+export type YouTubeUploadType =
+  | 'youtube_channel_instrumental_batch'
   | 'youtube_playlist_instrumental_batch';
   // Single types 'youtube_instrumental' and 'youtube_song' might be initiated as simpler jobs or deprecated.
   // For now, assuming batch types are the primary YouTube job initiators.
@@ -123,11 +123,11 @@ export interface SpotifyPlaylist { id: string; name: string; external_urls: { sp
 export interface FollowerSnapshot { date: string; cumulativeFollowers: number; }
 
 // --- New Job System Types ---
-export type JobType = 
-  | 'file_upload_batch' 
-  | 'youtube_channel_instrumental_batch' 
+export type JobType =
+  | 'file_upload_batch'
+  | 'youtube_channel_instrumental_batch'
   | 'youtube_playlist_instrumental_batch'
-  | 'spotify_playlist_import'; 
+  | 'spotify_playlist_import';
 
 export type JobStatus =
   | 'pending_setup'        // Job created, initial setup (e.g. preparing file list for YT)
@@ -155,25 +155,25 @@ export interface JobFileState {
 }
 
 export interface ScanJob {
-  jobId: string;
-  jobName: string; 
+  id: string; // Changed from jobId to id
+  jobName: string;
   jobType: JobType;
   status: JobStatus;
   originalInputUrl?: string; // For URL-based jobs
-  
+
   totalItems: number;        // Files to upload, videos in playlist, etc.
   itemsProcessed: number;    // Items that have had a processing attempt
   itemsWithMatches: number;  // Items where matches were found
   itemsFailed: number;       // Items that failed processing (non-ACR credit errors)
-  
+
   files?: JobFileState[]; // Only for 'file_upload_batch' type
 
   lastErrorMessage?: string; // General job error message
-  lastProcessedItemInfo?: { 
+  lastProcessedItemInfo?: {
     itemName?: string;       // e.g., file name, video title
     status?: TrackScanLogStatus | JobFileState['status']; // Status of that specific item's processing
   };
-  
+
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
@@ -183,8 +183,8 @@ export interface JobCreationResponse extends ScanJob {} // Response when a job i
 export interface AllJobsResponse { jobs: ScanJob[]; }    // Response for getting all jobs
 export interface SingleJobResponse extends ScanJob {}   // Response for getting a single job
 // For file uploads, the response might also include specific file state updates.
-export interface FileUploadResponse { 
-  message: string; 
-  fileState: JobFileState; 
+export interface FileUploadResponse {
+  message: string;
+  fileState: JobFileState;
   jobUpdate?: ScanJob; // Optional: If the overall job status changed due to this upload
 }
