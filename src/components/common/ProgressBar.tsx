@@ -23,11 +23,11 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ text, className, textClassNam
       >
         <div className="h-full w-full overflow-hidden bg-white relative">
           <div className="absolute top-0 left-0 h-full progress-bar-blocks-container flex">
-            {[...Array(numberOfBlocks)].map((_, i) => (
+            {[...Array(numberOfBlocks * 2)].map((_, i) => ( // *2 because container is 200% width
               <div
                 key={i}
                 className="progress-bar-block" // Class defined in index.html for consistent styling
-                style={{ width: `${100 / numberOfBlocks}%` }} // e.g., 5% if 20 blocks
+                style={{ width: `${100 / (numberOfBlocks * 2)}%` }} // e.g., 2.5% if 20 blocks in 200% view
               ></div>
             ))}
           </div>
