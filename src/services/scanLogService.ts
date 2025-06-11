@@ -25,6 +25,9 @@ const handleApiResponse = async (response: Response) => {
     const errorMessage = errorData.message || `Request failed with status ${response.status}: ${response.statusText || 'Unknown error'}`;
     const error = new Error(errorMessage);
     (error as any).status = response.status;
+    if (response.status === 499) { // Client Closed Request (often used for cancellations)
+        (error as any).isCancellation = true;
+    }
     throw error;
   }
   if (response.status === 204) { // No Content
@@ -55,7 +58,7 @@ export const scanLogService = {
     return handleApiResponse(response);
   },
 
-  saveScanLog: async (logData: Omit<TrackScanLog, 'logId' | 'scanDate'>): Promise<TrackScanLog> => {
+  saveScanLog: async (logData: Omit<TrackScanLog, 'logId' | 'scanDate' | 'scanJobId'>): Promise<TrackScanLog> => {
     const token = getAuthToken();
     if (!token) {
       const authError = new Error("Not authenticated. Cannot save scan log.");
@@ -120,22 +123,29 @@ export const scanLogService = {
     return handleApiResponse(response);
   },
 
-  processYouTubeUrl: async (url: string, processType: YouTubeUploadType): Promise<TrackScanLog[] | TrackScanLog> => {
+  processYouTubeUrl: async (url: string, processType: YouTubeUploadType, scanJobId: string | null = null): Promise<TrackScanLog[] | TrackScanLog> => {
     const token = getAuthToken();
     if (!token) {
         const authError = new Error("Not authenticated. Cannot process YouTube URL.");
         (authError as any).status = 401;
         throw authError;
     }
+    const body: { youtubeUrl: string, processType: YouTubeUploadType, scanJobId?: string } = { youtubeUrl: url, processType };
+    if (scanJobId) {
+        body.scanJobId = scanJobId;
+    }
+
     const response = await fetch(`${BASE_URL}/process-youtube-url`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ youtubeUrl: url, processType }),
+        body: JSON.stringify(body),
         credentials: 'include',
     });
+    // The response might be a single TrackScanLog or an array of them,
+    // or an error object if the scan was aborted (handled by handleApiResponse).
     return handleApiResponse(response);
   },
 
@@ -156,5 +166,22 @@ export const scanLogService = {
         credentials: 'include',
     });
     return handleApiResponse(response);
+  },
+
+  abortScanJob: async (scanJobId: string): Promise<void> => {
+    const token = getAuthToken();
+    if (!token) {
+      const authError = new Error("Not authenticated. Cannot abort scan job.");
+      (authError as any).status = 401;
+      throw authError;
+    }
+    const response = await fetch(`${BASE_URL}/abort/${scanJobId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
+    });
+    // Expects 200 OK or 202 Accepted if successful, or error if job not found/already completed etc.
+    // handleApiResponse will throw for non-ok statuses.
+    await handleApiResponse(response);
   }
 };

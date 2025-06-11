@@ -51,7 +51,7 @@ export interface TrackScanLog {
   originalFileSize: number; // Relevant for file uploads
   scanDate: string; // ISO date string of when the log entry was created
   matches: AcrCloudMatch[]; // For scanned items, ACRCloud matches. For manual adds, a single entry representing the item.
-  status: 'matches_found' | 'no_matches_found' | 'error_processing' | 'partially_completed' | 'manually_added';
+  status: 'matches_found' | 'no_matches_found' | 'error_processing' | 'partially_completed' | 'manually_added' | 'aborted';
   platformSource: PlatformSource;
   youtubeVideoId?: string;
   youtubeVideoTitle?: string; // Can be the same as originalFileName if derived
@@ -60,6 +60,7 @@ export interface TrackScanLog {
     name: string;
     artists: string;
   };
+  scanJobId?: string; // Added for potential abort functionality
 }
 
 export type YouTubeUploadType = 'instrumental_single' | 'song_single' | 'instrumental_channel' | 'instrumental_playlist';

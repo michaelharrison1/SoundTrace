@@ -9,6 +9,7 @@ import { generateSnippetsForFile } from '../utils/audioProcessing';
 import ProgressBar from './common/ProgressBar';
 import ManualSpotifyAddForm from './scanPage/ManualSpotifyAddForm';
 import ScanMessages from './scanPage/ScanMessages';
+import Button from './common/Button'; // Added for Abort button
 
 interface ScanPageProps {
   user: User;
@@ -25,6 +26,11 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
   const [alreadyScannedMessage, setAlreadyScannedMessage] = useState<string | null>(null);
   const [manualAddMessage, setManualAddMessage] = useState<string | null>(null);
 
+  const [currentScanJobId, setCurrentScanJobId] = useState<string | null>(null);
+  const [isAborting, setIsAborting] = useState<boolean>(false);
+  const [activeScanTypeForAbort, setActiveScanTypeForAbort] = useState<YouTubeUploadType | null>(null);
+
+
   const handleAuthError = useCallback((error: any) => {
     const isAuthError = (error.status === 401 || error.status === 403) ||
                         (typeof error.message === 'string' && error.message.toLowerCase().includes('token is not valid'));
@@ -33,10 +39,21 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
       onLogout();
       setError("Your session has expired. Please log in again.");
       setIsLoading(false); // Stop loading on auth error
+      setCurrentScanJobId(null);
+      setIsAborting(false);
+      setActiveScanTypeForAbort(null);
       return true;
     }
     return false;
   }, [onLogout]);
+
+  const resetScanState = () => {
+    setIsLoading(false);
+    setScanProgressMessage('');
+    setCurrentScanJobId(null);
+    setIsAborting(false);
+    setActiveScanTypeForAbort(null);
+  };
 
   const handleFileScan = useCallback(async (originalFiles: File[], numberOfSegments: number) => {
     setIsLoading(true);
@@ -45,10 +62,12 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
     setAlreadyScannedMessage(null);
     setManualAddMessage(null);
     setScanProgressMessage('Preparing tracks for file upload scan...');
+    setCurrentScanJobId(null); // File scans don't support abort currently
+    setActiveScanTypeForAbort(null);
 
     if (originalFiles.length === 0) {
       setScanCompletionMessage("No tracks selected for file scanning.");
-      setIsLoading(false);
+      resetScanState();
       return;
     }
 
@@ -71,8 +90,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
     }
 
     if (filesToActuallyScan.length === 0) {
-      setIsLoading(false);
-      setScanProgressMessage('');
+      resetScanState();
       if (originalFiles.length > 0 && alreadyScannedFileNames.length === originalFiles.length) {
         setScanCompletionMessage("All selected files have already been scanned.");
       } else if (originalFiles.length > 0) {
@@ -125,7 +143,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         if (snippetErrors > 0 && snippetsScannedCount > 0 && trackStatus !== 'error_processing') trackStatus = 'partially_completed';
       }
 
-      const logDataToSave: Omit<TrackScanLog, 'logId' | 'scanDate'> = {
+      const logDataToSave: Omit<TrackScanLog, 'logId' | 'scanDate' | 'scanJobId'> = {
         originalFileName: originalFile.name,
         originalFileSize: originalFile.size,
         matches: trackMatches,
@@ -146,8 +164,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
     }
     if (successfullySavedLogs.length > 0) onNewScanLogsSaved(successfullySavedLogs);
     setScanCompletionMessage(`${tracksProcessedCount} file(s) processed. Check dashboard for results.`);
-    setIsLoading(false);
-    setScanProgressMessage('');
+    resetScanState();
   }, [onNewScanLogsSaved, previousScans, handleAuthError]);
 
 
@@ -158,23 +175,38 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
     setAlreadyScannedMessage(null);
     setManualAddMessage(null);
     setScanProgressMessage(`Processing YouTube URL (${type.replace(/_/g, ' ')})...`);
+    
+    const newScanJobId = (type === 'instrumental_channel' || type === 'instrumental_playlist') 
+      ? `ytjob-${Date.now()}-${Math.random().toString(36).substring(2,9)}` 
+      : null;
+    setCurrentScanJobId(newScanJobId);
+    setActiveScanTypeForAbort(newScanJobId ? type : null);
+
 
     try {
-      const results = await scanLogService.processYouTubeUrl(url, type);
+      const results = await scanLogService.processYouTubeUrl(url, type, newScanJobId); // Pass scanJobId
       const newLogs = Array.isArray(results) ? results : [results];
       if (newLogs.length > 0) {
         onNewScanLogsSaved(newLogs);
-        setScanCompletionMessage(`Successfully processed YouTube URL. ${newLogs.length} log(s) updated/created.`);
+        const isAborted = newLogs.some(log => log.status === 'aborted');
+        if (isAborted) {
+          setScanCompletionMessage(`YouTube URL processing was aborted. ${newLogs.filter(log => log.status !== 'aborted').length} log(s) updated/created before abort.`);
+        } else {
+          setScanCompletionMessage(`Successfully processed YouTube URL. ${newLogs.length} log(s) updated/created.`);
+        }
       } else {
-        setScanCompletionMessage(`YouTube URL processed, but no new logs were created (it might have been empty or no instrumentals found).`);
+        setScanCompletionMessage(`YouTube URL processed, but no new logs were created (it might have been empty, no instrumentals found, or aborted early).`);
       }
     } catch (err: any) {
       console.error("Error processing YouTube URL:", err);
       if(handleAuthError(err)) return;
-      setError(`Error processing YouTube URL: ${err.message || 'Unknown error'}`);
+      if (err.message && err.message.toLowerCase().includes('client closed request')) {
+        setError('The scan operation was aborted by the client or timed out.');
+      } else {
+        setError(`Error processing YouTube URL: ${err.message || 'Unknown error'}`);
+      }
     } finally {
-      setIsLoading(false);
-      setScanProgressMessage('');
+      resetScanState();
     }
   }, [onNewScanLogsSaved, handleAuthError]);
 
@@ -185,6 +217,8 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
     setAlreadyScannedMessage(null);
     setManualAddMessage(null);
     setScanProgressMessage('Processing Spotify Playlist URL...');
+    setCurrentScanJobId(null); // Playlist processing doesn't support abort yet
+    setActiveScanTypeForAbort(null);
     try {
       const newLogs = await scanLogService.processSpotifyPlaylistUrl(url);
       if (newLogs.length > 0) {
@@ -198,8 +232,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
       if(handleAuthError(err)) return;
       setError(`Error processing Spotify Playlist: ${err.message || 'Unknown error'}`);
     } finally {
-      setIsLoading(false);
-      setScanProgressMessage('');
+      resetScanState();
     }
   }, [onNewScanLogsSaved, handleAuthError]);
 
@@ -211,22 +244,51 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
     setIsLoading(true);
     setError(null); setScanCompletionMessage(null); setAlreadyScannedMessage(null); setManualAddMessage(null);
     setScanProgressMessage('Adding Spotify track to log...');
+    setCurrentScanJobId(null);
+    setActiveScanTypeForAbort(null);
 
     try {
         const newLog = await scanLogService.addSpotifyTrackToLog(link);
         onNewScanLogsSaved([newLog]);
         setManualAddMessage(`Successfully added "${newLog.matches[0]?.title || 'Track'}" to your scan log.`);
-        setIsLoading(false); setScanProgressMessage('');
+        resetScanState();
         return true;
     } catch (err: any) {
         console.error("Error manually adding Spotify link:", err);
-        if(handleAuthError(err)) { setIsLoading(false); setScanProgressMessage(''); return false; }
+        if(handleAuthError(err)) { resetScanState(); return false; }
         setManualAddMessage(`Error: ${err.message || "Could not add Spotify track."}`);
-        setIsLoading(false); setScanProgressMessage('');
+        resetScanState();
         return false;
     }
   }, [onNewScanLogsSaved, handleAuthError]);
 
+  const handleAbortScan = useCallback(async () => {
+    if (!currentScanJobId) return;
+    setIsAborting(true);
+    setScanProgressMessage('Requesting scan abortion...');
+    try {
+      await scanLogService.abortScanJob(currentScanJobId);
+      // The backend will eventually stop. The frontend shows completion/aborted message
+      // once the initial `handleProcessYouTubeUrl` promise resolves or rejects.
+      // Here, we're just setting the state to reflect that abort was requested.
+      setScanCompletionMessage('Scan abortion requested. The process will stop shortly.');
+      // No need to call resetScanState here, it will be called by the original handler's finally block.
+    } catch (abortError: any) {
+      console.error('Failed to request scan abortion:', abortError);
+      setError(prev => `${prev ? prev + '\\n' : ''}Failed to request scan abortion: ${abortError.message}`);
+      // Still, allow the main process to finish or error out.
+    } finally {
+      // Do not reset isLoading here as the main scan operation might still be "finishing up"
+      // by acknowledging the abort.
+      // Resetting isAborting and currentScanJobId can happen, but the main loading state
+      // should persist until the initial scan promise from handleProcessYouTubeUrl settles.
+      setIsAborting(false); 
+      // currentScanJobId will be reset in resetScanState() by the main handler
+    }
+  }, [currentScanJobId]);
+
+
+  const showAbortButton = isLoading && currentScanJobId && (activeScanTypeForAbort === 'instrumental_channel' || activeScanTypeForAbort === 'instrumental_playlist');
 
   return (
     <div className="space-y-3">
@@ -242,6 +304,17 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         <div className="p-3 win95-border-outset bg-[#C0C0C0]">
           <ProgressBar text={scanProgressMessage || 'Processing...'} className="mb-1" />
           <p className="text-xs text-gray-700 text-center">Please wait. This may take a while for channels or large playlists.</p>
+          {showAbortButton && !isAborting && (
+            <Button
+              onClick={handleAbortScan}
+              variant="danger"
+              size="sm"
+              className="w-full mt-2 !bg-red-400 hover:!bg-red-500"
+            >
+              Abort YouTube Batch Scan
+            </Button>
+          )}
+          {isAborting && <p className="text-xs text-yellow-600 text-center mt-1">Abortion request sent...</p>}
         </div>
       )}
       

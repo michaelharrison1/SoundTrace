@@ -4,7 +4,7 @@ import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, PlatformSource } fr
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
-import { useSpotifyPlayer } from '../contexts/SpotifyContext';
+import { useSpotifyPlayer } from '../contexts/SpotifyContext'; // Corrected path
 import UploadIcon from './icons/UploadIcon';
 import StreamCountCell from './common/StreamCountCell';
 import MusicNoteIcon from './icons/MusicNoteIcon';
@@ -52,7 +52,7 @@ const formatPlatformSource = (source: PlatformSource): string => {
     case 'youtube_instrumental': return 'YT Instrumental';
     case 'youtube_song': return 'YT Song';
     case 'spotify_track': return 'Spotify Track';
-    case 'spotify_playlist_track': return 'SP Playlist Track'; // Fixed: Added return
+    case 'spotify_playlist_track': return 'SP Playlist Track';
     case 'youtube_channel_instrumental_batch': return 'YT Channel Batch';
     case 'youtube_playlist_instrumental_batch': return 'YT Playlist Batch';
     default:
