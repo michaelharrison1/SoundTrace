@@ -12,13 +12,13 @@ interface YouTubeVideo {
     title: string;
     thumbnailUrl?: string;
     url: string;
-    channelTitle: string; // Added property
-    publishedAt: string;  // Added property
+    channelTitle: string;
+    publishedAt: string;
 }
 
 interface MyYouTubeVideosProps {
     onVideosSelected: (videoUrls: string[]) => void;
-    isJobInitiating: boolean; // To disable controls while parent is processing
+    isJobInitiating: boolean;
 }
 
 const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJobInitiating }) => {
@@ -73,7 +73,6 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
 
     const handleSelectAllVisible = () => {
         const allVisibleIds = new Set(videos.map(v => v.id));
-        // If all currently visible are selected, deselect them. Otherwise, select them.
         const allCurrentlySelected = videos.every(v => selectedVideos.has(v.id));
         if (allCurrentlySelected && videos.length > 0) {
             setSelectedVideos(prev => {
@@ -85,7 +84,7 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
             setSelectedVideos(prev => new Set([...prev, ...allVisibleIds]));
         }
     };
-    
+
     const handleScanSelected = () => {
         const selectedUrls = videos.filter(v => selectedVideos.has(v.id)).map(v => v.url);
         if (selectedUrls.length > 0) {
@@ -94,7 +93,6 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
     };
 
     useEffect(() => {
-        // Optionally auto-fetch if connected and no videos loaded
         if (isGoogleConnected && videos.length === 0 && nextPageToken === undefined && soundTraceAuthToken) {
             fetchVideos();
         }
@@ -118,7 +116,7 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
         <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
             <div className="p-3 bg-[#C0C0C0]">
                 <h3 className="text-lg font-normal text-black mb-2">My YouTube Videos</h3>
-                {googleUser && <p className="text-xs text-gray-700 mb-2">Connected as: {googleUser.displayName || googleUser.email}</p>}
+                {googleUser && <p className="text-xs text-gray-700 mb-2">Connected as: {googleUser.googleDisplayName || googleUser.googleEmail}</p>}
 
                 {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
 

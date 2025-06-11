@@ -4,8 +4,8 @@ import Button from '../common/Button';
 import LogoutIcon from '../icons/LogoutIcon';
 import { User } from '../../types';
 import { useSpotifyPlayer } from '../../contexts/SpotifyContext';
-import { useGoogleAuth } from '../../contexts/GoogleAuthContext'; // Import Google Auth hook
-import { YoutubeIcon } from '../icons/YoutubeIcon'; // Generic Google/YT icon for now
+import { useGoogleAuth } from '../../contexts/GoogleAuthContext';
+import { YoutubeIcon } from '../icons/YoutubeIcon';
 
 type AuthView = 'login' | 'register';
 
@@ -13,7 +13,7 @@ interface AuthHeaderContentProps {
   currentUser: User | null;
   authView: AuthView;
   onSetAuthView: (view: AuthView) => void;
-  onLogout: () => void; // Main app logout
+  onLogout: () => void;
 }
 
 const SpotifyConnectButton: React.FC = React.memo(() => {
@@ -36,11 +36,12 @@ const GoogleConnectButton: React.FC = React.memo(() => {
   const { isGoogleConnected, googleUser, isLoadingGoogleAuth, connectGoogle, disconnectGoogle } = useGoogleAuth();
   if (isLoadingGoogleAuth) return <span className="text-xs text-yellow-300 hidden sm:block mr-1">(Google...)</span>;
   if (isGoogleConnected && googleUser) {
+    const displayName = googleUser.googleDisplayName || googleUser.googleEmail || 'Google User';
     return (
       <>
-        {googleUser.avatarUrl && <img src={googleUser.avatarUrl} alt={googleUser.displayName || 'Google User'} className="w-5 h-5 rounded-full mr-1 hidden sm:inline-block win95-border-inset"/>}
-        {!googleUser.avatarUrl && <YoutubeIcon className="w-4 h-4 mr-1 text-red-400 hidden sm:inline-block" />}
-        <span className="text-xs text-blue-300 hidden sm:block mr-1" title={`Connected to Google as ${googleUser.displayName || googleUser.email}`}>G: {(googleUser.displayName || googleUser.email || 'User').substring(0,10)}{(googleUser.displayName || googleUser.email || '').length > 10 ? '...' : ''}</span>
+        {googleUser.googleAvatarUrl && <img src={googleUser.googleAvatarUrl} alt={displayName} className="w-5 h-5 rounded-full mr-1 hidden sm:inline-block win95-border-inset"/>}
+        {!googleUser.googleAvatarUrl && <YoutubeIcon className="w-4 h-4 mr-1 text-red-400 hidden sm:inline-block" />}
+        <span className="text-xs text-blue-300 hidden sm:block mr-1" title={`Connected to Google as ${displayName}`}>G: {displayName.substring(0,10)}{displayName.length > 10 ? '...' : ''}</span>
         <Button onClick={disconnectGoogle} size="sm" className="!px-1 !py-0 !text-xs !h-5 hover:bg-gray-300">X</Button>
       </>
     );
@@ -55,19 +56,15 @@ const AuthHeaderContent: React.FC<AuthHeaderContentProps> = ({ currentUser, auth
   const { disconnectGoogle: googleDisconnectHook, isGoogleConnected } = useGoogleAuth();
 
   const handleFullLogout = async () => {
-    // Attempt to disconnect external services first, failures are non-critical for logout
     if (isGoogleConnected) {
-      try { await googleDisconnectHook(); } 
+      try { await googleDisconnectHook(); }
       catch (error) { console.error("Error during Google disconnect on logout (non-critical):", error); }
     }
-    // Check Spotify connection status from its context if needed, or just call disconnect if it's safe
-    // For simplicity, assuming spotifyDisconnectHook handles its own connected state check or is safe to call
-    try { await spotifyDisconnectHook(); } 
+    try { await spotifyDisconnectHook(); }
     catch (error) { console.error("Error during Spotify disconnect on logout (non-critical):", error); }
-    
-    onLogout(); // Then call the main app logout
+    onLogout();
   };
-  
+
   const getNavButtonClass = (viewType: AuthView | 'logout', isUserContext: boolean) => {
     const isActive = !isUserContext && viewType !== 'logout' && authView === viewType;
     return `px-2 py-0.5 !text-black !border-t-white !border-l-white !border-b-[#808080] !border-r-[#808080] !shadow-[1px_1px_0px_#000000] hover:!bg-gray-300 active:!shadow-[0px_0px_0px_#000000] active:!border-t-[#808080] active:!border-l-[#808080] active:!border-b-white active:!border-r-white ${isActive ? '!shadow-none !translate-x-[1px] !translate-y-[1px] !border-t-[#808080] !border-l-[#808080] !border-b-white !border-r-white' : ''}`;

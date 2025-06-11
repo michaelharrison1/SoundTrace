@@ -7,9 +7,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.soundtrac
 
 interface GoogleUserProfile {
     googleId?: string;
-    email?: string;
-    displayName?: string;
-    avatarUrl?: string;
+    googleEmail?: string; // Updated field name
+    googleDisplayName?: string; // Updated field name
+    googleAvatarUrl?: string; // Updated field name
 }
 
 interface GoogleAuthContextType {
@@ -41,10 +41,35 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
     const [isLoadingGoogleAuth, setIsLoadingGoogleAuth] = useState(true);
     const soundTraceAuthToken = localStorage.getItem('authToken');
 
+    const checkGoogleStatus = useCallback(async () => {
+        if (!soundTraceAuthToken) {
+            setIsLoadingGoogleAuth(false);
+            setIsGoogleConnected(false);
+            setGoogleUser(null);
+            return;
+        }
+        setIsLoadingGoogleAuth(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/google/status`, {
+                headers: { 'Authorization': `Bearer ${soundTraceAuthToken}` },
+                credentials: 'include',
+            });
+            if (!response.ok) throw new Error('Failed to fetch Google status');
+            const data = await response.json();
+            setIsGoogleConnected(data.isConnected);
+            setGoogleUser(data.profile || null); // data.profile should now have googleEmail, etc.
+        } catch (error) {
+            console.error("Error checking Google connection status:", error);
+            setIsGoogleConnected(false);
+            setGoogleUser(null);
+        } finally {
+            setIsLoadingGoogleAuth(false);
+        }
+    }, [soundTraceAuthToken]);
+
     const handleGoogleLoginSuccess = useCallback(async (codeResponse: Omit<CodeResponse, 'error' | 'error_description' | 'error_uri'>) => {
         if (!soundTraceAuthToken) {
             console.error("SoundTrace user not logged in. Cannot link Google account.");
-            // Potentially show a message to the user
             return;
         }
         console.log('Google Auth Code received:', codeResponse.code);
@@ -62,21 +87,20 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
             if (!backendResponse.ok) {
                 throw new Error(data.message || 'Failed to link Google account on backend.');
             }
-            setIsGoogleConnected(true);
-            setGoogleUser(data.googleUser || null); // Expect backend to return profile info
-            console.log('Google account linked successfully on backend:', data);
+            // After successful link, re-check status to get authoritative state
+            await checkGoogleStatus();
+            console.log('Google account linked successfully on backend. Status re-checked.', data);
         } catch (error) {
             console.error('Error sending Google auth code to backend:', error);
-            // Handle error, show message to user
+            // Potentially show error message to user
         }
-    }, [soundTraceAuthToken]);
+    }, [soundTraceAuthToken, checkGoogleStatus]);
 
     const googleLogin = useGoogleLogin({
         onSuccess: handleGoogleLoginSuccess,
         onError: errorResponse => console.error('Google Login Error:', errorResponse),
-        flow: 'auth-code', // Use authorization code flow
+        flow: 'auth-code',
         scope: 'https://www.googleapis.com/auth/youtube.readonly',
-        // redirect_uri is handled by the library for 'auth-code' flow, ensure it's configured in Google Cloud Console
     });
 
     const connectGoogle = useCallback(() => {
@@ -96,38 +120,11 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
                 headers: { 'Authorization': `Bearer ${soundTraceAuthToken}` },
                 credentials: 'include',
             });
-            googleLogout(); // Clear @react-oauth/google state
+            googleLogout();
             setIsGoogleConnected(false);
             setGoogleUser(null);
         } catch (error) {
             console.error("Error disconnecting Google account:", error);
-        } finally {
-            setIsLoadingGoogleAuth(false);
-        }
-    }, [soundTraceAuthToken]);
-
-    const checkGoogleStatus = useCallback(async () => {
-        if (!soundTraceAuthToken) {
-            setIsLoadingGoogleAuth(false);
-            setIsGoogleConnected(false);
-            setGoogleUser(null);
-            return;
-        }
-        setIsLoadingGoogleAuth(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/auth/google/status`, {
-                headers: { 'Authorization': `Bearer ${soundTraceAuthToken}` },
-                credentials: 'include',
-            });
-            if (!response.ok) throw new Error('Failed to fetch Google status');
-            const data = await response.json();
-            setIsGoogleConnected(data.isConnected);
-            setGoogleUser(data.profile || null);
-            // Handle data.needsTokenRefresh if necessary, e.g., by prompting re-login or backend handles it.
-        } catch (error) {
-            console.error("Error checking Google connection status:", error);
-            setIsGoogleConnected(false);
-            setGoogleUser(null);
         } finally {
             setIsLoadingGoogleAuth(false);
         }
@@ -160,7 +157,7 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
 export const GoogleApiProvider: React.FC<GoogleApiProviderProps> = ({ children }) => {
     if (!GOOGLE_CLIENT_ID) {
         console.error("VITE_GOOGLE_CLIENT_ID is not defined. Google OAuth features will not work.");
-        return <>{children}</>; // Render children without provider if no client ID
+        return <>{children}</>;
     }
     return (
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
