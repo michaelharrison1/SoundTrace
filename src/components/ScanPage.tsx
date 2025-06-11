@@ -1,5 +1,6 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { User, TrackScanLog, YouTubeUploadType, ScanJobState, InitiateBatchScanResponse, ActiveScanJobResponse } from '../types';
+import { User, TrackScanLog, YouTubeUploadType, ScanJobState, InitiateBatchScanResponse, ActiveScanJobResponse, AcrCloudMatch } from '../types';
 import FileUpload from './FileUpload';
 import UrlInputForms from './scanPage/UrlInputForms';
 import { acrCloudService } from '../services/acrCloudService';
@@ -39,7 +40,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
   // ScanJob related state
   const [currentScanJob, setCurrentScanJob] = useState<ScanJobState | null>(null);
   const [isPollingJobStatus, setIsPollingJobStatus] = useState<boolean>(false);
-  
+
   const jobStatusPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const scanStartTimeRef = useRef<number | null>(null);
@@ -48,8 +49,8 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
 
   const handleAuthError = useCallback((error: any): boolean => {
     const isAuthError = (error?.status === 401 || error?.status === 403) ||
-                        (typeof error?.message === 'string' && 
-                         (error.message.toLowerCase().includes('token is not valid') || 
+                        (typeof error?.message === 'string' &&
+                         (error.message.toLowerCase().includes('token is not valid') ||
                           error.message.toLowerCase().includes('not authenticated') ||
                           error.message.toLowerCase().includes('authorization denied')));
     if (isAuthError) {
@@ -74,7 +75,17 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
     setEstimatedTimeRemaining(null);
   }, []);
 
-  useEffect(() => { // Check for active job on mount
+  const fetchScanLogs = useCallback(async () => {
+    try {
+        const logs = await scanLogService.getScanLogs();
+        onNewScanLogsSaved(logs);
+    } catch (err) {
+        console.error("Error refetching scan logs:", err);
+        if (handleAuthError(err)) return;
+    }
+  }, [onNewScanLogsSaved, handleAuthError]);
+
+  useEffect(() => {
     const checkActiveJob = async () => {
         try {
             const response: ActiveScanJobResponse = await scanLogService.getActiveScanJob();
@@ -90,7 +101,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         } catch (err: any) {
             if(handleAuthError(err)) return;
             console.error("Error checking for active scan job:", err);
-            // Non-fatal, user can start a new scan
         }
     };
     checkActiveJob();
@@ -98,14 +108,14 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
       if (jobStatusPollIntervalRef.current) clearInterval(jobStatusPollIntervalRef.current);
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [handleAuthError, resetScanState]); // Added resetScanState here as it's used inside startJobStatusPolling indirectly
+  }, [handleAuthError, resetScanState]);
 
   const updateFileScanProgress = useCallback((processedCount: number, totalCount: number, fileName: string) => {
     const progress = totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
     setScanProgressMessage(`Scanning: ${fileName} (${progress}%) - File ${processedCount}/${totalCount}`);
-    
+
     if (processedCount > 0 && totalCount > 0 && scanStartTimeRef.current) {
-        const elapsedTime = (Date.now() - scanStartTimeRef.current) / 1000; // in seconds
+        const elapsedTime = (Date.now() - scanStartTimeRef.current) / 1000;
         const timePerFile = elapsedTime / processedCount;
         const remainingFiles = totalCount - processedCount;
         const remainingTime = Math.max(0, Math.round(remainingFiles * timePerFile));
@@ -119,7 +129,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
   const startJobStatusPolling = useCallback((jobId: string) => {
     if (jobStatusPollIntervalRef.current) clearInterval(jobStatusPollIntervalRef.current);
     setIsPollingJobStatus(true);
-    
+
     const poll = async () => {
         try {
             const jobState = await scanLogService.getScanJobStatus(jobId);
@@ -132,22 +142,22 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
             } else if (status === 'error_acr_credits') {
                  progressMsg += `Paused due to ACR Cloud credits. ${lastErrorMessage || ''}`;
                  setError(`Scan paused due to ACR Cloud credit limits for job: ${jobState.originalInputUrl}. Refill credits to resume.`);
-                 setIsLoading(false); // Allow interaction
+                 setIsLoading(false);
             } else if (status === 'completed' || status === 'aborted' || status === 'error_youtube_api' || status === 'error_partial') {
                  progressMsg += `${lastErrorMessage || (status === 'completed' ? 'All videos processed.' : 'Job finished.')}`;
                  setScanCompletionMessage(progressMsg);
-                 fetchScanLogs(); // Refresh full scan log list
+                 fetchScanLogs();
                  resetScanState();
-                 setCurrentScanJob(null); // Clear current job as it's terminal
-                 return; // Stop polling
+                 setCurrentScanJob(null);
+                 return;
             }
             setScanProgressMessage(progressMsg);
 
             if (status === 'processing_videos' || status === 'fetching_videos') {
-                 setIsLoading(true); // Keep loading active
-                 jobStatusPollIntervalRef.current = setTimeout(poll, 5000); // Poll every 5s
+                 setIsLoading(true);
+                 jobStatusPollIntervalRef.current = setTimeout(poll, 5000);
             } else {
-                 setIsLoading(false); // Job is paused or in error state, not actively loading
+                 setIsLoading(false);
                  if (jobStatusPollIntervalRef.current) clearInterval(jobStatusPollIntervalRef.current);
                  setIsPollingJobStatus(false);
             }
@@ -161,23 +171,88 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         }
     };
     poll();
-  }, [handleAuthError, resetScanState]); // Added fetchScanLogs to dependency array if it changes
-  
-  const fetchScanLogs = useCallback(async () => { // To refresh the main scan log list
-      try {
-          const logs = await scanLogService.getScanLogs();
-          onNewScanLogsSaved(logs); // Assuming this replaces or intelligently merges
-      } catch (err) {
-          console.error("Error refetching scan logs:", err);
-          if (handleAuthError(err)) return; // Check auth error after attempting fetch
+  }, [handleAuthError, resetScanState, fetchScanLogs]);
+
+  const handleFileScan = useCallback(async (originalFiles: File[], numberOfSegments: number) => {
+    setCurrentScanJob(null);
+    setIsLoading(true); setError(null); setScanCompletionMessage(null); setAlreadyScannedMessage(null); setManualAddMessage(null);
+    setScanProgressMessage(`Preparing ${originalFiles.length} file(s) for scanning...`);
+    scanStartTimeRef.current = Date.now();
+    let filesProcessedSuccessfully = 0; const totalFilesToProcess = originalFiles.length;
+    let totalSnippetsGenerated = 0; let totalSnippetsAttemptedToScan = 0; let totalSnippetsScannedSuccessfully = 0;
+    let newScanLogs: TrackScanLog[] = []; let combinedErrorMessages = ""; let allFilesSkipped = true;
+
+    for (let i = 0; i < originalFiles.length; i++) {
+      const originalFile = originalFiles[i];
+      updateFileScanProgress(i, totalFilesToProcess, originalFile.name);
+      setScanProgressMessage(`Processing ${originalFile.name} (${i + 1}/${totalFilesToProcess})... generating snippets...`);
+      const snippets = await generateSnippetsForFile(originalFile, numberOfSegments);
+      if (!snippets || snippets.length === 0) {
+        console.warn(`No snippets generated for ${originalFile.name}. Skipping.`);
+        combinedErrorMessages += `Skipped ${originalFile.name}: Could not generate audio snippets.\n`;
+        continue;
       }
-  }, [onNewScanLogsSaved, handleAuthE<ctrl62>e,
-            videosProcessed: 0, videosWithMatches: 0, videosFailed: 0,
+      allFilesSkipped = false; totalSnippetsGenerated += snippets.length;
+      const snippetMatches: AcrCloudMatch[] = []; let snippetErrors = 0;
+      for (let j = 0; j < snippets.length; j++) {
+        const snippetFile = snippets[j];
+        setScanProgressMessage(`Scanning snippet ${j + 1}/${snippets.length} of ${originalFile.name}...`);
+        totalSnippetsAttemptedToScan++;
+        try {
+          const snippetScanResult = await acrCloudService.scanWithAcrCloud(snippetFile);
+          if (snippetScanResult && snippetScanResult.matches) {
+            snippetScanResult.matches.forEach(match => { if (!snippetMatches.some(existing => existing.id === match.id)) snippetMatches.push(match); });
+            totalSnippetsScannedSuccessfully++;
+          }
+        } catch (snippetErr: any) {
+          console.error(`Error scanning snippet ${snippetFile.name}:`, snippetErr);
+          combinedErrorMessages += `Error scanning ${snippetFile.name}: ${snippetErr.message}\n`;
+          snippetErrors++;
+        }
+      }
+      let logStatus: TrackScanLog['status'] = 'no_matches_found';
+      if (snippetMatches.length > 0) logStatus = 'matches_found';
+      if (snippetErrors > 0 && snippetMatches.length > 0) logStatus = 'partially_completed';
+      else if (snippetErrors === snippets.length && snippets.length > 0) logStatus = 'error_processing';
+
+      const newLog: Omit<TrackScanLog, 'logId' | 'scanDate' | 'scanJobId'> = {
+        originalFileName: originalFile.name, originalFileSize: originalFile.size,
+        matches: snippetMatches, status: logStatus, platformSource: 'file_upload',
+        acrResponseDetails: snippetErrors > 0 ? `Some snippets failed during scan.` : `Scanned ${snippets.length} snippet(s).`
+      };
+      try {
+        const savedLog = await scanLogService.saveScanLog(newLog); newScanLogs.push(savedLog);
+        filesProcessedSuccessfully++;
+      } catch (dbErr: any) {
+        console.error("Error saving scan log to DB:", dbErr); if(handleAuthError(dbErr)) return;
+        combinedErrorMessages += `Failed to save scan result for ${originalFile.name}: ${dbErr.message}\n`;
+      }
+    }
+    onNewScanLogsSaved(newScanLogs);
+    let finalMessage = `${filesProcessedSuccessfully}/${totalFilesToProcess} files processed. `;
+    finalMessage += `${totalSnippetsScannedSuccessfully}/${totalSnippetsAttemptedToScan} snippets scanned successfully from ${totalSnippetsGenerated} generated. `;
+    if (newScanLogs.length > 0) finalMessage += `${newScanLogs.reduce((sum, log) => sum + log.matches.length, 0)} total unique matches found. `;
+    if (combinedErrorMessages) finalMessage += `\nErrors/Skipped:\n${combinedErrorMessages.trim()}`;
+    if (allFilesSkipped && originalFiles.length > 0) finalMessage = "All files were skipped or failed snippet generation.";
+    setScanCompletionMessage(finalMessage.trim());
+    resetScanState();
+  }, [user.id, onNewScanLogsSaved, handleAuthError, updateFileScanProgress, resetScanState]);
+
+  const handleProcessYouTubeUrl = useCallback(async (url: string, processType: YouTubeUploadType) => {
+    setCurrentScanJob(null); setIsLoading(true); setError(null); setScanCompletionMessage(null); setAlreadyScannedMessage(null); setManualAddMessage(null);
+    setScanProgressMessage('Initiating YouTube URL processing...');
+    scanStartTimeRef.current = Date.now();
+    try {
+      const response = await scanLogService.processYouTubeUrl(url, processType);
+      if ('scanJobId' in response && (processType === 'youtube_channel_instrumental_batch' || processType === 'youtube_playlist_instrumental_batch')) {
+        const batchResponse = response as InitiateBatchScanResponse;
+        setCurrentScanJob({
+            jobId: batchResponse.scanJobId, status: batchResponse.initialJobStatus, jobType: processType, originalInputUrl: url,
+            totalVideosToScan: batchResponse.totalVideosToScan, videosProcessed: 0, videosWithMatches: 0, videosFailed: 0,
         });
         setScanProgressMessage(`Batch scan job ${batchResponse.scanJobId} started. Status: ${batchResponse.initialJobStatus}.`);
         startJobStatusPolling(batchResponse.scanJobId);
-        // setIsLoading will be managed by polling status
-      } else { // Single video processed directly
+      } else {
         const newLog = response as TrackScanLog;
         onNewScanLogsSaved([newLog]);
         setScanCompletionMessage(`Successfully processed YouTube URL. Log created/updated.`);
@@ -210,7 +285,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
   }, [onNewScanLogsSaved, handleAuthError, resetScanState]);
 
   const handleManualAddSpotifyTrack = useCallback(async (link: string): Promise<boolean> => {
-    setCurrentScanJob(null); // Not a "job"
+    setCurrentScanJob(null);
     setIsLoading(true); setError(null); setScanCompletionMessage(null); setAlreadyScannedMessage(null); setManualAddMessage(null);
     setScanProgressMessage('Manually adding Spotify track...');
     scanStartTimeRef.current = Date.now();
@@ -219,19 +294,19 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         onNewScanLogsSaved([newLog]);
         setManualAddMessage(`Successfully added "${newLog.matches[0]?.title || 'Track'}" to your scan log.`);
         resetScanState();
-        return true; // Indicate success for form clearing
+        return true;
     } catch (err: any) {
         console.error("Error manually adding Spotify link:", err);
         if(handleAuthError(err)) { resetScanState(); return false; }
         setManualAddMessage(`Error: ${err.message || "Could not add Spotify track."}`);
         resetScanState();
-        return false; // Indicate failure
+        return false;
     }
   }, [onNewScanLogsSaved, handleAuthError, resetScanState]);
 
   const handlePauseJob = useCallback(async () => {
     if (!currentScanJob?.jobId) return;
-    setIsLoading(true); // Indicate an action is happening
+    setIsLoading(true);
     setScanProgressMessage('Pausing scan job...');
     try {
       await scanLogService.pauseScanJob(currentScanJob.jobId);
@@ -250,11 +325,11 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
   const handleResumeJob = useCallback(async () => {
     if (!currentScanJob?.jobId) return;
     setIsLoading(true);
-    setError(null); // Clear previous errors before resuming
+    setError(null);
     setScanProgressMessage('Resuming scan job...');
     try {
       await scanLogService.resumeScanJob(currentScanJob.jobId);
-      setCurrentScanJob(prev => prev ? { ...prev, status: 'processing_videos' } : null); // Optimistic update
+      setCurrentScanJob(prev => prev ? { ...prev, status: 'processing_videos' } : null);
       setScanProgressMessage(`Job ${currentScanJob.jobId} resuming...`);
       startJobStatusPolling(currentScanJob.jobId);
     } catch (err: any) {
@@ -262,25 +337,24 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
       setError(`Failed to resume job: ${err.message}`);
       setIsLoading(false);
     }
-    // setIsLoading(false) will be handled by polling if successful
   }, [currentScanJob, handleAuthError, startJobStatusPolling]);
-  
+
   const handleAbortScan = useCallback(async () => {
     if (!currentScanJob?.jobId) return;
-    setIsLoading(true); 
+    setIsLoading(true);
     setScanProgressMessage('Aborting scan job...');
     try {
       await scanLogService.abortScanJob(currentScanJob.jobId);
       setCurrentScanJob(prev => prev ? { ...prev, status: 'aborted' } : null);
       setScanCompletionMessage(`Job ${currentScanJob.jobId} abortion requested. It will stop shortly.`);
-      fetchScanLogs(); // Refresh list
+      fetchScanLogs();
       if (jobStatusPollIntervalRef.current) clearInterval(jobStatusPollIntervalRef.current);
       setIsPollingJobStatus(false);
     } catch (abortError: any) {
       if(handleAuthError(abortError)) return;
       setError(`Failed to abort job: ${abortError.message}`);
     } finally {
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   }, [currentScanJob, handleAuthError, fetchScanLogs]);
 
@@ -305,10 +379,10 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
           {isLoading && !estimatedTimeRemaining && (!currentScanJob || (currentScanJob.jobType !== 'youtube_channel_instrumental_batch' && currentScanJob.jobType !== 'youtube_playlist_instrumental_batch')) &&
             <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
           }
-          
+
           <div className="flex space-x-2 mt-2 justify-center">
             {canPause && (
-              <Button onClick={handlePauseJob} variant="secondary" size="sm" disabled={isLoading && !isPollingJobStatus /* disable if other main loading */}>Pause Batch Scan</Button>
+              <Button onClick={handlePauseJob} variant="secondary" size="sm" disabled={isLoading && !isPollingJobStatus }>Pause Batch Scan</Button>
             )}
             {canResume && (
               <Button onClick={handleResumeJob} variant="primary" size="sm" disabled={isLoading && !isPollingJobStatus}>Resume Batch Scan</Button>
@@ -319,7 +393,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
           </div>
         </div>
       )}
-      
+
       <ScanMessages
         isLoading={isLoading || isPollingJobStatus}
         error={error}
