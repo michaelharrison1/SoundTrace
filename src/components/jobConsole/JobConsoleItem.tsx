@@ -20,6 +20,8 @@ const formatJobType = (type: ScanJob['jobType']): string => {
     case 'youtube_channel_instrumental_batch': return 'YouTube Channel Scan';
     case 'youtube_playlist_instrumental_batch': return 'YouTube Playlist Scan';
     case 'spotify_playlist_import': return 'Spotify Playlist Import';
+    case 'youtube_video_instrumental_single': return 'Single YouTube Video Scan';
+    case 'youtube_video_manual_add': return 'Single YouTube Video (Manual Add)';
     default: return type;
   }
 };
@@ -70,8 +72,8 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
     setIsDeleting(true);
     onInteractionStart();
     try {
-      await scanLogService.deleteJob(job.id); // Changed from job.jobId
-      onJobAction(); // Notify parent to refresh
+      await scanLogService.deleteJob(job.id); 
+      onJobAction(); 
     } catch (err: any) {
       console.error("Error deleting job:", err);
       if (handleAuthError(err)) return;
@@ -80,15 +82,15 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
       setIsDeleting(false);
       onInteractionEnd();
     }
-  }, [job.id, job.jobName, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]); // Changed from job.jobId
+  }, [job.id, job.jobName, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]); 
 
   const handleResume = useCallback(async () => {
     setError(null);
     setIsResuming(true);
     onInteractionStart();
     try {
-      const updatedJob = await scanLogService.resumeJob(job.id); // Changed from job.jobId
-      onJobAction(updatedJob); // Notify parent to refresh with updated job
+      const updatedJob = await scanLogService.resumeJob(job.id); 
+      onJobAction(updatedJob); 
     } catch (err: any) {
       console.error("Error resuming job:", err);
       if (handleAuthError(err)) return;
@@ -97,11 +99,11 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
       setIsResuming(false);
       onInteractionEnd();
     }
-  }, [job.id, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]); // Changed from job.jobId
+  }, [job.id, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]); 
 
   const isResumable = job.status === 'failed_acr_credits' || job.status === 'failed_upload_incomplete';
   const isProcessing = job.status === 'in_progress_fetching' || job.status === 'in_progress_processing' || job.status === 'uploading_files' || job.status === 'queued_for_processing';
-
+  
   const progressPercent = job.totalItems > 0 ? (job.itemsProcessed / job.totalItems) * 100 : 0;
 
   let reuploadMessage = '';
@@ -118,7 +120,7 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
         <div className="flex justify-between items-start">
           <div>
             <h3 className="text-base font-semibold text-black">{job.jobName}</h3>
-            <p className="text-xs text-gray-700">ID: {job.id} | Type: {formatJobType(job.jobType)}</p> {/* Changed from job.jobId */}
+            <p className="text-xs text-gray-700">ID: {job.id} | Type: {formatJobType(job.jobType)}</p> 
             <p className="text-xs text-gray-700">Created: {new Date(job.createdAt).toLocaleString()}</p>
           </div>
           <div className="text-right">

@@ -5,11 +5,11 @@ export interface User {
 }
 
 export interface AcrCloudMatch {
-  id:string;
+  id:string; 
   title: string;
   artist: string;
   album: string;
-  releaseDate: string;
+  releaseDate: string; 
   platformLinks?: {
     spotify?: string;
     youtube?: string;
@@ -19,7 +19,7 @@ export interface AcrCloudMatch {
     spotify?: number;
     youtube?: number;
   };
-  matchConfidence: number;
+  matchConfidence: number; 
   spotifyArtistId?: string;
   spotifyTrackId?: string;
   youtubeVideoId?: string;
@@ -38,15 +38,12 @@ export interface SnippetScanResult {
 
 
 export type PlatformSource =
-  | 'file_upload_batch_item' // Item from a file upload batch job
-  | 'youtube_channel_instrumental_batch_item' // Item from a YT channel job
-  | 'youtube_playlist_instrumental_batch_item' // Item from a YT playlist job
-  | 'spotify_playlist_import_item'; // Item from a Spotify playlist import job
-  // Potentially older single types if data is migrated or specific single-item jobs are created:
-  // | 'file_upload_single'
-  // | 'youtube_instrumental_single'
-  // | 'youtube_song_single'
-  // | 'spotify_track_single';
+  | 'file_upload_batch_item' 
+  | 'youtube_channel_instrumental_batch_item' 
+  | 'youtube_playlist_instrumental_batch_item' 
+  | 'spotify_playlist_import_item'
+  | 'youtube_video_instrumental_single_item' // For a single YouTube video scanned
+  | 'youtube_video_manual_add_item';      // For a single YouTube video manually added
 
 export type TrackScanLogStatus =
   // Statuses for items within a file_upload_batch (after successful upload, during/after ACR processing)
@@ -64,37 +61,39 @@ export type TrackScanLogStatus =
   | 'scanned_no_match'      // Video from batch scanned, no matches
   | 'error_youtube_dl'      // Error downloading from YouTube for this video
   | 'error_ffmpeg'          // Error processing audio with FFmpeg for this video
-  | 'skipped_previously_scanned'
+  | 'skipped_previously_scanned' 
 
   // Statuses for items from Spotify Playlist Import
   | 'imported_spotify_track' // Track successfully imported from Spotify playlist
+  
+  // Statuses for manually added items
+  | 'manually_added_youtube_video' // Single YouTube video manually added without scan
 
   // Generic/fallback for other items
+  | 'manually_added' // Generic manual add, might be phased out
   | 'aborted_item'           // Item processing aborted as part of job abort
   | 'error_processing_item';  // Generic error for an item not covered above
 
 
 export interface TrackScanLog {
   logId: string;
-  scanJobId: string; // Should always be present now
-  originalFileName: string;
-  originalFileSize: number;
-  scanDate: string; // Date this log entry was created/finalized
+  scanJobId: string; 
+  originalFileName: string; 
+  originalFileSize: number; 
+  scanDate: string; 
   matches: AcrCloudMatch[];
   status: TrackScanLogStatus;
   platformSource: PlatformSource;
-  youtubeVideoId?: string; // For YouTube items
-  youtubeVideoTitle?: string; // For YouTube items
-  sourceUrl?: string; // Original URL of the video/track if applicable
-  acrResponseDetails?: string; // To store ACR Cloud error responses or other metadata for this item
-  lastAttemptedAt?: string; // Timestamp of the last processing attempt for this item
+  youtubeVideoId?: string; 
+  youtubeVideoTitle?: string; 
+  sourceUrl?: string; 
+  acrResponseDetails?: string; 
+  lastAttemptedAt?: string; 
 }
 
-export type YouTubeUploadType =
-  | 'youtube_channel_instrumental_batch'
+export type YouTubeUploadType = 
+  | 'youtube_channel_instrumental_batch' 
   | 'youtube_playlist_instrumental_batch';
-  // Single types 'youtube_instrumental' and 'youtube_song' might be initiated as simpler jobs or deprecated.
-  // For now, assuming batch types are the primary YouTube job initiators.
 
 
 export interface SpotifyFollowerSuccess {
@@ -123,27 +122,29 @@ export interface SpotifyPlaylist { id: string; name: string; external_urls: { sp
 export interface FollowerSnapshot { date: string; cumulativeFollowers: number; }
 
 // --- New Job System Types ---
-export type JobType =
-  | 'file_upload_batch'
-  | 'youtube_channel_instrumental_batch'
+export type JobType = 
+  | 'file_upload_batch' 
+  | 'youtube_channel_instrumental_batch' 
   | 'youtube_playlist_instrumental_batch'
-  | 'spotify_playlist_import';
+  | 'spotify_playlist_import'
+  | 'youtube_video_instrumental_single' // For scanning a single YouTube video
+  | 'youtube_video_manual_add';      // For manually adding a single YouTube video
 
 export type JobStatus =
-  | 'pending_setup'        // Job created, initial setup (e.g. preparing file list for YT)
-  | 'pending_upload'       // For file_upload_batch, waiting for files to be uploaded
-  | 'uploading_files'      // Actively receiving files for file_upload_batch
-  | 'queued_for_processing'// All initial inputs received, ready for backend processing queue
-  | 'in_progress_fetching' // Actively fetching items (e.g., YouTube video list)
-  | 'in_progress_processing'// Actively processing items (e.g., scanning files/videos)
-  | 'completed'              // All items processed successfully or skipped as appropriate
-  | 'completed_with_errors'  // Some items failed, but job finished non-critical items
-  | 'failed_acr_credits'   // Paused due to ACR Cloud credit limit - resumable
-  | 'failed_youtube_api'   // Non-resumable error fetching video list from YouTube
-  | 'failed_setup'         // Critical error during initial job setup (e.g. invalid input for YT)
-  | 'failed_upload_incomplete' // File upload job where not all declared files were uploaded successfully - resumable
-  | 'failed_other'           // Other critical, non-resumable errors
-  | 'aborted';                 // User aborted the job
+  | 'pending_setup'        
+  | 'pending_upload'       
+  | 'uploading_files'      
+  | 'queued_for_processing'
+  | 'in_progress_fetching' 
+  | 'in_progress_processing'
+  | 'completed'              
+  | 'completed_with_errors'  
+  | 'failed_acr_credits'   
+  | 'failed_youtube_api'   
+  | 'failed_setup'         
+  | 'failed_upload_incomplete' 
+  | 'failed_other'           
+  | 'aborted';                 
 
 export interface JobFileState {
     originalFileName: string;
@@ -151,40 +152,39 @@ export interface JobFileState {
     status: 'pending' | 'uploading' | 'uploaded' | 'processing' | 'completed_match' | 'completed_no_match' | 'error_upload' | 'error_processing' | 'error_acr_credits_item';
     errorMessage?: string;
     uploadedBytes?: number;
-    matches?: string[]; // Array of TrackScanLog IDs related to this file's matches
+    matches?: string[]; 
 }
 
 export interface ScanJob {
-  id: string; // Changed from jobId to id
-  jobName: string;
+  id: string; 
+  jobName: string; 
   jobType: JobType;
   status: JobStatus;
-  originalInputUrl?: string; // For URL-based jobs
+  originalInputUrl?: string; 
+  
+  totalItems: number;        
+  itemsProcessed: number;    
+  itemsWithMatches: number;  
+  itemsFailed: number;       
+  
+  files?: JobFileState[]; 
 
-  totalItems: number;        // Files to upload, videos in playlist, etc.
-  itemsProcessed: number;    // Items that have had a processing attempt
-  itemsWithMatches: number;  // Items where matches were found
-  itemsFailed: number;       // Items that failed processing (non-ACR credit errors)
-
-  files?: JobFileState[]; // Only for 'file_upload_batch' type
-
-  lastErrorMessage?: string; // General job error message
-  lastProcessedItemInfo?: {
-    itemName?: string;       // e.g., file name, video title
-    status?: TrackScanLogStatus | JobFileState['status']; // Status of that specific item's processing
+  lastErrorMessage?: string; 
+  lastProcessedItemInfo?: { 
+    itemName?: string;       
+    status?: TrackScanLogStatus | JobFileState['status']; 
   };
-
-  createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
+  
+  createdAt: string; 
+  updatedAt: string; 
 }
 
 // API Response Types for Jobs
-export interface JobCreationResponse extends ScanJob {} // Response when a job is created
-export interface AllJobsResponse { jobs: ScanJob[]; }    // Response for getting all jobs
-export interface SingleJobResponse extends ScanJob {}   // Response for getting a single job
-// For file uploads, the response might also include specific file state updates.
-export interface FileUploadResponse {
-  message: string;
-  fileState: JobFileState;
-  jobUpdate?: ScanJob; // Optional: If the overall job status changed due to this upload
+export interface JobCreationResponse extends ScanJob {} 
+export interface AllJobsResponse { jobs: ScanJob[]; }    
+export interface SingleJobResponse extends ScanJob {}   
+export interface FileUploadResponse { 
+  message: string; 
+  fileState: JobFileState; 
+  jobUpdate?: ScanJob; 
 }

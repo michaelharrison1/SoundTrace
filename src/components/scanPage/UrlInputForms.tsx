@@ -4,41 +4,56 @@ import Button from '../common/Button';
 import { YouTubeUploadType } from '../../types';
 
 interface UrlInputFormsProps {
-  onProcessYouTubeUrl: (url: string, type: YouTubeUploadType) => void;
+  onProcessYouTubeUrl: (url: string, type: YouTubeUploadType) => void; // For batch jobs
   onProcessSpotifyPlaylistUrl: (url: string) => void;
+  onProcessSingleYouTubeVideoScan: (url: string) => void; // New handler for single video scan
+  onProcessSingleYouTubeVideoManualAdd: (url: string) => void; // New handler for single video manual add
   isLoading: boolean;
 }
 
 const UrlInputForms: React.FC<UrlInputFormsProps> = ({
   onProcessYouTubeUrl,
   onProcessSpotifyPlaylistUrl,
+  onProcessSingleYouTubeVideoScan,
+  onProcessSingleYouTubeVideoManualAdd,
   isLoading,
 }) => {
-  const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [youtubeType, setYoutubeType] = useState<YouTubeUploadType>('youtube_channel_instrumental_batch'); // Default to a valid batch type
+  const [youtubeBatchUrl, setYoutubeBatchUrl] = useState('');
+  const [youtubeBatchType, setYoutubeBatchType] = useState<YouTubeUploadType>('youtube_channel_instrumental_batch');
   const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState('');
+  const [singleYouTubeVideoUrl, setSingleYouTubeVideoUrl] = useState('');
 
-  const [youtubeError, setYoutubeError] = useState<string | null>(null);
+  const [youtubeBatchError, setYoutubeBatchError] = useState<string | null>(null);
   const [spotifyPlaylistError, setSpotifyPlaylistError] = useState<string | null>(null);
+  const [singleYouTubeError, setSingleYouTubeError] = useState<string | null>(null);
 
-  const handleYouTubeSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setYoutubeError(null);
-    if (!youtubeUrl.trim()) {
-      setYoutubeError("Please enter a YouTube URL.");
-      return;
-    }
+  const validateYouTubeUrl = (url: string, allowPlaylistChannel: boolean, allowSingleVideo: boolean): string | null => {
+    if (!url.trim()) return "Please enter a YouTube URL.";
     try {
-      const parsedUrl = new URL(youtubeUrl);
-      if (!parsedUrl.hostname.includes("youtube.com") && !parsedUrl.hostname.includes("youtu.be")) {
-         throw new Error("Invalid YouTube URL hostname.");
+      const parsedUrl = new URL(url);
+      const hostname = parsedUrl.hostname;
+      const pathname = parsedUrl.pathname;
+
+      if (!hostname.includes("youtube.com") && !hostname.includes("youtu.be")) {
+         return "Invalid YouTube URL hostname.";
       }
+      if (allowSingleVideo && (pathname === '/watch' || hostname === 'youtu.be')) return null; // Valid single video
+      if (allowPlaylistChannel && (pathname.startsWith('/playlist') || pathname.startsWith('/channel/') || pathname.startsWith('/@'))) return null; // Valid playlist/channel/handle
+
+      return "URL does not appear to be a valid YouTube video, playlist, or channel link.";
+
     } catch (e) {
-      setYoutubeError("Invalid YouTube URL format. Please enter a valid URL (e.g., https://www.youtube.com/watch?v=...).");
-      return;
+      return "Invalid YouTube URL format.";
     }
-    onProcessYouTubeUrl(youtubeUrl, youtubeType);
-  }, [youtubeUrl, youtubeType, onProcessYouTubeUrl]);
+  };
+
+
+  const handleYouTubeBatchSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const error = validateYouTubeUrl(youtubeBatchUrl, true, false);
+    setYoutubeBatchError(error);
+    if (!error) onProcessYouTubeUrl(youtubeBatchUrl, youtubeBatchType);
+  }, [youtubeBatchUrl, youtubeBatchType, onProcessYouTubeUrl]);
 
   const handleSpotifyPlaylistSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -59,43 +74,90 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
     onProcessSpotifyPlaylistUrl(spotifyPlaylistUrl);
   }, [spotifyPlaylistUrl, onProcessSpotifyPlaylistUrl]);
 
+  const handleSingleYouTubeScanSubmit = useCallback(() => {
+    const error = validateYouTubeUrl(singleYouTubeVideoUrl, false, true);
+    setSingleYouTubeError(error);
+    if (!error) onProcessSingleYouTubeVideoScan(singleYouTubeVideoUrl);
+  }, [singleYouTubeVideoUrl, onProcessSingleYouTubeVideoScan]);
+
+  const handleSingleYouTubeManualAddSubmit = useCallback(() => {
+    const error = validateYouTubeUrl(singleYouTubeVideoUrl, false, true);
+    setSingleYouTubeError(error);
+    if (!error) onProcessSingleYouTubeVideoManualAdd(singleYouTubeVideoUrl);
+  }, [singleYouTubeVideoUrl, onProcessSingleYouTubeVideoManualAdd]);
+
+
   return (
     <div className="space-y-3">
-      {/* YouTube URL Processing */}
+      {/* Single YouTube Video Processing */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">
-          <h3 className="text-lg font-normal text-black mb-2">Process YouTube Link (Batch Jobs)</h3>
-          <form onSubmit={handleYouTubeSubmit} className="space-y-2">
+          <h3 className="text-lg font-normal text-black mb-2">Process Single YouTube Video</h3>
+          <div className="space-y-2">
             <div>
-              <label htmlFor="youtubeUrl" className="block text-sm text-black mb-0.5">YouTube Channel or Playlist URL:</label>
+              <label htmlFor="singleYoutubeUrl" className="block text-sm text-black mb-0.5">YouTube Video URL:</label>
               <input
-                id="youtubeUrl"
+                id="singleYoutubeUrl"
                 type="url"
-                value={youtubeUrl}
-                onChange={(e) => { setYoutubeUrl(e.target.value); setYoutubeError(null); }}
+                value={singleYouTubeVideoUrl}
+                onChange={(e) => { setSingleYouTubeVideoUrl(e.target.value); setSingleYouTubeError(null); }}
+                placeholder="Enter a single YouTube video URL"
+                className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+                disabled={isLoading}
+                aria-label="Single YouTube Video URL"
+              />
+            </div>
+            {singleYouTubeError && <p className="text-xs text-red-700 mt-1">{singleYouTubeError}</p>}
+            <div className="flex space-x-2">
+              <Button onClick={handleSingleYouTubeScanSubmit} size="md" isLoading={isLoading} disabled={isLoading || !singleYouTubeVideoUrl.trim()} className="flex-1">
+                {isLoading ? 'Working...' : 'Scan This Video'}
+              </Button>
+              <Button onClick={handleSingleYouTubeManualAddSubmit} size="md" isLoading={isLoading} disabled={isLoading || !singleYouTubeVideoUrl.trim()} className="flex-1">
+                {isLoading ? 'Working...' : 'Manually Add to Log'}
+              </Button>
+            </div>
+          </div>
+           <p className="text-xs text-gray-700 mt-1">
+            "Scan" will identify music in the video. "Manual Add" logs it without scanning.
+          </p>
+        </div>
+      </section>
+
+      {/* YouTube URL Batch Processing */}
+      <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
+        <div className="p-3 bg-[#C0C0C0]">
+          <h3 className="text-lg font-normal text-black mb-2">Process YouTube Channel/Playlist (Batch Scan)</h3>
+          <form onSubmit={handleYouTubeBatchSubmit} className="space-y-2">
+            <div>
+              <label htmlFor="youtubeBatchUrl" className="block text-sm text-black mb-0.5">YouTube Channel or Playlist URL:</label>
+              <input
+                id="youtubeBatchUrl"
+                type="url"
+                value={youtubeBatchUrl}
+                onChange={(e) => { setYoutubeBatchUrl(e.target.value); setYoutubeBatchError(null); }}
                 placeholder="Enter YouTube channel or playlist URL"
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
                 disabled={isLoading}
-                aria-label="YouTube URL"
+                aria-label="YouTube Batch URL"
               />
             </div>
             <div>
               <label htmlFor="youtubeType" className="block text-sm text-black mb-0.5">Process As:</label>
               <select
                 id="youtubeType"
-                value={youtubeType}
-                onChange={(e) => setYoutubeType(e.target.value as YouTubeUploadType)}
+                value={youtubeBatchType}
+                onChange={(e) => setYoutubeBatchType(e.target.value as YouTubeUploadType)}
                 className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
                 disabled={isLoading}
-                aria-label="YouTube Processing Type"
+                aria-label="YouTube Batch Processing Type"
               >
                 <option value="youtube_channel_instrumental_batch">Channel - Instrumentals (Scan all videos)</option>
                 <option value="youtube_playlist_instrumental_batch">Playlist - Instrumentals (Scan all videos)</option>
               </select>
             </div>
-            {youtubeError && <p className="text-xs text-red-700 mt-1">{youtubeError}</p>}
-            <Button type="submit" size="md" isLoading={isLoading} disabled={isLoading || !youtubeUrl.trim()}>
-              {isLoading ? 'Initiating Job...' : 'Create YouTube Scan Job'}
+            {youtubeBatchError && <p className="text-xs text-red-700 mt-1">{youtubeBatchError}</p>}
+            <Button type="submit" size="md" isLoading={isLoading} disabled={isLoading || !youtubeBatchUrl.trim()}>
+              {isLoading ? 'Initiating Job...' : 'Create YouTube Batch Scan Job'}
             </Button>
           </form>
            <p className="text-xs text-gray-700 mt-1">
