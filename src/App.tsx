@@ -6,6 +6,7 @@ import MainAppLayout from './components/MainAppLayout';
 import { User } from './types';
 import ProgressBar from './components/common/ProgressBar';
 import { SpotifyProvider, SpotifyCallbackReceiver } from './contexts/SpotifyContext';
+import { GoogleApiProvider } from './contexts/GoogleAuthContext'; // Import Google Provider
 import { authService } from './services/authService';
 import AuthHeaderContent from './components/app/AuthHeaderContent';
 import AppIntroduction from './components/app/AppIntroduction';
@@ -42,7 +43,7 @@ const AppContent: React.FC = React.memo(() => {
 
   const handleAuthSuccess = useCallback((user: User) => {
     setCurrentUser(user);
-    setAuthView('login');
+    setAuthView('login'); // Reset to login view in case they were on register
     document.body.classList.remove('logged-out-background');
     document.body.classList.add('logged-in-background');
     if (document.activeElement && typeof (document.activeElement as HTMLElement).blur === 'function') {
@@ -51,6 +52,7 @@ const AppContent: React.FC = React.memo(() => {
   }, []);
 
   const handleLogout = useCallback(async () => {
+    // Note: Spotify & Google disconnect logic is now within AuthHeaderContent/Contexts
     await authService.logout().catch(err => console.error("Error calling backend logout (non-critical):", err));
     try {
       localStorage.removeItem('authToken');
@@ -80,8 +82,11 @@ const AppContent: React.FC = React.memo(() => {
   }
 
   if (window.location.pathname === '/spotify-callback-receiver') {
+    // SpotifyProvider should be above this if SpotifyCallbackReceiver uses its context
     return <SpotifyCallbackReceiver />;
   }
+  // Add similar logic for Google callback if it's a redirect flow to a specific path
+  // For 'auth-code' flow with @react-oauth/google, typically no separate callback page needed.
 
   return (
       <div className="min-h-screen bg-transparent flex flex-col">
@@ -96,7 +101,7 @@ const AppContent: React.FC = React.memo(() => {
                     currentUser={currentUser}
                     authView={authView}
                     onSetAuthView={setAuthView}
-                    onLogout={handleLogout}
+                    onLogout={handleLogout} // Pass the main logout handler
                   />
               </div>
             </div>
@@ -123,7 +128,7 @@ const AppContent: React.FC = React.memo(() => {
         <footer className="py-1 px-2 text-xs text-black border-t-2 border-t-white bg-[#C0C0C0] flex justify-between items-center">
           <div>
             <span>&copy; {new Date().getFullYear()} SoundTrace. </span>
-            <span>Powered by ACRCloud & Spotify.</span>
+            <span>Powered by ACRCloud, Spotify & YouTube.</span>
           </div>
           <span>Created by Michael Harrison</span>
         </footer>
@@ -135,9 +140,11 @@ AppContent.displayName = 'AppContent';
 
 const App: React.FC = () => {
   return (
-    <SpotifyProvider>
-      <AppContent />
-    </SpotifyProvider>
+    <GoogleApiProvider> {/* Google Provider wraps Spotify Provider */}
+      <SpotifyProvider>
+        <AppContent />
+      </SpotifyProvider>
+    </GoogleApiProvider>
   )
 }
 

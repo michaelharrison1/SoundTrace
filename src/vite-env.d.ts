@@ -3,6 +3,7 @@
 // types are not picked up automatically.
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL: string;
+  readonly VITE_GOOGLE_CLIENT_ID: string; 
   // Add any other environment variables you use from import.meta.env here
   // e.g., readonly VITE_ANOTHER_VAR: string;
 }

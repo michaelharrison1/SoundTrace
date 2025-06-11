@@ -3,14 +3,15 @@ import React, { useState, useCallback, useRef } from 'react';
 import { User, TrackScanLog, YouTubeUploadType, JobFileState, ScanJob, JobCreationResponse } from '../types';
 import FileUpload from './FileUpload';
 import UrlInputForms from './scanPage/UrlInputForms';
+import MyYouTubeVideos from './scanPage/MyYouTubeVideos'; // Import new component
 import { scanLogService } from '../services/scanLogService';
 import ManualSpotifyAddForm from './scanPage/ManualSpotifyAddForm';
 import ScanMessages from './scanPage/ScanMessages';
-import CRTProgressBar from './common/CRTProgressBar'; // New CRT Progress Bar
+import CRTProgressBar from './common/CRTProgressBar'; 
 
 interface ScanPageProps {
   user: User;
-  onJobCreated: (job?: ScanJob) => void; // Callback when a new job is initiated
+  onJobCreated: (job?: ScanJob) => void; 
   onLogout: () => void;
 }
 
@@ -18,10 +19,9 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
   const [isInitiatingJob, setIsInitiatingJob] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [currentOperationMessage, setCurrentOperationMessage] = useState<string>('');
-  const [completionMessage, setCompletionMessage] = useState<string | null>(null); // For immediate feedback after an action
+  const [completionMessage, setCompletionMessage] = useState<string | null>(null); 
   const [manualAddMessage, setManualAddMessage] = useState<string | null>(null);
 
-  // For FileUpload state
   const [fileStates, setFileStates] = useState<JobFileState[]>([]);
   const [currentUploadingFile, setCurrentUploadingFile] = useState<string | null>(null);
   const [currentUploadingProgress, setCurrentUploadingProgress] = useState(0);
@@ -57,130 +57,102 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     setCurrentOperationMessage('');
   };
 
-  const handleFilesSelectedForJob = useCallback(async (files: File[], numberOfSegments: number /* Not used with backend processing */) => {
+  const handleFilesSelectedForJob = useCallback(async (files: File[], numberOfSegments: number) => {
     resetPageMessages();
     if (files.length === 0) return;
-
     setIsInitiatingJob(true);
     setCurrentOperationMessage(`Initiating file scan job for ${files.length} file(s)...`);
     setFileStates(files.map(f => ({ originalFileName: f.name, originalFileSize: f.size, status: 'pending' })));
-    setCurrentUploadingFile(null);
-    setCurrentUploadingProgress(0);
-
+    setCurrentUploadingFile(null); setCurrentUploadingProgress(0);
     const filesMetadata = files.map(f => ({ fileName: f.name, fileSize: f.size }));
     let job: JobCreationResponse | null = null;
     try {
       job = await scanLogService.initiateFileUploadJob(filesMetadata);
-      currentJobIdForFileUploadRef.current = job.id;
-      onJobCreated(job); // Notify parent about the new job
+      currentJobIdForFileUploadRef.current = job.id; onJobCreated(job); 
       setCompletionMessage(`Job ${job.id} created for ${files.length} files. Starting uploads...`);
-
       const newFileStates: JobFileState[] = files.map(f => ({ originalFileName: f.name, originalFileSize: f.size, status: 'pending' }));
-
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        setCurrentUploadingFile(file.name);
-        newFileStates[i] = { ...newFileStates[i], status: 'uploading', uploadedBytes: 0 };
-        setFileStates([...newFileStates]); // Update UI to show current file uploading
-
+        const file = files[i]; setCurrentUploadingFile(file.name);
+        newFileStates[i] = { ...newFileStates[i], status: 'uploading', uploadedBytes: 0 }; setFileStates([...newFileStates]);
         setCurrentOperationMessage(`Uploading ${file.name} (${i + 1}/${files.length})...`);
         try {
           await scanLogService.uploadFileForJob(job.id, file, (loaded, total) => {
-            const progress = total > 0 ? Math.round((loaded / total) * 100) : 0;
-            setCurrentUploadingProgress(progress);
-            newFileStates[i] = { ...newFileStates[i], uploadedBytes: loaded };
-            setFileStates([...newFileStates]);
+            const progress = total > 0 ? Math.round((loaded / total) * 100) : 0; setCurrentUploadingProgress(progress);
+            newFileStates[i] = { ...newFileStates[i], uploadedBytes: loaded }; setFileStates([...newFileStates]);
           });
-          newFileStates[i] = { ...newFileStates[i], status: 'uploaded' };
-          setFileStates([...newFileStates]);
+          newFileStates[i] = { ...newFileStates[i], status: 'uploaded' }; setFileStates([...newFileStates]);
           setCurrentOperationMessage(`${file.name} uploaded. Job ${job.id} processing in background.`);
         } catch (uploadError: any) {
-            console.error(`Error uploading ${file.name}:`, uploadError);
             if (handleAuthError(uploadError)) return;
-            newFileStates[i] = { ...newFileStates[i], status: 'error_upload', errorMessage: uploadError.message };
-            setFileStates([...newFileStates]);
+            newFileStates[i] = { ...newFileStates[i], status: 'error_upload', errorMessage: uploadError.message }; setFileStates([...newFileStates]);
             setError(prev => `${prev ? prev + '\n' : ''}Failed to upload ${file.name}: ${uploadError.message}`);
         }
         setCurrentUploadingProgress(0);
       }
       setCompletionMessage(`All ${files.length} files uploaded for job ${job.id}. Check Job Console for progress.`);
+    } catch (err: any) { handleJobInitiationError(err, `initiate file scan job`); } 
+    finally { setIsInitiatingJob(false); setCurrentUploadingFile(null); }
+  }, [onJobCreated, handleAuthError]);
 
+  const handleMyYouTubeVideosSelectedForJob = useCallback(async (videoUrls: string[]) => {
+    resetPageMessages();
+    if (videoUrls.length === 0) return;
+    setIsInitiatingJob(true);
+    setCurrentOperationMessage(`Initiating scan job for ${videoUrls.length} of your YouTube video(s)...`);
+    try {
+        // For simplicity, create one job per video. Backend could be enhanced to batch these.
+        let allJobsCreated = true;
+        let firstJobName = "";
+        for (const url of videoUrls) {
+            const job = await scanLogService.initiateSingleYouTubeVideoScanJob(url);
+            if(!firstJobName) firstJobName = job.jobName;
+            onJobCreated(job); // Notify parent for each job created
+        }
+         if (videoUrls.length === 1) {
+            setCompletionMessage(`Job for "${firstJobName}" initiated. Check Job Console.`);
+        } else {
+            setCompletionMessage(`${videoUrls.length} YouTube video scan jobs initiated. Check Job Console.`);
+        }
     } catch (err: any) {
-      handleJobInitiationError(err, `initiate file scan job`);
+        handleJobInitiationError(err, `initiate scan for selected YouTube videos`);
     } finally {
-      setIsInitiatingJob(false);
-      setCurrentUploadingFile(null);
+        setIsInitiatingJob(false);
+        setCurrentOperationMessage('');
     }
   }, [onJobCreated, handleAuthError]);
 
 
   const handleManualAdd = async (link: string): Promise<boolean> => {
-    resetPageMessages();
-    setIsInitiatingJob(true);
-    setCurrentOperationMessage("Adding Spotify track to log...");
-    try {
-      const newLog = await scanLogService.addSpotifyTrackToLog(link);
-      onJobCreated(); // Refresh job/log list
-      setManualAddMessage(`Successfully added "${newLog.originalFileName}" to log.`);
-      setCompletionMessage(null); // Clear other messages
-      return true;
-    } catch (err: any) {
-      if (handleAuthError(err)) return false;
-      setManualAddMessage(`Error: ${err.message || 'Failed to add Spotify track.'}`);
-      return false;
-    } finally {
-      setIsInitiatingJob(false);
-      setCurrentOperationMessage('');
-    }
+    resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage("Adding Spotify track to log...");
+    try { const newLog = await scanLogService.addSpotifyTrackToLog(link); onJobCreated(); 
+      setManualAddMessage(`Successfully added "${newLog.originalFileName}" to log.`); setCompletionMessage(null); return true;
+    } catch (err: any) { if (handleAuthError(err)) return false; setManualAddMessage(`Error: ${err.message || 'Failed to add Spotify track.'}`); return false; } 
+    finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
   };
 
   const handleProcessYouTubeUrl = useCallback(async (url: string, type: YouTubeUploadType) => {
-    resetPageMessages();
-    setIsInitiatingJob(true);
-    setCurrentOperationMessage(`Initiating YouTube job (${type})...`);
-    try {
-      const job = await scanLogService.initiateYouTubeScanJob(url, type);
-      onJobCreated(job);
+    resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage(`Initiating YouTube job (${type})...`);
+    try { const job = await scanLogService.initiateYouTubeScanJob(url, type); onJobCreated(job);
       setCompletionMessage(`YouTube Job ${job.id} (${type}) for "${job.jobName}" initiated. Check Job Console for progress.`);
-    } catch (err: any) {
-      handleJobInitiationError(err, `process YouTube URL (${type})`);
-    } finally {
-      setIsInitiatingJob(false);
-      setCurrentOperationMessage('');
-    }
+    } catch (err: any) { handleJobInitiationError(err, `process YouTube URL (${type})`); } 
+    finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
   }, [onJobCreated, handleAuthError]);
 
   const handleProcessSingleYouTubeVideoUrl = useCallback(async (url: string) => {
-    resetPageMessages();
-    setIsInitiatingJob(true);
-    setCurrentOperationMessage(`Initiating single YouTube video scan...`);
-    try {
-      const job = await scanLogService.initiateSingleYouTubeVideoScanJob(url);
-      onJobCreated(job);
+    resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage(`Initiating single YouTube video scan...`);
+    try { const job = await scanLogService.initiateSingleYouTubeVideoScanJob(url); onJobCreated(job);
       setCompletionMessage(`Single YouTube Video Job ${job.id} for "${job.jobName}" initiated. Check Job Console for progress.`);
-    } catch (err: any) {
-      handleJobInitiationError(err, `process single YouTube video URL`);
-    } finally {
-      setIsInitiatingJob(false);
-      setCurrentOperationMessage('');
-    }
+    } catch (err: any) { handleJobInitiationError(err, `process single YouTube video URL`); } 
+    finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
   }, [onJobCreated, handleAuthError]);
 
 
   const handleProcessSpotifyPlaylistUrl = useCallback(async (url: string) => {
-    resetPageMessages();
-    setIsInitiatingJob(true);
-    setCurrentOperationMessage("Initiating Spotify Playlist import job...");
-    try {
-      const job = await scanLogService.initiateSpotifyPlaylistJob(url);
-      onJobCreated(job);
+    resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage("Initiating Spotify Playlist import job...");
+    try { const job = await scanLogService.initiateSpotifyPlaylistJob(url); onJobCreated(job);
       setCompletionMessage(`Spotify Playlist Import Job ${job.id} for "${job.jobName}" initiated. Check Job Console for progress.`);
-    } catch (err: any) {
-     handleJobInitiationError(err, "process Spotify Playlist URL");
-    } finally {
-      setIsInitiatingJob(false);
-      setCurrentOperationMessage('');
-    }
+    } catch (err: any) { handleJobInitiationError(err, "process Spotify Playlist URL"); } 
+    finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
   }, [onJobCreated, handleAuthError]);
 
 
@@ -193,9 +165,10 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
         currentUploadingFile={currentUploadingFile}
         currentUploadingProgress={currentUploadingProgress}
       />
+      <MyYouTubeVideos onVideosSelected={handleMyYouTubeVideosSelectedForJob} isJobInitiating={isInitiatingJob} />
       <UrlInputForms
         onProcessYouTubeUrl={handleProcessYouTubeUrl}
-        onProcessSingleYouTubeVideoUrl={handleProcessSingleYouTubeVideoUrl} // Pass new handler
+        onProcessSingleYouTubeVideoUrl={handleProcessSingleYouTubeVideoUrl} 
         onProcessSpotifyPlaylistUrl={handleProcessSpotifyPlaylistUrl}
         isLoading={isInitiatingJob}
       />
@@ -208,7 +181,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
       )}
 
       <ScanMessages
-        isLoading={false}
+        isLoading={false} 
         error={error}
         scanCompletionMessage={completionMessage}
         alreadyScannedMessage={null}
