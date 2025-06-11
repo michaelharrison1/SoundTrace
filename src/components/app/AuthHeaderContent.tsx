@@ -4,8 +4,8 @@ import Button from '../common/Button';
 import LogoutIcon from '../icons/LogoutIcon';
 import { User } from '../../types';
 import { useSpotifyPlayer } from '../../contexts/SpotifyContext';
-import { useGoogleAuth } from '../../contexts/GoogleAuthContext';
-import { YoutubeIcon } from '../icons/YoutubeIcon';
+import { useGoogleAuth } from '../../contexts/GoogleAuthContext'; 
+import { YoutubeIcon } from '../icons/YoutubeIcon'; 
 
 type AuthView = 'login' | 'register';
 
@@ -13,7 +13,7 @@ interface AuthHeaderContentProps {
   currentUser: User | null;
   authView: AuthView;
   onSetAuthView: (view: AuthView) => void;
-  onLogout: () => void;
+  onLogout: () => void; 
 }
 
 const SpotifyConnectButton: React.FC = React.memo(() => {
@@ -33,17 +33,39 @@ const SpotifyConnectButton: React.FC = React.memo(() => {
 SpotifyConnectButton.displayName = 'SpotifyConnectButton';
 
 const GoogleConnectButton: React.FC = React.memo(() => {
-  const { isGoogleConnected, googleUser, isLoadingGoogleAuth, connectGoogle, disconnectGoogle } = useGoogleAuth();
-  if (isLoadingGoogleAuth) return <span className="text-xs text-yellow-300 hidden sm:block mr-1">(Google...)</span>;
+  const { 
+    isGoogleConnected, googleUser, isLoadingGoogleAuth, 
+    connectGoogle, disconnectGoogle, 
+    selectedYouTubeChannel, changeSelectedYouTubeChannel 
+  } = useGoogleAuth();
+
+  if (isLoadingGoogleAuth && !isGoogleConnected) return <span className="text-xs text-yellow-300 hidden sm:block mr-1">(Google...)</span>;
+
   if (isGoogleConnected && googleUser) {
     const displayName = googleUser.googleDisplayName || googleUser.googleEmail || 'Google User';
+    let channelDisplay = null;
+    if (selectedYouTubeChannel) {
+      channelDisplay = (
+        <div className="flex items-center ml-1">
+          {selectedYouTubeChannel.thumbnailUrl && <img src={selectedYouTubeChannel.thumbnailUrl} alt={selectedYouTubeChannel.title} className="w-4 h-4 rounded-sm mr-0.5 win95-border-inset"/>}
+          <span className="text-xs text-red-300 hidden sm:block" title={`Selected YT Channel: ${selectedYouTubeChannel.title}`}>
+            YT: {selectedYouTubeChannel.title.substring(0,8)}{selectedYouTubeChannel.title.length > 8 ? '...' : ''}
+          </span>
+        </div>
+      );
+    }
+
     return (
-      <>
+      <div className="flex items-center">
         {googleUser.googleAvatarUrl && <img src={googleUser.googleAvatarUrl} alt={displayName} className="w-5 h-5 rounded-full mr-1 hidden sm:inline-block win95-border-inset"/>}
         {!googleUser.googleAvatarUrl && <YoutubeIcon className="w-4 h-4 mr-1 text-red-400 hidden sm:inline-block" />}
         <span className="text-xs text-blue-300 hidden sm:block mr-1" title={`Connected to Google as ${displayName}`}>G: {displayName.substring(0,10)}{displayName.length > 10 ? '...' : ''}</span>
-        <Button onClick={disconnectGoogle} size="sm" className="!px-1 !py-0 !text-xs !h-5 hover:bg-gray-300">X</Button>
-      </>
+        {channelDisplay}
+        <Button onClick={changeSelectedYouTubeChannel} size="sm" className="!px-1 !py-0 !text-xs !h-5 hover:bg-gray-300 ml-1" title="Change YouTube Channel">
+          {selectedYouTubeChannel ? 'Chg YT' : 'Sel YT'}
+        </Button>
+        <Button onClick={disconnectGoogle} size="sm" className="!px-1 !py-0 !text-xs !h-5 hover:bg-gray-300 ml-0.5" title="Disconnect Google">X</Button>
+      </div>
     );
   }
   return <Button onClick={connectGoogle} size="sm" className="!px-1 !py-0 !text-xs !h-5 hover:bg-gray-300">Connect Google</Button>;
@@ -52,19 +74,21 @@ GoogleConnectButton.displayName = 'GoogleConnectButton';
 
 
 const AuthHeaderContent: React.FC<AuthHeaderContentProps> = ({ currentUser, authView, onSetAuthView, onLogout }) => {
-  const { disconnectSpotify: spotifyDisconnectHook } = useSpotifyPlayer();
-  const { disconnectGoogle: googleDisconnectHook, isGoogleConnected } = useGoogleAuth();
+  const { disconnectSpotify: spotifyDisconnectHook, isSpotifyConnected } = useSpotifyPlayer();
+  const { disconnectGoogle: googleDisconnectHook, isGoogleConnected: isGoogleActuallyConnected } = useGoogleAuth();
 
   const handleFullLogout = async () => {
-    if (isGoogleConnected) {
-      try { await googleDisconnectHook(); }
+    if (isGoogleActuallyConnected) { // Use direct check from context
+      try { await googleDisconnectHook(); } 
       catch (error) { console.error("Error during Google disconnect on logout (non-critical):", error); }
     }
-    try { await spotifyDisconnectHook(); }
-    catch (error) { console.error("Error during Spotify disconnect on logout (non-critical):", error); }
-    onLogout();
+    if (isSpotifyConnected) { // Use direct check from context
+        try { await spotifyDisconnectHook(); } 
+        catch (error) { console.error("Error during Spotify disconnect on logout (non-critical):", error); }
+    }
+    onLogout(); 
   };
-
+  
   const getNavButtonClass = (viewType: AuthView | 'logout', isUserContext: boolean) => {
     const isActive = !isUserContext && viewType !== 'logout' && authView === viewType;
     return `px-2 py-0.5 !text-black !border-t-white !border-l-white !border-b-[#808080] !border-r-[#808080] !shadow-[1px_1px_0px_#000000] hover:!bg-gray-300 active:!shadow-[0px_0px_0px_#000000] active:!border-t-[#808080] active:!border-l-[#808080] active:!border-b-white active:!border-r-white ${isActive ? '!shadow-none !translate-x-[1px] !translate-y-[1px] !border-t-[#808080] !border-l-[#808080] !border-b-white !border-r-white' : ''}`;

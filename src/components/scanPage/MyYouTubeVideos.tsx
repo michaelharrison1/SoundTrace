@@ -12,35 +12,41 @@ interface YouTubeVideo {
     title: string;
     thumbnailUrl?: string;
     url: string;
-    channelTitle: string;
-    publishedAt: string;
+    channelTitle: string; 
+    publishedAt: string; 
 }
 
 interface MyYouTubeVideosProps {
     onVideosSelected: (videoUrls: string[]) => void;
-    isJobInitiating: boolean;
+    isJobInitiating: boolean; 
 }
 
 const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJobInitiating }) => {
-    const { isGoogleConnected, googleUser, connectGoogle } = useGoogleAuth();
+    const { 
+        isGoogleConnected, googleUser, connectGoogle, 
+        selectedYouTubeChannel, changeSelectedYouTubeChannel, 
+        isLoadingYouTubeChannels 
+    } = useGoogleAuth();
+
     const [videos, setVideos] = useState<YouTubeVideo[]>([]);
     const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
-    const [isLoadingVideos, setIsLoadingVideos] = useState(false);
+    const [isLoadingApiVideos, setIsLoadingApiVideos] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [nextPageToken, setNextPageToken] = useState<string | null | undefined>(undefined);
     const soundTraceAuthToken = localStorage.getItem('authToken');
 
     const fetchVideos = useCallback(async (pageToken?: string | null) => {
-        if (!soundTraceAuthToken || !isGoogleConnected) {
-            setError("Please connect your Google account to load YouTube videos.");
+        if (!soundTraceAuthToken || !isGoogleConnected || !selectedYouTubeChannel) {
+            setError("Please connect Google and select a YouTube channel to load videos.");
             return;
         }
-        setIsLoadingVideos(true);
+        setIsLoadingApiVideos(true);
         setError(null);
         try {
             const params = new URLSearchParams({ maxResults: '10' });
             if (pageToken) params.append('pageToken', pageToken);
 
+            // This endpoint now uses the selected channel implicitly on the backend
             const response = await fetch(`${API_BASE_URL}/api/youtube/videos?${params.toString()}`, {
                 headers: { 'Authorization': `Bearer ${soundTraceAuthToken}` },
                 credentials: 'include',
@@ -48,7 +54,7 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
             const data = await response.json();
             if (!response.ok) {
                 if (data.needsReLogin) {
-                     setError("Google session expired or token invalid. Please try disconnecting and reconnecting your Google account.");
+                     setError("Google session expired or token invalid. Please try re-selecting your channel or reconnecting Google.");
                 } else {
                     throw new Error(data.message || 'Failed to fetch YouTube videos.');
                 }
@@ -58,9 +64,9 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
         } catch (err: any) {
             setError(err.message);
         } finally {
-            setIsLoadingVideos(false);
+            setIsLoadingApiVideos(false);
         }
-    }, [soundTraceAuthToken, isGoogleConnected]);
+    }, [soundTraceAuthToken, isGoogleConnected, selectedYouTubeChannel]);
 
     const handleVideoSelection = (videoId: string) => {
         setSelectedVideos(prev => {
@@ -75,64 +81,89 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
         const allVisibleIds = new Set(videos.map(v => v.id));
         const allCurrentlySelected = videos.every(v => selectedVideos.has(v.id));
         if (allCurrentlySelected && videos.length > 0) {
-            setSelectedVideos(prev => {
-                const newSelection = new Set(prev);
-                videos.forEach(v => newSelection.delete(v.id));
-                return newSelection;
-            });
-        } else {
-            setSelectedVideos(prev => new Set([...prev, ...allVisibleIds]));
-        }
+            setSelectedVideos(prev => { const newSelection = new Set(prev); videos.forEach(v => newSelection.delete(v.id)); return newSelection; });
+        } else { setSelectedVideos(prev => new Set([...prev, ...allVisibleIds])); }
     };
-
+    
     const handleScanSelected = () => {
         const selectedUrls = videos.filter(v => selectedVideos.has(v.id)).map(v => v.url);
-        if (selectedUrls.length > 0) {
-            onVideosSelected(selectedUrls);
-        }
+        if (selectedUrls.length > 0) onVideosSelected(selectedUrls);
     };
 
+    // Initial fetch or refetch when selected channel changes
     useEffect(() => {
-        if (isGoogleConnected && videos.length === 0 && nextPageToken === undefined && soundTraceAuthToken) {
+        if (isGoogleConnected && selectedYouTubeChannel && videos.length === 0 && nextPageToken === undefined && soundTraceAuthToken) {
+            fetchVideos();
+        } else if (isGoogleConnected && selectedYouTubeChannel && videos.length > 0 && nextPageToken === undefined) {
+            // If channel changed and videos were already loaded for a different channel, clear them and refetch.
+            // This can be made more sophisticated later (e.g., store videos per channel in context).
+            setVideos([]); 
+            setNextPageToken(undefined); // Reset pagination
             fetchVideos();
         }
-    }, [isGoogleConnected, videos.length, nextPageToken, fetchVideos, soundTraceAuthToken]);
+    }, [isGoogleConnected, selectedYouTubeChannel, fetchVideos, soundTraceAuthToken]);
+
 
     if (!isGoogleConnected) {
         return (
             <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
                 <div className="p-3 bg-[#C0C0C0] text-center">
                     <YoutubeIcon className="w-10 h-10 mx-auto mb-2 text-red-600" />
-                    <p className="text-black mb-2">Connect your Google account to access your YouTube videos for scanning.</p>
-                    <Button onClick={connectGoogle} size="md" disabled={isJobInitiating}>
+                    <p className="text-black mb-2">Connect Google to scan your YouTube videos.</p>
+                    <Button onClick={connectGoogle} size="md" disabled={isJobInitiating || isLoadingYouTubeChannels}>
                         Connect Google Account
                     </Button>
+                </div>
+            </div> );
+    }
+
+    if (!selectedYouTubeChannel && !isLoadingYouTubeChannels) {
+        return (
+            <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
+                <div className="p-3 bg-[#C0C0C0] text-center">
+                    <YoutubeIcon className="w-10 h-10 mx-auto mb-2 text-red-600" />
+                    <p className="text-black mb-2">Please select a YouTube channel to use with SoundTrace.</p>
+                    <Button onClick={changeSelectedYouTubeChannel} size="md" disabled={isJobInitiating || isLoadingYouTubeChannels}>
+                        Select YouTube Channel
+                    </Button>
+                </div>
+            </div> );
+    }
+    
+    if (isLoadingYouTubeChannels && !selectedYouTubeChannel) {
+        return (
+            <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
+                <div className="p-3 bg-[#C0C0C0] text-center">
+                     <ProgressBar text="Loading YouTube channel info..." />
                 </div>
             </div>
         );
     }
 
+
     return (
         <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
             <div className="p-3 bg-[#C0C0C0]">
-                <h3 className="text-lg font-normal text-black mb-2">My YouTube Videos</h3>
-                {googleUser && <p className="text-xs text-gray-700 mb-2">Connected as: {googleUser.googleDisplayName || googleUser.googleEmail}</p>}
+                <h3 className="text-lg font-normal text-black mb-1">My YouTube Videos</h3>
+                {selectedYouTubeChannel && <p className="text-xs text-gray-700 mb-1">Selected Channel: {selectedYouTubeChannel.title}</p>}
+                {googleUser && !selectedYouTubeChannel && <p className="text-xs text-gray-700 mb-2">Connected as: {googleUser.googleDisplayName || googleUser.googleEmail}</p>}
+
 
                 {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
 
-                {videos.length === 0 && !isLoadingVideos && (
-                    <Button onClick={() => fetchVideos()} disabled={isLoadingVideos || isJobInitiating}>Load My Videos</Button>
+                {videos.length === 0 && !isLoadingApiVideos && selectedYouTubeChannel && (
+                    <Button onClick={() => fetchVideos()} disabled={isLoadingApiVideos || isJobInitiating || isLoadingYouTubeChannels}>Load Videos from "{selectedYouTubeChannel.title}"</Button>
                 )}
 
-                {isLoadingVideos && videos.length === 0 && <ProgressBar text="Loading your YouTube videos..." />}
+                {isLoadingApiVideos && videos.length === 0 && <ProgressBar text="Loading your YouTube videos..." />}
 
                 {videos.length > 0 && (
                     <>
                         <div className="flex justify-between items-center mb-1">
-                            <Button onClick={handleSelectAllVisible} size="sm" disabled={isJobInitiating || isLoadingVideos}>
+                            <Button onClick={handleSelectAllVisible} size="sm" disabled={isJobInitiating || isLoadingApiVideos}>
                                 {videos.every(v => selectedVideos.has(v.id)) && videos.length > 0 ? "Deselect All Visible" : "Select All Visible"} ({selectedVideos.size} selected)
                             </Button>
-                            <Button onClick={handleScanSelected} size="sm" variant="primary" disabled={selectedVideos.size === 0 || isJobInitiating || isLoadingVideos}>
+                            <Button onClick={handleScanSelected} size="sm" variant="primary" disabled={selectedVideos.size === 0 || isJobInitiating || isLoadingApiVideos}>
                                 Scan {selectedVideos.size} Selected Video(s)
                             </Button>
                         </div>
@@ -149,9 +180,9 @@ const MyYouTubeVideos: React.FC<MyYouTubeVideosProps> = ({ onVideosSelected, isJ
                             ))}
                         </div>
                         {nextPageToken && (
-                            <Button onClick={() => fetchVideos(nextPageToken)} isLoading={isLoadingVideos} disabled={isJobInitiating} className="w-full mt-2">Load More Videos</Button>
+                            <Button onClick={() => fetchVideos(nextPageToken)} isLoading={isLoadingApiVideos} disabled={isJobInitiating} className="w-full mt-2">Load More Videos</Button>
                         )}
-                        {isLoadingVideos && videos.length > 0 && <ProgressBar text="Loading more videos..." className="mt-2" />}
+                        {isLoadingApiVideos && videos.length > 0 && <ProgressBar text="Loading more videos..." className="mt-2" />}
                     </>
                 )}
             </div>
