@@ -10,6 +10,8 @@ import { GoogleApiProvider } from './contexts/GoogleAuthContext'; // Import Goog
 import { authService } from './services/authService';
 import AuthHeaderContent from './components/app/AuthHeaderContent';
 import AppIntroduction from './components/app/AppIntroduction';
+import PrivacyPolicyPage from './components/PrivacyPolicyPage'; 
+import TermsOfServicePage from './components/TermsOfServicePage'; // Import TermsOfServicePage
 
 type AuthView = 'login' | 'register';
 
@@ -81,12 +83,31 @@ const AppContent: React.FC = React.memo(() => {
     );
   }
 
-  if (window.location.pathname === '/spotify-callback-receiver') {
-    // SpotifyProvider should be above this if SpotifyCallbackReceiver uses its context
+  // Simple routing based on pathname
+  const { pathname } = window.location;
+  if (pathname === '/spotify-callback-receiver') {
     return <SpotifyCallbackReceiver />;
   }
-  // Add similar logic for Google callback if it's a redirect flow to a specific path
-  // For 'auth-code' flow with @react-oauth/google, typically no separate callback page needed.
+  if (pathname === '/privacy-policy') {
+    return <PrivacyPolicyPage />;
+  }
+  if (pathname === '/terms-of-service') { // Added route for Terms of Service
+    return <TermsOfServicePage />;
+  }
+  // For more complex routing, consider using a library like React Router.
+  // Example with React Router:
+  // import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+  // return (
+  //   <BrowserRouter>
+  //     <Routes>
+  //       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+  //       <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+  //       <Route path="/spotify-callback-receiver" element={<SpotifyCallbackReceiver />} />
+  //       <Route path="/*" element={ /* Main App Content based on auth state */ } />
+  //     </Routes>
+  //   </BrowserRouter>
+  // );
+
 
   return (
       <div className="min-h-screen bg-transparent flex flex-col">
@@ -128,7 +149,10 @@ const AppContent: React.FC = React.memo(() => {
         <footer className="py-1 px-2 text-xs text-black border-t-2 border-t-white bg-[#C0C0C0] flex justify-between items-center">
           <div>
             <span>&copy; {new Date().getFullYear()} SoundTrace. </span>
-            <span>Powered by ACRCloud, Spotify & YouTube.</span>
+            <span>Powered by ACRCloud, Spotify & YouTube. </span>
+            <a href="/privacy-policy" className="text-blue-700 hover:underline">Privacy Policy</a>
+            <span className="mx-1">|</span>
+            <a href="/terms-of-service" className="text-blue-700 hover:underline">Terms of Service</a>
           </div>
           <span>Created by Michael Harrison</span>
         </footer>
