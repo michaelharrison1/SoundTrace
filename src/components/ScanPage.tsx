@@ -293,13 +293,10 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
                 setScanProgressMessage(`Found active job: ${job.originalInputUrl}. Status: ${job.status}`);
                 if (job.status === 'processing_videos' || job.status === 'fetching_videos' || job.status === 'paused' || job.status === 'error_acr_credits' || job.status === 'pending_video_fetch') {
                     startJobStatusPolling(job.jobId);
-                } else if (job.status === 'error_acr_credits') {
-                    setError(`Scan paused due to ACR Cloud credit limits for job: ${job.originalInputUrl}. Refill credits to resume.`);
-                    setIsLoading(false);
-                } else {
+                } else { // Terminal states like 'completed', 'aborted', 'error_youtube_api', 'error_partial'
                     setScanCompletionMessage(`Job ${job.jobId} is ${job.status}. ${job.lastErrorMessage || ''}`);
                     setIsLoading(false);
-                    setCurrentScanJob(null);
+                    setCurrentScanJob(null); // Clear if terminal and not one of the active polling states
                 }
             } else {
                 console.log("[ScanPage] No active scan job found.");
