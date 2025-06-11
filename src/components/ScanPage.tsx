@@ -116,21 +116,21 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
              setScanProgressMessage(`Job ${jobId} status after resume attempt: ${updatedJob.status}. ${updatedJob.lastErrorMessage || ''}`);
              if (updatedJob.status === 'completed' || updatedJob.status === 'aborted' || updatedJob.status === 'error_youtube_api' || updatedJob.status === 'error_partial') {
                 fetchScanLogs();
-                resetScanState();
+                resetScanState(); // This sets isLoading = false
                 setCurrentScanJob(null);
                 setScanCompletionMessage(`Job ${jobId} is now ${updatedJob.status}. ${updatedJob.lastErrorMessage || ''}`);
              }
-             setIsLoading(false);
+             setIsLoading(false); // Explicitly set isLoading = false if job is not actively processing
         }
     } catch (err: any) {
         console.error(`Error resuming job ${jobId}:`, err);
         if (handleAuthError(err)) return;
         setError(`Failed to resume job ${jobId}: ${err.message}`);
-        setIsLoading(false);
+        setIsLoading(false); // Set isLoading = false on error
     } finally {
-        activeJobControls.delete(jobId);
+        activeJobControls.delete(jobId); // Clears the 'resuming' state
     }
-  }, [isLoading, handleAuthError, fetchScanLogs, resetScanState /* startJobStatusPolling is a dependency if not for eslint-disable */]);
+  }, [isLoading, handleAuthError, fetchScanLogs, resetScanState, /* startJobStatusPolling */ ]);
 
 
   const pollJobStatus = useCallback(async (jobIdToPoll: string) => {
@@ -149,9 +149,13 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
             lastErrorMessage, lastProcessedVideoInfo, pendingVideoCount, updatedAt
         } = jobStatusData;
 
+        let currentProgressMessage = scanProgressMessage;
+        let shouldContinuePolling = false;
+        let currentIsLoadingForThisState = false;
+
+
         // 1. Handle Terminal States first
         if (status === 'completed' || status === 'aborted' || status === 'error_youtube_api' || status === 'error_partial') {
-            setIsLoading(false);
             let completionMsg = `Job ${jobIdToPoll} ${status}.`;
             if (status === 'completed') {
                 completionMsg = `Scan job completed. Total Videos: ${totalVideosToScan}, Processed: ${videosProcessed}, Matches Found: ${videosWithMatches}, Failed: ${videosFailed}.`;
@@ -170,31 +174,28 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
                 setError(null);
             }
 
+            currentIsLoadingForThisState = false;
+            shouldContinuePolling = false;
+
             setCurrentScanJob(null);
             activeJobControls.delete(jobIdToPoll);
             if (jobStatusPollIntervalRef.current) clearInterval(jobStatusPollIntervalRef.current);
             jobStatusPollIntervalRef.current = null;
-            setIsPollingJobStatus(false);
             fetchScanLogs();
-            resetScanState();
-            return;
-        }
-
-        // If not a terminal state, TypeScript knows `status` is one of the active/error states.
-        let currentProgressMessage = scanProgressMessage;
-        let shouldContinuePolling = false;
-
-        if (status === 'error_acr_credits') {
+            resetScanState(); // Calls setIsLoading(false) internally
+        } else if (status === 'error_acr_credits') {
             const acrErrorMsg = `Scan job ${jobIdToPoll} paused due to ACR Cloud credit limit. Total: ${totalVideosToScan}, Processed: ${videosProcessed}, Matches: ${videosWithMatches}. Last processed: ${lastProcessedVideoInfo?.videoTitle || 'N/A'}. ${lastErrorMessage || ''}`;
             setError(acrErrorMsg);
-            setScanCompletionMessage(null); // Clear previous completion messages
+            setScanCompletionMessage(null);
             currentProgressMessage = `Job Paused (ACR Credits). Processed: ${videosProcessed}/${totalVideosToScan}.`;
             shouldContinuePolling = true;
+            currentIsLoadingForThisState = false; // User can interact (e.g., resume)
         } else if (status === 'fetching_videos') {
             currentProgressMessage = `Fetching video list for job ${jobIdToPoll}...`;
-            setError(null); // Clear previous errors
+            setError(null);
             setScanCompletionMessage(null);
             shouldContinuePolling = true;
+            currentIsLoadingForThisState = true;
         } else if (status === 'processing_videos') {
             const processedVal = videosProcessed || 0;
             const totalVal = totalVideosToScan || 0;
@@ -203,59 +204,61 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
             if (totalVal > 0 && processedVal > 0) progressPercent = Math.round((processedVal / totalVal) * 100);
             const remainingVal = totalVal > 0 ? totalVal - processedVal : (pendingVideoCount || 0);
             currentProgressMessage = `Processing: ${currentVideoTitle.substring(0,30)}... (${progressPercent}%) - ${processedVal}/${totalVal} done. Matches: ${videosWithMatches}. Errors: ${videosFailed}. Remaining: ~${remainingVal}.`;
-            setError(null); // Clear previous errors
+            setError(null);
             setScanCompletionMessage(null);
 
             const jobUpdatedAt = new Date(updatedAt || Date.now()).getTime();
             if (Date.now() - jobUpdatedAt > STALLED_JOB_THRESHOLD_MS) {
                 console.log(`[ScanPage] Job ${jobIdToPoll} appears stalled. Auto-resuming...`);
                 handleResumeJob(jobIdToPoll);
-                return; // Exit pollJobStatus, handleResumeJob will manage further polling/state
+                return;
             }
             shouldContinuePolling = true;
+            currentIsLoadingForThisState = true;
         } else if (status === 'pending_video_fetch') {
             currentProgressMessage = `Job ${jobIdToPoll} is queued and pending video list fetch.`;
             setError(null);
             setScanCompletionMessage(null);
             shouldContinuePolling = true;
+            currentIsLoadingForThisState = true;
         } else if (status === 'paused') {
             currentProgressMessage = `Job ${jobIdToPoll} is paused by user. Processed: ${videosProcessed}/${totalVideosToScan}.`;
             setError(null);
             setScanCompletionMessage(null);
             shouldContinuePolling = true;
+            currentIsLoadingForThisState = false; // User can interact (e.g., resume)
         } else {
-            // This case should ideally not be reached if all ScanJobState['status'] are handled
             console.warn(`[Poll] Job ${jobIdToPoll} in unhandled status '${status}'. Stopping polling.`);
             setError(`Job in unexpected state: ${status}. Please check logs or contact support.`);
             setScanCompletionMessage(null);
             shouldContinuePolling = false;
+            currentIsLoadingForThisState = false;
         }
 
         setScanProgressMessage(currentProgressMessage);
+        setIsLoading(currentIsLoadingForThisState);
+        setIsPollingJobStatus(shouldContinuePolling);
 
         if (shouldContinuePolling) {
-            setIsLoading(true);
-            setIsPollingJobStatus(true);
             if (jobStatusPollIntervalRef.current) clearTimeout(jobStatusPollIntervalRef.current);
             jobStatusPollIntervalRef.current = setTimeout(() => pollJobStatus(jobIdToPoll), 5000);
         } else {
-            // This block executes if shouldContinuePolling is false (e.g., unhandled status)
-            setIsLoading(false);
             if (jobStatusPollIntervalRef.current) clearInterval(jobStatusPollIntervalRef.current);
             jobStatusPollIntervalRef.current = null;
-            setIsPollingJobStatus(false);
-            setCurrentScanJob(null);
-            activeJobControls.delete(jobIdToPoll);
-            resetScanState();
+            // Don't necessarily setCurrentScanJob(null) here if we want to display the final paused/error state
+            // Only clear currentScanJob if it's a truly terminal state handled above.
+            if (!['completed', 'aborted', 'error_youtube_api', 'error_partial', 'paused', 'error_acr_credits'].includes(status)) {
+                activeJobControls.delete(jobIdToPoll);
+            }
         }
 
     } catch (err: any) {
         console.error(`Error polling job status for ${jobIdToPoll}:`, err);
+        setIsLoading(false); // Ensure loading is false on fetch error
         if (handleAuthError(err)) return;
 
         if (err.status === 404) {
             setError(`Job ${jobIdToPoll} not found. Stopping polling.`);
-            setIsLoading(false);
             if (jobStatusPollIntervalRef.current) clearInterval(jobStatusPollIntervalRef.current);
             jobStatusPollIntervalRef.current = null;
             setIsPollingJobStatus(false);
@@ -264,8 +267,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
             resetScanState();
         } else {
             setError(`Error fetching job status: ${err.message}. Will retry polling.`);
-            // Keep currentScanJob as is, or set to an error state if desired
-            // Retry polling after a longer delay
             if (jobStatusPollIntervalRef.current) clearTimeout(jobStatusPollIntervalRef.current);
             jobStatusPollIntervalRef.current = setTimeout(() => pollJobStatus(jobIdToPoll), 10000);
         }
@@ -274,10 +275,10 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
 
   startJobStatusPolling = useCallback((jobIdToPoll: string) => {
     if (jobStatusPollIntervalRef.current) clearInterval(jobStatusPollIntervalRef.current);
-    setIsPollingJobStatus(true);
-    setIsLoading(true);
+    // setIsPollingJobStatus(true); // Let pollJobStatus manage this flag
+    // setIsLoading(true); // Let pollJobStatus manage this flag based on actual fetched status
     console.log(`[ScanPage] Starting polling for job ${jobIdToPoll}`);
-    pollJobStatus(jobIdToPoll);
+    pollJobStatus(jobIdToPoll); // Initial call
   }, [pollJobStatus]);
 
 
@@ -293,10 +294,10 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
                 setScanProgressMessage(`Found active job: ${job.originalInputUrl}. Status: ${job.status}`);
                 if (job.status === 'processing_videos' || job.status === 'fetching_videos' || job.status === 'paused' || job.status === 'error_acr_credits' || job.status === 'pending_video_fetch') {
                     startJobStatusPolling(job.jobId);
-                } else { // Terminal states like 'completed', 'aborted', 'error_youtube_api', 'error_partial'
+                } else {
                     setScanCompletionMessage(`Job ${job.jobId} is ${job.status}. ${job.lastErrorMessage || ''}`);
                     setIsLoading(false);
-                    setCurrentScanJob(null); // Clear if terminal and not one of the active polling states
+                    setCurrentScanJob(null);
                 }
             } else {
                 console.log("[ScanPage] No active scan job found.");
@@ -454,6 +455,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         setCurrentScanJob(prev => prev ? { ...prev, status: updatedDbStatus } : null);
         setScanProgressMessage(`Job ${jobId} paused.`);
         setError(null);
+        setIsLoading(false); // Explicitly set isLoading false as job is now paused
     } catch (err: any) {
         console.error(`Error pausing job ${jobId}:`, err);
         if (handleAuthError(err)) return;
@@ -462,9 +464,11 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         const currentJob = await scanLogService.getScanJobStatus(jobId);
         if (currentJob && (currentJob.status === 'processing_videos' || currentJob.status === 'fetching_videos')) {
             startJobStatusPolling(jobId);
+        } else {
+            setIsLoading(false);
         }
     } finally {
-        activeJobControls.delete(jobId); // Remove signal or set to 'paused' based on outcome
+        activeJobControls.delete(jobId);
     }
   }, [handleAuthError, startJobStatusPolling]);
 
@@ -489,7 +493,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
         console.error(`Error aborting job ${jobId}:`, err);
         if (handleAuthError(err)) return;
         setError(`Failed to abort job ${jobId}: ${err.message}`);
-         // Potentially restart polling if abort failed and job is still active
         const currentJob = await scanLogService.getScanJobStatus(jobId).catch(() => null);
         if (currentJob && (currentJob.status === 'processing_videos' || currentJob.status === 'fetching_videos' || currentJob.status === 'paused')) {
             startJobStatusPolling(jobId);
@@ -516,8 +519,8 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, previousScans, onNewScanLogsS
           {estimatedTimeRemaining && !currentScanJob && <p className="text-xs text-center text-gray-700 mt-1">Est. time remaining: {estimatedTimeRemaining}</p>}
           {currentScanJob && (currentScanJob.status === 'processing_videos' || currentScanJob.status === 'fetching_videos' || currentScanJob.status === 'pending_video_fetch') && (
             <div className="flex justify-center space-x-2 mt-1">
-              <Button size="sm" onClick={() => handlePauseJob(currentScanJob.jobId)} disabled={activeJobControls.get(currentScanJob.jobId) === 'pausing'}>Pause Job</Button>
-              <Button size="sm" onClick={() => handleAbortJob(currentScanJob.jobId)} variant="danger" disabled={activeJobControls.get(currentScanJob.jobId) === 'aborting'}>Abort Job</Button>
+              <Button size="sm" onClick={() => handlePauseJob(currentScanJob.jobId)} disabled={activeJobControls.get(currentScanJob.jobId) === 'pausing' || isLoading && activeJobControls.get(currentScanJob.jobId) !== 'running'}>Pause Job</Button>
+              <Button size="sm" onClick={() => handleAbortJob(currentScanJob.jobId)} variant="danger" disabled={activeJobControls.get(currentScanJob.jobId) === 'aborting' || isLoading && activeJobControls.get(currentScanJob.jobId) !== 'running'}>Abort Job</Button>
             </div>
           )}
         </div>
