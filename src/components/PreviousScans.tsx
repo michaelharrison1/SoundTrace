@@ -4,7 +4,7 @@ import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, PlatformSource } fr
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
-import { useSpotifyPlayer } from '../../contexts/SpotifyContext';
+import { useSpotifyPlayer } from '../contexts/SpotifyContext';
 import UploadIcon from './icons/UploadIcon';
 import StreamCountCell from './common/StreamCountCell';
 import MusicNoteIcon from './icons/MusicNoteIcon';
