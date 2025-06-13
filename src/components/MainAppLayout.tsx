@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, TrackScanLog, ScanJob } from '../types';
+import { User, TrackScanLog, ScanJob } from '../types'; // Ensure Partial is imported or defined if not global
 import { scanLogService } from '../services/scanLogService';
 import Button from './common/Button';
 import ScanPage from './ScanPage';
@@ -89,7 +89,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
     fetchData();
   }, [fetchData]);
 
-  const handleJobUpdate = useCallback((updatedJob?: ScanJob) => {
+  const handleJobUpdate = useCallback((updatedJob?: ScanJob | Partial<ScanJob>) => {
     refreshAllData();
   }, [refreshAllData]);
 
