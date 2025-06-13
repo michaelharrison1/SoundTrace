@@ -1,5 +1,4 @@
-
-import { TrackScanLog, YouTubeUploadType, ScanJob, JobCreationResponse, AllJobsResponse, SingleJobResponse, JobFileState, FileUploadResponse, JobType } from '../types';
+import { TrackScanLog, ScanJob, JobCreationResponse, AllJobsResponse, SingleJobResponse, JobFileState, FileUploadResponse, JobType } from '../types';
 
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
@@ -22,7 +21,7 @@ const handleApiResponse = async <T>(response: Response): Promise<T> => {
   if (response.status === 204) return undefined as unknown as T; // No Content
   const contentType = response.headers.get("content-type");
   if (contentType?.includes("application/json")) return response.json();
-  return response.text() as unknown as T; // Should ideally not happen for JSON APIs
+  return response.text() as unknown as T; 
 };
 
 
@@ -74,27 +73,6 @@ export const scanLogService = {
     });
   },
 
-  initiateYouTubeScanJob: async (url: string, jobType: YouTubeUploadType): Promise<JobCreationResponse> => {
-    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const body = { youtubeUrl: url, jobType: jobType as JobType }; 
-    const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(body), credentials: 'include',
-    });
-    return handleApiResponse<JobCreationResponse>(response);
-  },
-
-  initiateSingleYouTubeVideoScanJob: async (url: string): Promise<JobCreationResponse> => {
-    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube-single-video`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ youtubeUrl: url }),
-        credentials: 'include',
-    });
-    return handleApiResponse<JobCreationResponse>(response);
-  },
-
   initiateSpotifyPlaylistJob: async (playlistUrl: string): Promise<JobCreationResponse> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
     const response = await fetch(`${JOBS_BASE_URL}/initiate/spotify-playlist`, {
@@ -129,15 +107,12 @@ export const scanLogService = {
     await handleApiResponse<void>(response);
   },
   
-  // --- Direct Log Management (less common, jobs manage their logs) ---
   getScanLogs: async (): Promise<TrackScanLog[]> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
     const response = await fetch(LOGS_BASE_URL, { headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
     return handleApiResponse<TrackScanLog[]>(response);
   },
 
-  // This might be used if a job item processing results in a direct log save, 
-  // or for truly manual, non-job-related logs.
   saveScanLog: async (logData: Omit<TrackScanLog, 'logId' | 'scanDate' >): Promise<TrackScanLog> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
     const response = await fetch(LOGS_BASE_URL, {
@@ -149,8 +124,6 @@ export const scanLogService = {
 
    addSpotifyTrackToLog: async (spotifyTrackLink: string): Promise<TrackScanLog> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    // This endpoint might need to change if it also needs to create a minimal job.
-    // For now, assuming it's a direct log add for simplicity.
     const response = await fetch(`${LOGS_BASE_URL}/manual-spotify-add`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ spotifyTrackLink }), credentials: 'include',
@@ -167,7 +140,6 @@ export const scanLogService = {
   clearAllScanLogs: async (): Promise<void> => { 
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
     const response = await fetch(LOGS_BASE_URL, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
-    await handleApiResponse<void>(response); // Note: Backend should clarify if this also clears jobs or just logs.
+    await handleApiResponse<void>(response);
   },
-
 };

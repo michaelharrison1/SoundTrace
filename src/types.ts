@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -37,10 +36,8 @@ export interface SnippetScanResult {
 
 export type PlatformSource =
   | 'file_upload_batch_item' 
-  | 'youtube_channel_instrumental_batch_item' 
-  | 'youtube_playlist_instrumental_batch_item' 
-  | 'youtube_video_instrumental_single_item' 
-  | 'spotify_playlist_import_item'; 
+  | 'spotify_playlist_import_item'
+  | 'electron_youtube_item'; 
 
 export type TrackScanLogStatus =
   | 'pending_processing'   
@@ -53,7 +50,8 @@ export type TrackScanLogStatus =
   | 'processing_scan'       
   | 'scanned_match_found'   
   | 'scanned_no_match'      
-  | 'error_youtube_dl'      
+  // Old YouTube/FFmpeg errors are less relevant now
+  | 'error_youtube_dl' 
   | 'error_ffmpeg'          
   | 'skipped_previously_scanned'
   | 'imported_spotify_track' 
@@ -75,10 +73,6 @@ export interface TrackScanLog {
   acrResponseDetails?: string; 
   lastAttemptedAt?: string; 
 }
-
-export type YouTubeUploadType =
-  | 'youtube_channel_instrumental_batch'
-  | 'youtube_playlist_instrumental_batch';
 
 export interface SpotifyFollowerSuccess { status: 'success'; artistId: string; followers: number | undefined; popularity?: number; genres?: string[]; }
 export interface SpotifyFollowerError { status: 'error'; artistId: string; reason: string; }
@@ -103,13 +97,10 @@ export interface SpotifyPlayerContextType {
 export interface SpotifyPlaylist { id: string; name: string; external_urls: { spotify: string; }; }
 export interface FollowerSnapshot { date: string; cumulativeFollowers: number; }
 
-// --- New Job System Types ---
 export type JobType =
   | 'file_upload_batch'
-  | 'youtube_channel_instrumental_batch'
-  | 'youtube_playlist_instrumental_batch'
-  | 'youtube_video_instrumental_single' 
-  | 'spotify_playlist_import';
+  | 'spotify_playlist_import'
+  | 'electron_youtube_scan'; 
 
 export type JobStatus =
   | 'pending_setup'        
@@ -169,18 +160,16 @@ export interface FileUploadResponse {
   jobUpdate?: ScanJob; 
 }
 
-// GoogleUserProfile updated to use primary YouTube channel fields
+// GoogleUserProfile now only contains general Google profile info.
+// YouTube specific channel details are removed as they are no longer managed/displayed by the frontend this way.
 export interface GoogleUserProfile {
   googleId?: string;
   googleEmail?: string;
   googleDisplayName?: string;
   googleAvatarUrl?: string;
-  primaryYouTubeChannelId?: string; 
-  primaryYouTubeChannelTitle?: string;
-  primaryYouTubeChannelThumbnailUrl?: string;
+  // primaryYouTubeChannelId, primaryYouTubeChannelTitle, primaryYouTubeChannelThumbnailUrl removed
 }
 
-// GoogleAuthContextType updated
 export interface GoogleAuthContextType {
   isGoogleConnected: boolean;
   googleUser: GoogleUserProfile | null;

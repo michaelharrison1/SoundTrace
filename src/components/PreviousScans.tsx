@@ -49,10 +49,8 @@ interface DisplayableTableRow {
 const formatPlatformSource = (source: PlatformSource): string => {
   switch (source) {
     case 'file_upload_batch_item': return 'File Upload';
-    case 'youtube_channel_instrumental_batch_item': return 'YT Channel';
-    case 'youtube_playlist_instrumental_batch_item': return 'YT Playlist';
-    case 'youtube_video_instrumental_single_item': return 'YT Single Video';
     case 'spotify_playlist_import_item': return 'Spotify Import';
+    case 'electron_youtube_item': return 'YouTube (Desktop App)';
     default:
       // This will cause a compile-time error if 'source' is not 'never',
       // i.e., if a case for a PlatformSource member was missed.
@@ -70,11 +68,7 @@ const SourceIcon: React.FC<{ source: PlatformSource, url?: string, title?: strin
         icon = <UploadIcon className="w-3.5 h-3.5 text-blue-600" />;
     } else if (source === 'spotify_playlist_import_item') {
         icon = <SpotifyIcon className="w-3.5 h-3.5 text-green-600" />;
-    } else if (
-        source === 'youtube_channel_instrumental_batch_item' ||
-        source === 'youtube_playlist_instrumental_batch_item' ||
-        source === 'youtube_video_instrumental_single_item'
-    ) {
+    } else if (source === 'electron_youtube_item') {
         icon = <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />;
     }
 
@@ -117,7 +111,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             originalFileName: log.originalFileName,
             originalScanDate: log.scanDate,
             matchDetails: match,
-            statusMessage: undefined, // Specific statuses like imported_spotify_track are clear enough
+            statusMessage: undefined, 
             rowKey: `${log.logId}-match-${match.id || matchIndex}`,
             platformSource: log.platformSource,
             sourceUrl: log.sourceUrl || match.platformLinks?.spotify || match.platformLinks?.youtube,
@@ -131,7 +125,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         else if (log.status === 'error_youtube_dl') message = "YouTube Download Error";
         else if (log.status === 'error_ffmpeg') message = "Audio Processing Error (FFmpeg)";
         else if (log.status === 'skipped_previously_scanned') message = "Skipped (Previously Scanned)";
-        // Add more specific error messages based on TrackScanLogStatus if needed
         
         acc.push({
           isMatchRow: false,
@@ -187,7 +180,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         case 'matchConfidence': valA = a.matchDetails.matchConfidence ?? 0; valB = b.matchDetails.matchConfidence ?? 0; break;
         case 'originalScanDate': valA = new Date(a.originalScanDate).getTime(); valB = new Date(b.originalScanDate).getTime(); break;
         case 'platformSource': valA = formatPlatformSource(a.platformSource); valB = formatPlatformSource(b.platformSource); return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        case 'spotifyStreams': valA = -1; valB = -1; break; // Placeholder for actual stream count sorting if implemented
+        case 'spotifyStreams': valA = -1; valB = -1; break; 
         default: return 0;
       }
       if (typeof valA === 'number' && typeof valB === 'number') return sortDirection === 'asc' ? valA - valB : valB - valA;

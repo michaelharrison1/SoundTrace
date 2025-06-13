@@ -17,10 +17,8 @@ interface JobConsoleItemProps {
 const formatJobType = (type: ScanJob['jobType']): string => {
   switch (type) {
     case 'file_upload_batch': return 'File Batch Scan';
-    case 'youtube_channel_instrumental_batch': return 'YouTube Channel Scan';
-    case 'youtube_playlist_instrumental_batch': return 'YouTube Playlist Scan';
-    case 'youtube_video_instrumental_single': return 'Single YouTube Video Scan';
     case 'spotify_playlist_import': return 'Spotify Playlist Import';
+    case 'electron_youtube_scan': return 'YouTube Scan (Desktop App)';
     default: return type;
   }
 };

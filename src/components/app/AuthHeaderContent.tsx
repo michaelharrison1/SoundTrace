@@ -1,11 +1,10 @@
-
 import React from 'react';
 import Button from '../common/Button';
 import LogoutIcon from '../icons/LogoutIcon';
 import { User } from '../../types';
 import { useSpotifyPlayer } from '../../contexts/SpotifyContext';
-import { useGoogleAuth } from '../../contexts/GoogleAuthContext'; 
-import { YoutubeIcon } from '../icons/YoutubeIcon'; 
+// Removed: import { useGoogleAuth } from '../../contexts/GoogleAuthContext'; 
+// Removed: import { YoutubeIcon } from '../icons/YoutubeIcon'; 
 
 type AuthView = 'login' | 'register';
 
@@ -32,56 +31,19 @@ const SpotifyConnectButton: React.FC = React.memo(() => {
 });
 SpotifyConnectButton.displayName = 'SpotifyConnectButton';
 
-const GoogleConnectButton: React.FC = React.memo(() => {
-  const { 
-    isGoogleConnected, googleUser, isLoadingGoogleAuth, 
-    connectGoogle, disconnectGoogle
-  } = useGoogleAuth();
-
-  if (isLoadingGoogleAuth && !isGoogleConnected) return <span className="text-xs text-yellow-300 hidden sm:block mr-1">(Google...)</span>;
-
-  if (isGoogleConnected && googleUser) {
-    const displayName = googleUser.googleDisplayName || googleUser.googleEmail || 'Google User';
-    const primaryChannelTitle = googleUser.primaryYouTubeChannelTitle; // Use primary channel info from GoogleUserProfile
-    
-    let channelDisplay = null;
-    if (primaryChannelTitle) {
-      channelDisplay = (
-        <div className="flex items-center ml-1">
-          {googleUser.primaryYouTubeChannelThumbnailUrl && <img src={googleUser.primaryYouTubeChannelThumbnailUrl} alt={primaryChannelTitle} className="w-4 h-4 rounded-sm mr-0.5 win95-border-inset"/>}
-          <span className="text-xs text-red-300 hidden sm:block" title={`Linked YT Channel: ${primaryChannelTitle}`}>
-            YT: {primaryChannelTitle.substring(0,10)}{primaryChannelTitle.length > 10 ? '...' : ''}
-          </span>
-        </div>
-      );
-    }
-
-
-    return (
-      <div className="flex items-center">
-        {googleUser.googleAvatarUrl && <img src={googleUser.googleAvatarUrl} alt={displayName} className="w-5 h-5 rounded-full mr-1 hidden sm:inline-block win95-border-inset"/>}
-        {!googleUser.googleAvatarUrl && <YoutubeIcon className="w-4 h-4 mr-1 text-red-400 hidden sm:inline-block" />}
-        <span className="text-xs text-blue-300 hidden sm:block mr-1" title={`Connected to Google as ${displayName}`}>G: {displayName.substring(0,10)}{displayName.length > 10 ? '...' : ''}</span>
-        {channelDisplay}
-        {/* Removed Change/Select YT Channel button */}
-        <Button onClick={disconnectGoogle} size="sm" className="!px-1 !py-0 !text-xs !h-5 hover:bg-gray-300 ml-1" title="Disconnect Google">X</Button>
-      </div>
-    );
-  }
-  return <Button onClick={connectGoogle} size="sm" className="!px-1 !py-0 !text-xs !h-5 hover:bg-gray-300">Connect Google</Button>;
-});
-GoogleConnectButton.displayName = 'GoogleConnectButton';
-
+// GoogleConnectButton component entirely removed as YouTube features it supported are changed.
+// If general Google Sign-In (non-YouTube related) is still desired, it needs a different implementation.
 
 const AuthHeaderContent: React.FC<AuthHeaderContentProps> = ({ currentUser, authView, onSetAuthView, onLogout }) => {
   const { disconnectSpotify: spotifyDisconnectHook, isSpotifyConnected } = useSpotifyPlayer();
-  const { disconnectGoogle: googleDisconnectHook, isGoogleConnected: isGoogleActuallyConnected } = useGoogleAuth();
+  // Removed: const { disconnectGoogle: googleDisconnectHook, isGoogleConnected: isGoogleActuallyConnected } = useGoogleAuth();
 
   const handleFullLogout = async () => {
-    if (isGoogleActuallyConnected) { 
-      try { await googleDisconnectHook(); } 
-      catch (error) { console.error("Error during Google disconnect on logout (non-critical):", error); }
-    }
+    // Removed Google disconnect from full logout as its YouTube integration is removed
+    // if (isGoogleActuallyConnected) { 
+    //   try { await googleDisconnectHook(); } 
+    //   catch (error) { console.error("Error during Google disconnect on logout (non-critical):", error); }
+    // }
     if (isSpotifyConnected) { 
         try { await spotifyDisconnectHook(); } 
         catch (error) { console.error("Error during Spotify disconnect on logout (non-critical):", error); }
@@ -100,7 +62,7 @@ const AuthHeaderContent: React.FC<AuthHeaderContentProps> = ({ currentUser, auth
         <span className="text-xs text-white hidden sm:block mr-2">User: {currentUser.username}</span>
         <div className="flex items-center space-x-1">
           <SpotifyConnectButton />
-          <GoogleConnectButton />
+          {/* GoogleConnectButton removed */}
         </div>
         <Button
           onClick={handleFullLogout}

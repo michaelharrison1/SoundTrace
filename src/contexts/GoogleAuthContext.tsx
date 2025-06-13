@@ -1,19 +1,18 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { GoogleOAuthProvider, useGoogleLogin, googleLogout, CodeResponse } from '@react-oauth/google';
-import { GoogleUserProfile } from '../types';
+import { GoogleUserProfile } from '../types'; // GoogleUserProfile type will be updated in types.ts
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.soundtrace.uk';
 
-interface GoogleAuthContextType {
+// GoogleAuthContextType updated to remove YouTube specific fields.
+export interface GoogleAuthContextType {
     isGoogleConnected: boolean;
-    googleUser: GoogleUserProfile | null;
+    googleUser: GoogleUserProfile | null; // This will contain basic Google profile.
     isLoadingGoogleAuth: boolean;
     connectGoogle: () => void;
     disconnectGoogle: () => Promise<void>;
     checkGoogleStatus: () => Promise<void>;
-    // Error message state for displaying Google auth errors
     googleAuthErrorMessage: string | null;
     setGoogleAuthErrorMessage: (message: string | null) => void;
 }
@@ -36,6 +35,8 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
 
     const soundTraceAuthToken = localStorage.getItem('authToken');
 
+    // checkGoogleStatus now fetches general Google connection status.
+    // YouTube channel details are no longer managed or displayed by the frontend via this context.
     const checkGoogleStatus = useCallback(async (isInitialCall = false) => {
         if (!soundTraceAuthToken) {
             setIsLoadingGoogleAuth(false); setIsGoogleConnected(false); setGoogleUser(null);
@@ -49,11 +50,11 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
             if (!response.ok) throw new Error('Failed to fetch Google status');
             const data = await response.json();
             setIsGoogleConnected(data.isConnected);
-            setGoogleUser(data.profile || null); // Profile might include primary channel info now
+            // googleUser will store basic profile; YouTube specifics are removed.
+            setGoogleUser(data.profile || null); 
         } catch (error) {
             console.error("Error checking Google connection status:", error);
             setIsGoogleConnected(false); setGoogleUser(null);
-            // setGoogleAuthErrorMessage("Could not verify Google connection. Please try again.");
         } finally {
             if (isInitialCall) setIsLoadingGoogleAuth(false);
         }
@@ -69,8 +70,8 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
             });
             const data = await backendResponse.json();
             if (!backendResponse.ok) throw new Error(data.message || 'Failed to link Google account.');
-            await checkGoogleStatus(); // Refresh general Google status
-            // No explicit channel selection needed from frontend anymore
+            await checkGoogleStatus(); 
+            // No frontend channel selection or YouTube-specific logic needed here anymore.
         } catch (error: any) { 
             console.error('Error sending Google auth code to backend:', error);
             setGoogleAuthErrorMessage(error.message || "Failed to link Google account.");
@@ -83,12 +84,14 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
             console.error('Google Login Error:', errorResponse);
             setGoogleAuthErrorMessage( (errorResponse as any).error_description || "Google login failed. Please try again.");
         },
-        flow: 'auth-code', scope: 'https://www.googleapis.com/auth/youtube.readonly', // Scope to read user's videos
+        flow: 'auth-code', 
+        // Scopes are now only for basic profile and email, as YouTube specific data handling by frontend is removed.
+        scope: 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
     });
 
     const connectGoogle = useCallback(() => {
         if (!soundTraceAuthToken) { alert("Please log in to SoundTrace first."); return; }
-        setGoogleAuthErrorMessage(null); // Clear previous errors
+        setGoogleAuthErrorMessage(null); 
         googleLogin();
     }, [googleLogin, soundTraceAuthToken]);
 
@@ -136,8 +139,6 @@ const GoogleApiProviderInternal: React.FC<GoogleApiProviderProps> = ({ children 
 export const GoogleApiProvider: React.FC<GoogleApiProviderProps> = ({ children }) => {
     if (!GOOGLE_CLIENT_ID) { 
         console.error("VITE_GOOGLE_CLIENT_ID is not defined. Google OAuth features will not work."); 
-        // Render children without provider if ID is missing, or show an error message component.
-        // For simplicity, rendering children to not break the app entirely.
         return <>{children}</>; 
     }
     return (<GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}><GoogleApiProviderInternal>{children}</GoogleApiProviderInternal></GoogleOAuthProvider>);
