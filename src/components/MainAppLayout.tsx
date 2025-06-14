@@ -117,7 +117,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
     fetchData('manual');
   }, [fetchData]);
 
-  const handleJobUpdate = useCallback((updatedJob?: ScanJob) => {
+  const handleJobUpdate = useCallback((updatedJob?: ScanJob | Partial<ScanJob>) => {
     // With SSE, this might become less critical for immediate UI, but good for optimistic updates or if SSE fails
     refreshAllData();
   }, [refreshAllData]);
