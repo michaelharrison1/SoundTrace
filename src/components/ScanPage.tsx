@@ -3,14 +3,13 @@ import React, { useState, useCallback, useRef } from 'react';
 import { User, TrackScanLog, JobFileState, ScanJob, JobCreationResponse } from '../types';
 import FileUpload from './FileUpload';
 import UrlInputForms from './scanPage/UrlInputForms';
-// Removed: import MyYouTubeVideos from './scanPage/MyYouTubeVideos';
 import { scanLogService } from '../services/scanLogService';
 import ManualSpotifyAddForm from './scanPage/ManualSpotifyAddForm';
 import ScanMessages from './scanPage/ScanMessages';
 import CRTProgressBar from './common/CRTProgressBar';
 
-const ELECTRON_APP_URL = 'http://localhost:48757/download-and-scan'; // Port from Electron app
-const ELECTRON_APP_DOWNLOAD_LINK = '[Your Electron App Download Link Here]'; // Placeholder
+const ELECTRON_APP_API_BASE_URL = 'http://localhost:48757'; // Port from Electron app
+const ELECTRON_APP_DOWNLOAD_LINK = 'https://soundtrace.uk/download/latest'; // Placeholder - update with actual link
 
 interface ScanPageProps {
   user: User;
@@ -25,6 +24,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
   const [completionMessage, setCompletionMessage] = useState<string | null>(null);
   const [manualAddMessage, setManualAddMessage] = useState<string | null>(null);
   const [electronAppError, setElectronAppError] = useState<string | null>(null);
+  const [electronAppInfo, setElectronAppInfo] = useState<string | null>(null);
 
   const [fileStates, setFileStates] = useState<JobFileState[]>([]);
   const [currentUploadingFile, setCurrentUploadingFile] = useState<string | null>(null);
@@ -39,7 +39,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
                           error.message.toLowerCase().includes('not authenticated') ||
                           error.message.toLowerCase().includes('authorization denied')));
     if (isAuthError) {
-      console.warn("Authentication error detected. Logging out.", error?.message);
+      console.warn("[ScanPage] Authentication error detected. Logging out.", error?.message);
       onLogout();
       return true;
     }
@@ -47,12 +47,12 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
   }, [onLogout]);
 
   const resetPageMessages = () => {
-    console.log('[ScanPage] resetPageMessages called');
     setError(null);
     setCompletionMessage(null);
     setManualAddMessage(null);
     setCurrentOperationMessage('');
     setElectronAppError(null);
+    setElectronAppInfo(null);
   };
 
   const handleJobInitiationError = (err: any, operation: string) => {
@@ -60,8 +60,8 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     if (handleAuthError(err)) return;
     const message = `Failed to ${operation}: ${err.message || 'Unknown server error.'}`;
     setError(message);
-    if (message.includes("Failed to fetch") || message.includes("localhost:48757")) {
-        setElectronAppError("Failed to connect to SoundTrace Downloader. Please ensure the app is installed and running on your computer.");
+    if (message.toLowerCase().includes("failed to fetch") || message.toLowerCase().includes("localhost:48757")) {
+        setElectronAppError("Connection to SoundTrace Downloader failed. Is it running?");
     } else {
         setElectronAppError(null);
     }
@@ -69,46 +69,45 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     setCurrentOperationMessage('');
   };
 
-  const sendToElectronDownloader = async (youtubeUrl: string, videoTitle: string = 'YouTube Video') => {
-    console.log(`[ScanPage] sendToElectronDownloader called for URL: ${youtubeUrl}`);
+  const sendToElectronDownloader = async (endpoint: string, payload: any, operationName: string) => {
     const soundTraceToken = localStorage.getItem('authToken');
     if (!soundTraceToken) {
-      console.error('[ScanPage] Auth token not found for Electron request.');
       setError("Authentication token not found. Please log in again.");
       handleAuthError({ status: 401, message: "Auth token missing for Electron request." });
-      return false;
+      return { success: false, message: "Auth token missing." };
     }
+
     setElectronAppError(null);
+    setElectronAppInfo(`Sending ${operationName} request to SoundTrace Downloader...`);
+
     try {
-      console.log(`[ScanPage] Fetching ${ELECTRON_APP_URL} with title: ${videoTitle}`);
-      const response = await fetch(ELECTRON_APP_URL, {
+      const response = await fetch(`${ELECTRON_APP_API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ youtubeUrl, soundTraceToken, videoTitle }),
-        credentials: 'include', // Important for Electron CORS if it needs origin or cookies
+        body: JSON.stringify({ ...payload, soundTraceToken }),
+        credentials: 'omit', // Localhost typically doesn't need credentials sent unless specifically configured
       });
-      console.log(`[ScanPage] Fetch response status: ${response.status}`);
+
       const data = await response.json();
       if (!response.ok) {
-        console.error('[ScanPage] Electron app responded with an error:', data);
-        throw new Error(data.error || `Electron app error: ${response.statusText}`);
+        throw new Error(data.error || data.message || `Electron app error: ${response.statusText}`);
       }
-      console.log('[ScanPage] Successfully sent to Electron app:', data);
-      setCompletionMessage(prev => `${prev ? prev + '\n' : ''}"${videoTitle}" sent to SoundTrace Downloader. Results will appear in Previous Scans.`);
-      return true;
+      setElectronAppInfo(data.message || `${operationName} request accepted by downloader.`);
+      return { success: true, data };
     } catch (err: any) {
-      console.error(`[ScanPage] Error sending URL to Electron app for "${videoTitle}":`, err);
-      const electronErrorMessage = err.message?.includes("Failed to fetch") || err.message?.includes("localhost")
-        ? "Failed to connect to SoundTrace Downloader. Please ensure the app is installed and running on your computer. Also check browser console for CORS errors."
-        : `Error communicating with local downloader: ${err.message || 'Unknown error'}`;
-      setError(prev => `${prev ? prev + '\n' : ''}${electronErrorMessage}`);
-      setElectronAppError(electronErrorMessage);
-      return false;
+      const commError = err.message?.includes("Failed to fetch") || err.message?.includes("localhost");
+      const userMessage = commError
+        ? "Failed to connect to SoundTrace Downloader. Please ensure the app is installed and running on your computer. Also check browser console for CORS or network errors."
+        : `Error communicating with local downloader for ${operationName}: ${err.message || 'Unknown error'}`;
+
+      setElectronAppError(userMessage);
+      setError(prev => `${prev ? prev + '\n' : ''}${userMessage}`);
+      return { success: false, message: userMessage };
     }
   };
 
+
   const handleFilesSelectedForJob = useCallback(async (files: File[], numberOfSegments: number) => {
-    console.log('[ScanPage] handleFilesSelectedForJob called with', files.length, 'files');
     resetPageMessages();
     if (files.length === 0) return;
     setIsInitiatingJob(true);
@@ -147,7 +146,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
 
 
   const handleManualAdd = async (link: string): Promise<boolean> => {
-    console.log('[ScanPage] handleManualAdd called with link:', link);
     resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage("Adding Spotify track to log...");
     try { const newLog = await scanLogService.addSpotifyTrackToLog(link); onJobCreated();
       setManualAddMessage(`Successfully added "${newLog.originalFileName}" to log.`); setCompletionMessage(null); return true;
@@ -156,58 +154,96 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
   };
 
   const handleProcessSingleYouTubeVideoUrl = useCallback(async (url: string) => {
-    console.log('[ScanPage] handleProcessSingleYouTubeVideoUrl called with URL:', url);
-    resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage(`Sending YouTube video to local downloader...`);
-    const videoTitleMatch = url.match(/v=([^&]+)/);
-    const videoTitle = videoTitleMatch ? `Video ID: ${videoTitleMatch[1]}` : 'YouTube Video';
-    await sendToElectronDownloader(url, videoTitle);
-    onJobCreated();
-    setIsInitiatingJob(false);
-    setCurrentOperationMessage('');
-  }, [onJobCreated, electronAppError]); // Keep electronAppError in deps in case it influences subsequent logic
+    resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage(`Initiating job for YouTube video...`);
+    try {
+      const videoTitleMatch = url.match(/v=([^&]+)/);
+      const videoTitle = videoTitleMatch ? `YT Video ID: ${videoTitleMatch[1]}` : 'YouTube Video Scan';
+      const job = await scanLogService.initiateSingleYouTubeVideoJob(url, videoTitle);
+      onJobCreated(job);
+      setCurrentOperationMessage(`Job ${job.id} created. Sending to local downloader...`);
+      const electronResult = await sendToElectronDownloader('/download-and-scan', { youtubeUrl: url, videoTitle: job.jobName, jobId: job.id }, 'single YouTube video');
+      if (electronResult.success) {
+        setCompletionMessage(`Job ${job.id} for "${job.jobName}" sent to SoundTrace Downloader. Check Job Console.`);
+      } // Error handled by sendToElectronDownloader
+    } catch (err: any) { handleJobInitiationError(err, "initiate single YouTube video job"); }
+    finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
+  }, [onJobCreated, handleAuthError, sendToElectronDownloader]);
 
   const handleProcessMultipleYouTubeVideoUrls = useCallback(async (urlsString: string) => {
-    console.log('[ScanPage] handleProcessMultipleYouTubeVideoUrls called');
     resetPageMessages();
     const urls = urlsString.split('\n').map(url => url.trim()).filter(url => url.length > 0);
     if (urls.length === 0) {
-        setError("Please enter at least one YouTube video URL.");
-        return;
+      setError("No URLs provided for multiple video scan.");
+      return;
     }
+
     setIsInitiatingJob(true);
-    setCurrentOperationMessage(`Sending ${urls.length} YouTube video(s) to local downloader...`);
-    let successCount = 0;
-    for (const url of urls) {
-        try {
-            new URL(url);
-            if (!url.includes("youtube.com/watch") && !url.includes("youtu.be/")) {
-                setError(prev => `${prev ? prev + '\n' : ''}Invalid YouTube video URL skipped: ${url.substring(0,40)}...`);
-                continue;
-            }
-            const videoTitleMatch = url.match(/v=([^&]+)/);
-            const videoTitle = videoTitleMatch ? `Video ID: ${videoTitleMatch[1]}` : `YouTube Video ${successCount + 1}`;
-            const success = await sendToElectronDownloader(url, videoTitle);
-            if (success) successCount++;
-            else {
-                 if (electronAppError) break;
-            }
-        } catch (e) {
-            setError(prev => `${prev ? prev + '\n' : ''}Invalid URL format skipped: ${url.substring(0,40)}...`);
+    setCurrentOperationMessage(`Processing ${urls.length} YouTube videos...`);
+    let successfulJobs = 0;
+    let failedJobs = 0;
+
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      setCurrentOperationMessage(`Processing video ${i + 1}/${urls.length}: ${url.substring(0,50)}...`);
+      try {
+        const videoTitleMatch = url.match(/v=([^&]+)/) || url.match(/youtu.be\/([^?]+)/) ;
+        const videoId = videoTitleMatch ? videoTitleMatch[1] : null;
+        const videoTitle = videoId ? `YT Video ID: ${videoId}` : `YouTube Video Scan (${i+1})`;
+
+        const job = await scanLogService.initiateSingleYouTubeVideoJob(url, videoTitle);
+        onJobCreated(job);
+
+        const electronResult = await sendToElectronDownloader(
+          '/download-and-scan',
+          { youtubeUrl: url, videoTitle: job.jobName, jobId: job.id },
+          `video ${i + 1}/${urls.length}`
+        );
+
+        if (electronResult.success) {
+          successfulJobs++;
+        } else {
+          failedJobs++;
+          setError(prev => `${prev ? prev + '\n' : ''}Failed to send video ${url.substring(0,30)}... to downloader: ${electronResult.message}`);
         }
+      } catch (err: any) {
+        failedJobs++;
+        handleJobInitiationError(err, `process video ${url.substring(0,30)}...`);
+      }
+      if (i < urls.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
-    if (successCount > 0) {
-        setCompletionMessage(`${successCount} of ${urls.length} video(s) sent to SoundTrace Downloader.`);
-    }
-    if (successCount !== urls.length && !electronAppError) {
-        setError(prev => `${prev ? prev + '\n' : ''}Some videos could not be processed or sent. Check URLs or downloader status.`);
-    }
-    onJobCreated();
-    setIsInitiatingJob(false);
+
     setCurrentOperationMessage('');
-  }, [onJobCreated, electronAppError]);
+    setIsInitiatingJob(false);
+    if (failedJobs === 0 && successfulJobs > 0) {
+      setCompletionMessage(`Successfully initiated processing for ${successfulJobs} YouTube videos. Check Job Console.`);
+    } else if (successfulJobs > 0 && failedJobs > 0) {
+      setCompletionMessage(`Initiated ${successfulJobs} video jobs. ${failedJobs} failed. Check notifications and Job Console.`);
+    } else if (failedJobs > 0 && successfulJobs === 0) {
+      setError(prev => `${prev ? prev + '\n' : ''}Failed to initiate any YouTube video jobs from the list.`);
+    } else {
+         setError("No videos were processed from the list.");
+    }
+  }, [onJobCreated, handleAuthError, sendToElectronDownloader, handleJobInitiationError]);
+
+
+  const handleProcessYouTubeChannelUrl = useCallback(async (channelUrl: string) => {
+    resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage(`Initiating job for YouTube channel...`);
+    try {
+      const job = await scanLogService.initiateYouTubeChannelJob(channelUrl);
+      onJobCreated(job);
+      setCurrentOperationMessage(`Job ${job.id} for channel created. Sending to local downloader for video discovery...`);
+      const electronResult = await sendToElectronDownloader('/process-youtube-channel', { channelUrl, jobId: job.id }, 'YouTube channel');
+      if (electronResult.success) {
+        setCompletionMessage(`Job ${job.id} for channel "${job.jobName}" sent to SoundTrace Downloader for processing. Check Job Console.`);
+      } // Error handled by sendToElectronDownloader
+    } catch (err: any) { handleJobInitiationError(err, "initiate YouTube channel scan job"); }
+    finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
+  }, [onJobCreated, handleAuthError, sendToElectronDownloader]);
+
 
   const handleProcessSpotifyPlaylistUrl = useCallback(async (url: string) => {
-    console.log('[ScanPage] handleProcessSpotifyPlaylistUrl called with URL:', url);
     resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage("Initiating Spotify Playlist import job...");
     try { const job = await scanLogService.initiateSpotifyPlaylistJob(url); onJobCreated(job);
       setCompletionMessage(`Spotify Playlist Import Job ${job.id} for "${job.jobName}" initiated. Check Job Console for progress.`);
@@ -220,14 +256,13 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
       <div className="p-3 win95-border-outset bg-yellow-100 text-black border border-yellow-700">
         <h4 className="font-semibold text-yellow-800">YouTube Video Scanning Update!</h4>
         <p className="text-sm">
-          To scan YouTube videos, you now need the <strong className="text-yellow-900">SoundTrace Downloader</strong> desktop app.
+          To scan YouTube videos (single, multiple, or full channels), you now need the <strong className="text-yellow-900">SoundTrace Downloader</strong> desktop app.
           This app runs on your computer and handles downloads using your local browser cookies for better access.
         </p>
         <p className="text-xs mt-1">
           Please ensure the SoundTrace Downloader app is installed and running before submitting YouTube URLs.
-          {/* TODO: Replace with actual download link */}
           <a href={ELECTRON_APP_DOWNLOAD_LINK} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline ml-1">
-            Download SoundTrace Downloader (Coming Soon)
+            Download SoundTrace Downloader
           </a>
         </p>
       </div>
@@ -239,12 +274,12 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
         currentUploadingFile={currentUploadingFile}
         currentUploadingProgress={currentUploadingProgress}
       />
-      {/* MyYouTubeVideos component removed */}
       <UrlInputForms
         onProcessMultipleVideoUrls={handleProcessMultipleYouTubeVideoUrls}
         onProcessSingleYouTubeVideoUrl={handleProcessSingleYouTubeVideoUrl}
         onProcessSpotifyPlaylistUrl={handleProcessSpotifyPlaylistUrl}
-        isLoading={isInitiatingJob && !currentUploadingFile} // Only disable URL forms if not in file upload specific loading
+        onProcessYouTubeChannelUrl={handleProcessYouTubeChannelUrl} // Pass new handler
+        isLoading={isInitiatingJob && !currentUploadingFile}
       />
       <ManualSpotifyAddForm onAddTrack={handleManualAdd} />
 
@@ -256,15 +291,22 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
 
       {electronAppError && (
            <div className="mt-2 p-2 win95-border-outset bg-red-200 text-black border border-red-700">
-                <p className="font-semibold">Downloader Connection Issue:</p>
-                <p>{electronAppError}</p>
+                <p className="font-semibold">Downloader Communication Issue:</p>
+                <p className="whitespace-pre-line">{electronAppError}</p>
                 <p className="text-xs mt-1">
                     Please ensure the SoundTrace Downloader desktop app is installed and running on your computer.
                     If it is running, try restarting it.
-                    You can download it from <a href={ELECTRON_APP_DOWNLOAD_LINK} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">here (Coming Soon)</a>.
+                    You can download it from <a href={ELECTRON_APP_DOWNLOAD_LINK} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">here</a>.
                 </p>
             </div>
       )}
+       {electronAppInfo && !electronAppError && (
+            <div className="mt-2 p-2 win95-border-outset bg-blue-100 text-black border border-blue-700">
+                <p className="font-semibold">Downloader Info:</p>
+                <p>{electronAppInfo}</p>
+            </div>
+        )}
+
 
       <ScanMessages
         isLoading={false}

@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   username: string;
@@ -26,52 +27,51 @@ export interface AcrCloudMatch {
 }
 
 export interface SnippetScanResult {
-  scanId: string; 
-  instrumentalName: string; 
-  instrumentalSize: number; 
-  scanDate: string; 
+  scanId: string;
+  instrumentalName: string;
+  instrumentalSize: number;
+  scanDate: string;
   matches: AcrCloudMatch[];
-  errorMessage?: string; 
+  errorMessage?: string;
 }
 
 export type PlatformSource =
-  | 'file_upload_batch_item' 
+  | 'file_upload_batch_item'
   | 'spotify_playlist_import_item'
-  | 'electron_youtube_item'; 
+  | 'electron_youtube_item';
 
 export type TrackScanLogStatus =
-  | 'pending_processing'   
-  | 'processing_acr_scan'   
-  | 'completed_match_found' 
-  | 'completed_no_match'    
-  | 'error_acr_scan'        
+  | 'pending_processing'
+  | 'processing_acr_scan'
+  | 'completed_match_found'
+  | 'completed_no_match'
+  | 'error_acr_scan'
   | 'error_acr_credits_item'
-  | 'pending_scan'          
-  | 'processing_scan'       
-  | 'scanned_match_found'   
-  | 'scanned_no_match'      
-  // Old YouTube/FFmpeg errors are less relevant now
-  | 'error_youtube_dl' 
-  | 'error_ffmpeg'          
+  | 'pending_scan'
+  | 'processing_scan'
+  | 'scanned_match_found'
+  | 'scanned_no_match'
+  | 'error_youtube_dl'
+  | 'error_ffmpeg'
   | 'skipped_previously_scanned'
-  | 'imported_spotify_track' 
-  | 'aborted_item'           
-  | 'error_processing_item';  
+  | 'imported_spotify_track'
+  | 'aborted_item'
+  | 'error_processing_item';
 
 export interface TrackScanLog {
   logId: string;
-  scanJobId: string; 
+  scanJobId: string;
   originalFileName: string;
   originalFileSize: number;
-  scanDate: string; 
+  scanDate: string;
   matches: AcrCloudMatch[];
   status: TrackScanLogStatus;
   platformSource: PlatformSource;
-  youtubeVideoId?: string; 
-  youtubeVideoTitle?: string; 
-  sourceUrl?: string; 
-  acrResponseDetails?: string; 
-  lastAttemptedAt?: string; 
+  youtubeVideoId?: string;
+  youtubeVideoTitle?: string;
+  sourceUrl?: string;
+  acrResponseDetails?: string;
+  lastAttemptedAt?: string;
 }
 
 export interface SpotifyFollowerSuccess { status: 'success'; artistId: string; followers: number | undefined; popularity?: number; genres?: string[]; }
@@ -100,23 +100,28 @@ export interface FollowerSnapshot { date: string; cumulativeFollowers: number; }
 export type JobType =
   | 'file_upload_batch'
   | 'spotify_playlist_import'
-  | 'electron_youtube_scan'; 
+  | 'electron_youtube_scan' // Generic for Electron-based YT scans if differentiation isn't critical at top level
+  | 'youtube_single_video_electron' // Specific job for a single YT video processed by Electron
+  | 'youtube_channel_electron_orchestrated'; // Job for a whole YT channel, orchestrated via Electron
 
 export type JobStatus =
-  | 'pending_setup'        
-  | 'pending_upload'       
-  | 'uploading_files'      
+  | 'pending_setup'
+  | 'pending_upload'
+  | 'uploading_files'
   | 'queued_for_processing'
-  | 'in_progress_fetching' 
+  | 'in_progress_fetching'
   | 'in_progress_processing'
-  | 'completed'              
-  | 'completed_with_errors'  
-  | 'failed_acr_credits'   
-  | 'failed_youtube_api'   
-  | 'failed_setup'         
-  | 'failed_upload_incomplete' 
-  | 'failed_other'           
-  | 'aborted';                 
+  | 'waiting_for_electron' // New status: Job created on backend, waiting for Electron to pick it up/be triggered
+  | 'processing_by_electron' // New status: Electron has acknowledged/started the job
+  | 'completed'
+  | 'completed_with_errors'
+  | 'failed_acr_credits'
+  | 'failed_youtube_api' // Can be used if Electron reports channel fetch error or yt-dlp error
+  | 'failed_electron_communication' // New status for issues talking to the local Electron app
+  | 'failed_setup'
+  | 'failed_upload_incomplete'
+  | 'failed_other'
+  | 'aborted';
 
 export interface JobFileState {
     originalFileName: string;
@@ -124,50 +129,47 @@ export interface JobFileState {
     status: 'pending' | 'uploading' | 'uploaded' | 'processing' | 'completed_match' | 'completed_no_match' | 'error_upload' | 'error_processing' | 'error_acr_credits_item';
     errorMessage?: string;
     uploadedBytes?: number;
-    matches?: string[]; 
+    matches?: string[];
 }
 
 export interface ScanJob {
-  id: string; 
+  id: string;
   jobName: string;
   jobType: JobType;
   status: JobStatus;
-  originalInputUrl?: string; 
+  originalInputUrl?: string;
 
-  totalItems: number;        
-  itemsProcessed: number;    
-  itemsWithMatches: number;  
-  itemsFailed: number;       
+  totalItems: number;
+  itemsProcessed: number;
+  itemsWithMatches: number;
+  itemsFailed: number;
 
-  files?: JobFileState[]; 
+  files?: JobFileState[];
 
-  lastErrorMessage?: string; 
+  lastErrorMessage?: string;
   lastProcessedItemInfo?: {
-    itemName?: string;       
-    status?: TrackScanLogStatus | JobFileState['status']; 
+    itemName?: string;
+    status?: TrackScanLogStatus | JobFileState['status'];
   };
 
-  createdAt: string; 
-  updatedAt: string; 
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface JobCreationResponse extends ScanJob {} 
-export interface AllJobsResponse { jobs: ScanJob[]; }    
-export interface SingleJobResponse extends ScanJob {}   
+export interface JobCreationResponse extends ScanJob {}
+export interface AllJobsResponse { jobs: ScanJob[]; }
+export interface SingleJobResponse extends ScanJob {}
 export interface FileUploadResponse {
   message: string;
   fileState: JobFileState;
-  jobUpdate?: ScanJob; 
+  jobUpdate?: ScanJob;
 }
 
-// GoogleUserProfile now only contains general Google profile info.
-// YouTube specific channel details are removed as they are no longer managed/displayed by the frontend this way.
 export interface GoogleUserProfile {
   googleId?: string;
   googleEmail?: string;
   googleDisplayName?: string;
   googleAvatarUrl?: string;
-  // primaryYouTubeChannelId, primaryYouTubeChannelTitle, primaryYouTubeChannelThumbnailUrl removed
 }
 
 export interface GoogleAuthContextType {

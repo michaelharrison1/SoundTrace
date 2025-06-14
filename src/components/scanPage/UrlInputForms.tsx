@@ -6,6 +6,7 @@ interface UrlInputFormsProps {
   onProcessMultipleVideoUrls: (urlsString: string) => void;
   onProcessSpotifyPlaylistUrl: (url: string) => void;
   onProcessSingleYouTubeVideoUrl: (url: string) => void;
+  onProcessYouTubeChannelUrl: (url: string) => void; // New prop for channel URL
   isLoading: boolean;
 }
 
@@ -13,19 +14,21 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
   onProcessMultipleVideoUrls,
   onProcessSpotifyPlaylistUrl,
   onProcessSingleYouTubeVideoUrl,
+  onProcessYouTubeChannelUrl, // New prop
   isLoading,
 }) => {
   const [multipleYoutubeVideoUrls, setMultipleYoutubeVideoUrls] = useState('');
   const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState('');
   const [singleYoutubeVideoUrl, setSingleYoutubeVideoUrl] = useState('');
+  const [youtubeChannelUrl, setYoutubeChannelUrl] = useState(''); // New state for channel URL
 
   const [multipleYoutubeError, setMultipleYoutubeError] = useState<string | null>(null);
   const [spotifyPlaylistError, setSpotifyPlaylistError] = useState<string | null>(null);
   const [singleYoutubeVideoError, setSingleYoutubeVideoError] = useState<string | null>(null);
+  const [youtubeChannelError, setYoutubeChannelError] = useState<string | null>(null); // New error state
 
   const handleMultipleYouTubeVideoSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log('[UrlInputForms] handleMultipleYouTubeVideoSubmit called with URLs:', multipleYoutubeVideoUrls);
     setMultipleYoutubeError(null);
     const urls = multipleYoutubeVideoUrls.split('\n').map(url => url.trim()).filter(url => url.length > 0);
     if (urls.length === 0) {
@@ -49,7 +52,6 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
 
   const handleSingleYouTubeVideoSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log('[UrlInputForms] handleSingleYouTubeVideoSubmit called with URL:', singleYoutubeVideoUrl);
     setSingleYoutubeVideoError(null);
     if (!singleYoutubeVideoUrl.trim()) {
       setSingleYoutubeVideoError("Please enter a YouTube video URL.");
@@ -69,7 +71,6 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
 
   const handleSpotifyPlaylistSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log('[UrlInputForms] handleSpotifyPlaylistSubmit called with URL:', spotifyPlaylistUrl);
     setSpotifyPlaylistError(null);
     if (!spotifyPlaylistUrl.trim()) {
       setSpotifyPlaylistError("Please enter a Spotify Playlist URL.");
@@ -87,8 +88,56 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
     onProcessSpotifyPlaylistUrl(spotifyPlaylistUrl);
   }, [spotifyPlaylistUrl, onProcessSpotifyPlaylistUrl]);
 
+  const handleYouTubeChannelSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => { // New handler
+    event.preventDefault();
+    setYoutubeChannelError(null);
+    if (!youtubeChannelUrl.trim()) {
+      setYoutubeChannelError("Please enter a YouTube Channel URL.");
+      return;
+    }
+    try {
+      const parsedUrl = new URL(youtubeChannelUrl);
+      if (!parsedUrl.hostname.includes("youtube.com") || (!parsedUrl.pathname.startsWith("/@") && !parsedUrl.pathname.startsWith("/channel/") && !parsedUrl.pathname.startsWith("/user/"))) {
+        throw new Error("Invalid YouTube Channel URL format. Must be like https://www.youtube.com/@ChannelName or /channel/ID or /user/LegacyName");
+      }
+    } catch (e: any) {
+      setYoutubeChannelError(e.message || "Invalid YouTube Channel URL format.");
+      return;
+    }
+    onProcessYouTubeChannelUrl(youtubeChannelUrl);
+  }, [youtubeChannelUrl, onProcessYouTubeChannelUrl]);
+
   return (
     <div className="space-y-3">
+      {/* Scan YouTube Channel URL */}
+      <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
+        <div className="p-3 bg-[#C0C0C0]">
+          <h3 className="text-lg font-normal text-black mb-2">Scan Entire YouTube Channel</h3>
+          <form onSubmit={handleYouTubeChannelSubmit} className="space-y-2">
+            <div>
+              <label htmlFor="youtubeChannelUrl" className="block text-sm text-black mb-0.5">YouTube Channel URL:</label>
+              <input
+                id="youtubeChannelUrl"
+                type="url"
+                value={youtubeChannelUrl}
+                onChange={(e) => { setYoutubeChannelUrl(e.target.value); setYoutubeChannelError(null); }}
+                placeholder="e.g., https://www.youtube.com/@ChannelHandle"
+                className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+                disabled={isLoading}
+                aria-label="YouTube Channel URL"
+              />
+            </div>
+            {youtubeChannelError && <p className="text-xs text-red-700 mt-1">{youtubeChannelError}</p>}
+            <Button type="submit" size="md" isLoading={isLoading} disabled={isLoading || !youtubeChannelUrl.trim()}>
+              {isLoading ? 'Initiating Channel Scan Job...' : 'Initiate Channel Scan Job'}
+            </Button>
+          </form>
+          <p className="text-xs text-gray-700 mt-1">
+            Scans all public videos from a YouTube channel. <strong className="text-black">Requires the SoundTrace Downloader desktop app to be running.</strong> This may take a long time for large channels.
+          </p>
+        </div>
+      </section>
+
       {/* Scan Multiple YouTube Video URLs */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">
