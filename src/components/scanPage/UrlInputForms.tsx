@@ -1,8 +1,9 @@
+
 import React, { useState, useCallback } from 'react';
 import Button from '../common/Button';
 
 interface UrlInputFormsProps {
-  onProcessMultipleVideoUrls: (urlsString: string) => void; 
+  onProcessMultipleVideoUrls: (urlsString: string) => void;
   onProcessSpotifyPlaylistUrl: (url: string) => void;
   onProcessSingleYouTubeVideoUrl: (url: string) => void;
   isLoading: boolean;
@@ -24,6 +25,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
 
   const handleMultipleYouTubeVideoSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    console.log('[UrlInputForms] handleMultipleYouTubeVideoSubmit called with URLs:', multipleYoutubeVideoUrls);
     setMultipleYoutubeError(null);
     const urls = multipleYoutubeVideoUrls.split('\n').map(url => url.trim()).filter(url => url.length > 0);
     if (urls.length === 0) {
@@ -32,7 +34,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
     }
     for (const url of urls) {
         try {
-            new URL(url); 
+            new URL(url);
             if (!url.includes("youtube.com/watch") && !url.includes("youtu.be/")) {
                  setMultipleYoutubeError(`Invalid YouTube video URL found: "${url.substring(0,30)}...". Please ensure all are direct video links.`);
                  return;
@@ -42,11 +44,12 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
             return;
         }
     }
-    onProcessMultipleVideoUrls(multipleYoutubeVideoUrls); 
+    onProcessMultipleVideoUrls(multipleYoutubeVideoUrls);
   }, [multipleYoutubeVideoUrls, onProcessMultipleVideoUrls]);
 
   const handleSingleYouTubeVideoSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    console.log('[UrlInputForms] handleSingleYouTubeVideoSubmit called with URL:', singleYoutubeVideoUrl);
     setSingleYoutubeVideoError(null);
     if (!singleYoutubeVideoUrl.trim()) {
       setSingleYoutubeVideoError("Please enter a YouTube video URL.");
@@ -66,6 +69,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
 
   const handleSpotifyPlaylistSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    console.log('[UrlInputForms] handleSpotifyPlaylistSubmit called with URL:', spotifyPlaylistUrl);
     setSpotifyPlaylistError(null);
     if (!spotifyPlaylistUrl.trim()) {
       setSpotifyPlaylistError("Please enter a Spotify Playlist URL.");
