@@ -6,7 +6,7 @@ import ArtistFollowers from './ArtistFollowers';
 import CollaborationRadarGraph from './CollaborationRadarGraph';
 import Button from './Button';
 import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
-import TimeBasedAnalyticsGraph from './reachAnalyzer/TimeBasedAnalyticsGraph'; // Renamed import
+import TimeBasedAnalyticsGraph from './reachAnalyzer/TimeBasedAnalyticsGraph'; // Correct import
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';

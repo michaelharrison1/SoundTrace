@@ -1,17 +1,17 @@
 import React from 'react';
 import ProgressBar from '../ProgressBar';
 import Button from '../Button';
-import { DailyAnalyticsSnapshot } from '../../../types'; // Using the combined type
-import { formatFollowersDisplay } from './reachAnalyzerUtils'; // Keep using this for follower-like formatting
+import { DailyAnalyticsSnapshot } from '../../../types'; // Adjusted path
+import { formatFollowersDisplay } from './reachAnalyzerUtils';
 
 interface TimeBasedAnalyticsGraphProps {
-  data: DailyAnalyticsSnapshot[]; // Expects data with date and either followers or streams
-  dataKey: 'cumulativeFollowers' | 'cumulativeStreams'; // Key to plot on Y-axis
+  data: DailyAnalyticsSnapshot[];
+  dataKey: 'cumulativeFollowers' | 'cumulativeStreams';
   isLoading: boolean;
   onDeleteHistory: () => Promise<void>;
   graphColor: string;
-  valueLabel: string; // e.g., "Followers" or "Streams"
-  title: string; // e.g., "Time-Based Follower Reach" or "Time-Based Stream Volume"
+  valueLabel: string;
+  title: string;
   description: string;
 }
 
@@ -25,7 +25,7 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
   title,
   description,
 }) => {
-  const dataToDisplay = data.slice(-60); // Show last 60 data points
+  const dataToDisplay = data.slice(-60);
 
   if (isLoading && dataToDisplay.length === 0) {
     return <div className="my-4"><ProgressBar text={`Loading ${valueLabel.toLowerCase()} data...`} /></div>;
@@ -34,14 +34,14 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
     return <p className="text-center text-gray-600 mt-4">No historical {valueLabel.toLowerCase()} data available to display graph.</p>;
   }
 
-  const relevantData = dataToDisplay.map(d => d[dataKey] || 0); // Use dataKey, default to 0 if undefined
-  const maxValueInPeriod = Math.max(...relevantData, 1); // Ensure at least 1 to avoid division by zero
+  const relevantData = dataToDisplay.map(d => d[dataKey] || 0);
+  const maxValueInPeriod = Math.max(...relevantData, 1);
 
   const yAxisTicks = [];
   const numYTicks = 4;
   for (let i = 0; i <= numYTicks; i++) {
     const value = Math.round((maxValueInPeriod / numYTicks) * i);
-    yAxisTicks.push({ value, label: formatFollowersDisplay(value) }); // Using follower formatter for now
+    yAxisTicks.push({ value, label: formatFollowersDisplay(value) });
   }
 
   const xAxisTicks = [];
@@ -52,11 +52,12 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
   }
   const formattedXAxisTicks = xAxisTicks.map(dateStr => new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
 
-  const barContainerWidth = 100;
+  const barContainerWidth = 100; // percentage
   const numberOfBars = dataToDisplay.length;
-  const gapBetweenBars = 0.2; // Percentage gap
+  const gapBetweenBars = 0.2; // Percentage gap based on barContainerWidth
   const totalGapSpace = (numberOfBars - 1) * gapBetweenBars;
   const barWidthPercentage = numberOfBars > 0 ? (barContainerWidth - totalGapSpace) / numberOfBars : 0;
+
 
   return (
     <div className="mt-4">
@@ -68,6 +69,7 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
             size="sm"
             className="!text-xs !px-1 !py-0 ml-2 win95-button-sm !bg-red-200 hover:!bg-red-300 !border-red-500 !shadow-[0.5px_0.5px_0px_#800000]"
             title={`Delete all ${valueLabel.toLowerCase()} history data. This action cannot be undone.`}
+            disabled={isLoading}
           >
             Delete History
           </Button>
@@ -82,7 +84,7 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
           <div className="win95-border-inset bg-gray-700 p-2 h-48 flex-grow flex items-end overflow-x-auto" style={{gap: `${gapBetweenBars}%`}}>
             {dataToDisplay.map((snapshot) => {
               const value = snapshot[dataKey] || 0;
-              const barHeight = maxValueInPeriod > 0 ? (value / maxValueInPeriod) * 95 : 0; // Cap at 95% height for visual appeal
+              const barHeight = maxValueInPeriod > 0 ? (value / maxValueInPeriod) * 95 : 0;
               const formattedDate = new Date(snapshot.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
               return (
                 <div
@@ -90,8 +92,8 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
                   className="flex-shrink-0 win95-border-outset hover:opacity-80 relative group"
                   style={{
                     width: `${barWidthPercentage}%`,
-                    height: `${Math.max(2, barHeight)}%`, // Min height of 2% for visibility
-                    minWidth: '15px', // Ensure very small bars are still clickable
+                    height: `${Math.max(2, barHeight)}%`,
+                    minWidth: '15px',
                     backgroundColor: graphColor,
                     boxShadow: `0 0 2px ${graphColor}`
                   }}
@@ -106,7 +108,6 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
           </div>
         </div>
         <div className="flex justify-between pl-[34px] text-xs text-black mt-1 pr-1">
-          {/* Display up to 3 X-axis ticks: start, middle, end */}
           {formattedXAxisTicks.map((label, index) => <span key={index}>{label}</span>)}
         </div>
       </div>
