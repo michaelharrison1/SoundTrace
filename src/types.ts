@@ -1,5 +1,6 @@
 
 
+
 export interface User {
   id: string;
   username: string;
@@ -16,15 +17,17 @@ export interface AcrCloudMatch {
     youtube?: string;
     appleMusic?: string;
   };
-  streamCounts?: {
-    spotify?: number;
-    youtube?: number;
-  };
   matchConfidence: number;
   spotifyArtistId?: string;
   spotifyTrackId?: string;
   youtubeVideoId?: string;
   youtubeVideoTitle?: string;
+  // StreamClout data
+  streamCount?: number;
+  streamCountTimestamp?: string; // ISO Date string from backend
+  coverArtUrl?: string;
+  streamCloutAlbumId?: string; // For debugging or direct linking
+  streamCloutTrackId?: string; // For debugging or direct linking
 }
 
 export interface SnippetScanResult {
@@ -96,14 +99,20 @@ export interface SpotifyPlayerContextType {
 }
 
 export interface SpotifyPlaylist { id: string; name: string; external_urls: { spotify: string; }; }
-export interface FollowerSnapshot { date: string; cumulativeFollowers: number; }
+
+// Renamed and updated for combined analytics
+export interface DailyAnalyticsSnapshot {
+  date: string; // YYYY-MM-DD
+  cumulativeFollowers: number;
+  cumulativeStreams?: number; // Optional for backward compatibility if some old data doesn't have it
+}
 
 export type JobType =
   | 'file_upload_batch'
   | 'spotify_playlist_import'
-  | 'youtube_single_video_electron' // Specific job for a single YT video processed by Electron
-  | 'youtube_channel_electron_orchestrated' // Job for a whole YT channel, orchestrated via Electron
-  | 'youtube_playlist_electron_orchestrated'; // Job for a whole YT playlist, orchestrated via Electron
+  | 'youtube_single_video_electron' 
+  | 'youtube_channel_electron_orchestrated' 
+  | 'youtube_playlist_electron_orchestrated'; 
 
 export type JobStatus =
   | 'pending_setup'
@@ -112,13 +121,13 @@ export type JobStatus =
   | 'queued_for_processing'
   | 'in_progress_fetching'
   | 'in_progress_processing'
-  | 'waiting_for_electron' // New status: Job created on backend, waiting for Electron to pick it up/be triggered
-  | 'processing_by_electron' // New status: Electron has acknowledged/started the job
+  | 'waiting_for_electron' 
+  | 'processing_by_electron' 
   | 'completed'
   | 'completed_with_errors'
   | 'failed_acr_credits'
-  | 'failed_youtube_api' // Can be used if Electron reports channel fetch error or yt-dlp error
-  | 'failed_electron_communication' // New status for issues talking to the local Electron app
+  | 'failed_youtube_api' 
+  | 'failed_electron_communication' 
   | 'failed_setup'
   | 'failed_upload_incomplete'
   | 'failed_other'

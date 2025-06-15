@@ -1,28 +1,29 @@
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import ProgressBar from './ProgressBar';
-import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, FollowerSnapshot } from '../../types';
+import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot } from '../../types'; // Updated import
 import ArtistFollowers from './ArtistFollowers';
 import CollaborationRadarGraph from './CollaborationRadarGraph';
 import Button from './Button';
 import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
-import TimeBasedReachGraph from './reachAnalyzer/TimeBasedReachGraph';
+import TimeBasedAnalyticsGraph from './reachAnalyzer/TimeBasedAnalyticsGraph'; // Renamed import
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
-import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig } from './reachAnalyzer/reachAnalyzerUtils';
+import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
 
 
 interface ReachAnalyzerProps {
   totalFollowers: number | null | undefined;
+  totalStreams: number | null | undefined; // New prop for total streams
   isLoading: boolean;
   error?: string | null;
   scanLogs: TrackScanLog[];
   followerResults: Map<string, SpotifyFollowerResult>;
-  historicalFollowerData: FollowerSnapshot[];
-  onDeleteFollowerHistory: () => Promise<void>;
+  historicalAnalyticsData: DailyAnalyticsSnapshot[]; // Updated prop name
+  onDeleteAnalyticsHistory: () => Promise<void>; // Updated prop name
 }
 
-export type MonitorTab = 'reach' | 'artistStats' | 'beatStats' | 'collaborationRadar';
+export type MonitorTab = 'reach' | 'streamStats' | 'artistStats' | 'beatStats' | 'collaborationRadar'; // Added 'streamStats'
 export type ArtistSortableColumn = 'artistName' | 'matchedTracksCount' | 'spotifyFollowers' | 'mostRecentMatchDate' | 'spotifyPopularity';
 export type BeatSortableColumn = 'beatName' | 'totalMatches';
 export type SortDirection = 'asc' | 'desc';
@@ -57,12 +58,13 @@ const FakeWindowIcon: React.FC = React.memo(() => (
 
 const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   totalFollowers,
-  isLoading: isLoadingTotalFollowers,
-  error: totalFollowersError,
+  totalStreams, // New prop
+  isLoading: isLoadingOverall, // Renamed for clarity
+  error: overallError, // Renamed
   scanLogs,
   followerResults,
-  historicalFollowerData,
-  onDeleteFollowerHistory
+  historicalAnalyticsData,
+  onDeleteAnalyticsHistory
 }) => {
   const [activeMonitorTab, setActiveMonitorTab] = useState<MonitorTab>('reach');
   const [lineProgress, setLineProgress] = useState(0);
@@ -105,6 +107,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, [levelUpAvailable, currentLevel, totalFollowers]);
 
   const activeBarAndLineColor = useMemo(() => getActiveLevelHexColor(currentLevel), [currentLevel]);
+  const streamGraphColor = '#1D9BF0'; // Example color for stream graph
 
   const animateLineCallback = useCallback((timestamp: number) => {
     if (animationStartTime.current === 0) animationStartTime.current = timestamp;
@@ -116,7 +119,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, []);
 
   useEffect(() => {
-    const shouldAnimate = activeMonitorTab === 'reach' && !isLoadingTotalFollowers && !totalFollowersError && (totalFollowers ?? 0) > 0 && !levelUpAvailable && !isLevelingUp;
+    const shouldAnimate = activeMonitorTab === 'reach' && !isLoadingOverall && !overallError && (totalFollowers ?? 0) > 0 && !levelUpAvailable && !isLevelingUp;
     if (shouldAnimate) {
       if (!animationFrameId.current) {
         animationStartTime.current = performance.now() - (lineProgress * LINE_ANIMATION_DURATION_MS);
@@ -124,12 +127,12 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
       }
     } else {
       if (animationFrameId.current) { cancelAnimationFrame(animationFrameId.current); animationFrameId.current = null; }
-      if (activeMonitorTab === 'reach' && (isLoadingTotalFollowers || totalFollowersError || (totalFollowers ?? 0) <= 0 || levelUpAvailable || isLevelingUp)) {
+      if (activeMonitorTab === 'reach' && (isLoadingOverall || overallError || (totalFollowers ?? 0) <= 0 || levelUpAvailable || isLevelingUp)) {
          setLineProgress(0);
       }
     }
     return () => { if (animationFrameId.current) { cancelAnimationFrame(animationFrameId.current); animationFrameId.current = null; }};
-  }, [activeMonitorTab, isLoadingTotalFollowers, totalFollowersError, totalFollowers, animateLineCallback, lineProgress, levelUpAvailable, isLevelingUp]);
+  }, [activeMonitorTab, isLoadingOverall, overallError, totalFollowers, animateLineCallback, lineProgress, levelUpAvailable, isLevelingUp]);
 
 
   const [artistSortColumn, setArtistSortColumn] = useState<ArtistSortableColumn>('matchedTracksCount');
@@ -182,14 +185,18 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
 
   const renderTabContent = () => {
-    if (isLoadingTotalFollowers && activeMonitorTab !== 'collaborationRadar' && activeMonitorTab !== 'beatStats' && aggregatedArtistData.length === 0) {
+    if (isLoadingOverall && activeMonitorTab !== 'collaborationRadar' && activeMonitorTab !== 'beatStats' && aggregatedArtistData.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center flex-grow py-4">
-                <ProgressBar text={`Loading ${activeMonitorTab === 'reach' ? 'reach data' : 'artist statistics'}...`} />
+                <ProgressBar text={`Loading ${activeMonitorTab === 'reach' ? 'reach data' : (activeMonitorTab === 'streamStats' ? 'stream data' : 'artist statistics')}...`} />
                 <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
             </div>
         );
     }
+     if (overallError && (activeMonitorTab === 'reach' || activeMonitorTab === 'streamStats' || activeMonitorTab === 'artistStats')) {
+        return <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center flex-grow"><p>Error loading data: {overallError}</p></div>;
+    }
+
 
     switch (activeMonitorTab) {
       case 'reach':
@@ -197,8 +204,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
           <>
             <TotalReachDisplay
               totalFollowers={totalFollowers}
-              isLoading={isLoadingTotalFollowers}
-              error={totalFollowersError}
+              isLoading={isLoadingOverall}
+              error={overallError}
               currentLevel={currentLevel}
               levelUpAvailable={levelUpAvailable}
               isLevelingUp={isLevelingUp}
@@ -207,11 +214,43 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               activeBarAndLineColor={activeBarAndLineColor}
               lineProgress={lineProgress}
             />
-            <TimeBasedReachGraph
-              historicalFollowerData={historicalFollowerData}
-              isLoadingHistory={isLoadingTotalFollowers && historicalFollowerData.length === 0}
-              onDeleteFollowerHistory={onDeleteFollowerHistory}
-              activeBarAndLineColor={activeBarAndLineColor}
+            <TimeBasedAnalyticsGraph
+              data={historicalAnalyticsData}
+              dataKey="cumulativeFollowers"
+              isLoading={isLoadingOverall && historicalAnalyticsData.length === 0}
+              onDeleteHistory={onDeleteAnalyticsHistory}
+              graphColor={activeBarAndLineColor}
+              valueLabel="Followers"
+              title="Time-Based Follower Reach"
+              description="Track follower growth over time."
+            />
+          </>
+        );
+       case 'streamStats':
+        return (
+          <>
+            <div className="text-center mb-3">
+              <h4 className="text-base font-semibold text-black mb-0">Total Estimated StreamClout Streams</h4>
+              <p className="text-xs text-gray-600">Sum of all stream counts from matched tracks via StreamClout.</p>
+              {isLoadingOverall && typeof totalStreams === 'undefined' ? (
+                <ProgressBar text="Calculating total streams..." />
+              ) : overallError ? (
+                 <p className="text-2xl text-red-700 font-bold my-2">Error loading stream data</p>
+              ) : (
+                <p className="text-3xl text-black font-bold my-2">
+                  {formatFollowersDisplay(totalStreams, isLoadingOverall && typeof totalStreams === 'undefined')} streams
+                </p>
+              )}
+            </div>
+            <TimeBasedAnalyticsGraph
+              data={historicalAnalyticsData}
+              dataKey="cumulativeStreams"
+              isLoading={isLoadingOverall && historicalAnalyticsData.length === 0}
+              onDeleteHistory={onDeleteAnalyticsHistory}
+              graphColor={streamGraphColor}
+              valueLabel="Streams"
+              title="Time-Based Stream Volume"
+              description="Track stream volume growth over time from StreamClout data."
             />
           </>
         );
@@ -219,7 +258,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         return (
           <ArtistStatsTable
             aggregatedArtistData={aggregatedArtistData}
-            isLoading={isLoadingTotalFollowers && aggregatedArtistData.length === 0}
+            isLoading={isLoadingOverall && aggregatedArtistData.length === 0}
             currentArtistLevel={currentArtistLevel}
             sortColumn={artistSortColumn}
             sortDirection={artistSortDirection}
@@ -228,9 +267,11 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
           />
         );
       case 'beatStats':
-        // Beat stats don't directly depend on isLoadingTotalFollowers, so they show if data is present.
-        if (aggregatedBeatData.length === 0 && scanLogs.length > 0) {
+        if (aggregatedBeatData.length === 0 && scanLogs.length > 0 && !isLoadingOverall) {
             return <p className="text-center text-gray-700 py-8">No beat data available from current scans.</p>;
+        }
+         if (isLoadingOverall && aggregatedBeatData.length === 0) {
+            return <div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Loading beat statistics..." /></div>;
         }
         return (
           <BeatStatsTable
@@ -248,6 +289,15 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
     }
   };
 
+  const monitorTabs: {id: MonitorTab, label: string}[] = [
+    { id: 'reach', label: 'Total Reach' },
+    { id: 'streamStats', label: 'Stream Stats' },
+    { id: 'artistStats', label: 'Artist Stats' },
+    { id: 'beatStats', label: 'Beat Matches' },
+    { id: 'collaborationRadar', label: 'Collab Radar'}
+  ];
+
+
   return (
     <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black">
       <div className="title-bar flex items-center justify-between bg-[#000080] text-white px-1 py-0.5 h-6 select-none">
@@ -264,20 +314,17 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         ))}
       </div>
       <div className="tabs-container flex pl-1 pt-1 bg-[#C0C0C0] select-none">
-        {(['reach', 'artistStats', 'beatStats', 'collaborationRadar'] as MonitorTab[]).map(tab => (
+        {monitorTabs.map(tab => (
             <div
-              key={tab}
-              className={`tab px-3 py-1 text-sm cursor-default hover:bg-black hover:text-white ${activeMonitorTab === tab ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10 bg-[#C0C0C0]' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5 bg-gray-300'}`}
-              onClick={() => setActiveMonitorTab(tab)}
+              key={tab.id}
+              className={`tab px-3 py-1 text-sm cursor-default hover:bg-black hover:text-white ${activeMonitorTab === tab.id ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10 bg-[#C0C0C0]' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5 bg-gray-300'}`}
+              onClick={() => setActiveMonitorTab(tab.id)}
               role="tab"
-              aria-selected={activeMonitorTab === tab}
+              aria-selected={activeMonitorTab === tab.id}
               tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveMonitorTab(tab);}}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveMonitorTab(tab.id);}}
             >
-              {tab === 'reach' && 'Total Reach'}
-              {tab === 'artistStats' && 'Artist Stats'}
-              {tab === 'beatStats' && 'Beat Matches'}
-              {tab === 'collaborationRadar' && 'Collaboration Radar'}
+              {tab.label}
             </div>
         ))}
       </div>

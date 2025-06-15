@@ -20,6 +20,7 @@ const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
   // Extract the primary Spotify artist ID if available
   const spotifyArtistId = track.external_metadata?.spotify?.artists?.[0]?.id;
   const spotifyTrackId = track.external_metadata?.spotify?.track?.id; // Extract Spotify track ID
+  const spotifyAlbumId = track.external_metadata?.spotify?.track?.album?.id; // Extract Spotify album ID
 
   return {
     id: track.acrid,
@@ -30,6 +31,9 @@ const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
     matchConfidence: track.score || 0,
     spotifyArtistId: spotifyArtistId,
     spotifyTrackId: spotifyTrackId, // Include the extracted track ID
+    // StreamClout related fields like streamCount, coverArtUrl are now populated by the backend.
+    // This frontend API just passes what ACRCloud provides.
+    // The internalSpotifyAlbumId is not needed here as this API's purpose is not enrichment.
     platformLinks: {
       spotify: spotifyTrackId
         ? `https://open.spotify.com/track/${spotifyTrackId}`
@@ -37,10 +41,6 @@ const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
       youtube: track.external_metadata?.youtube?.vid
         ? `https://www.youtube.com/watch?v=${track.external_metadata.youtube.vid}`
         : undefined,
-    },
-    streamCounts: { // These would typically come from another API, not directly from ACRCloud
-      spotify: undefined, // Placeholder
-      youtube: undefined, // Placeholder
     },
   };
 };
@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ message: 'No audio file uploaded.' });
     }
 
-    console.log(`Received file: ${audioFile.originalFilename}, type: ${audioFile.mimetype}, size: ${audioFile.size}`);
+    // console.log(`Received file: ${audioFile.originalFilename}, type: ${audioFile.mimetype}, size: ${audioFile.size}`);
 
 
     if (audioFile.size > MAX_FILE_SIZE_BYTES) {
@@ -125,7 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (acrResult.status?.code === 0) { // Success
       const matches: AcrCloudMatch[] = acrResult.metadata?.music?.map(mapToAcrCloudMatch) || [];
-      const scanResult: SnippetScanResult = { // Changed to SnippetScanResult
+      const scanResult: SnippetScanResult = { 
         scanId: `acrscan-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         instrumentalName: audioFile.originalFilename || 'Uploaded File',
         instrumentalSize: audioFile.size,
@@ -134,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
       return res.status(200).json(scanResult);
     } else if (acrResult.status?.code === 1001) { // No result
-        const scanResult: SnippetScanResult = { // Changed to SnippetScanResult
+        const scanResult: SnippetScanResult = { 
             scanId: `acrscan-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             instrumentalName: audioFile.originalFilename || 'Uploaded File',
             instrumentalSize: audioFile.size,

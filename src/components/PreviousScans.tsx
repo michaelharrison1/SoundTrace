@@ -6,7 +6,6 @@ import TrashIcon from './icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
 import { useSpotifyPlayer } from '../contexts/SpotifyContext';
 import UploadIcon from './icons/UploadIcon';
-import StreamCountCell from './common/StreamCountCell';
 import MusicNoteIcon from './icons/MusicNoteIcon';
 import SpotifyIcon from './icons/SpotifyIcon';
 import { YoutubeIcon } from './icons/YoutubeIcon';
@@ -20,7 +19,7 @@ type SortableColumn =
   | 'releaseDate'
   | 'matchConfidence'
   | 'originalScanDate'
-  | 'spotifyStreams'
+  | 'streamCount' // Added for StreamClout stream count
   | 'platformSource';
 
 type SortDirection = 'asc' | 'desc';
@@ -52,10 +51,7 @@ const formatPlatformSource = (source: PlatformSource): string => {
     case 'spotify_playlist_import_item': return 'Spotify Import';
     case 'electron_youtube_item': return 'YouTube (Desktop App)';
     default:
-      // This will cause a compile-time error if 'source' is not 'never',
-      // i.e., if a case for a PlatformSource member was missed.
       const _exhaustiveCheck: never = source;
-      // Fallback for runtime, though theoretically unreachable with correct typing and all cases handled.
       return "Unknown Source";
   }
 };
@@ -179,8 +175,8 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           break;
         case 'matchConfidence': valA = a.matchDetails.matchConfidence ?? 0; valB = b.matchDetails.matchConfidence ?? 0; break;
         case 'originalScanDate': valA = new Date(a.originalScanDate).getTime(); valB = new Date(b.originalScanDate).getTime(); break;
+        case 'streamCount': valA = a.matchDetails.streamCount ?? -1; valB = b.matchDetails.streamCount ?? -1; break;
         case 'platformSource': valA = formatPlatformSource(a.platformSource); valB = formatPlatformSource(b.platformSource); return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        case 'spotifyStreams': valA = -1; valB = -1; break; 
         default: return 0;
       }
       if (typeof valA === 'number' && typeof valB === 'number') return sortDirection === 'asc' ? valA - valB : valB - valA;
@@ -236,10 +232,11 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const handleExportToCSV = () => {
     const headers = [
       "Original File/Source Title", "Scan Date", "Platform Source", "Source URL", "Status",
-      "Matched Song Title", "Matched Artist", "Matched Album", "Release Date",
+      "Cover Art URL", "Matched Song Title", "Matched Artist", "Matched Album", "Release Date",
       "Confidence (%)", "Spotify Link", "YouTube Link",
       "Spotify Artist ID", "Spotify Track ID", "YouTube Video ID",
-      "Fetched Artist Followers", "Fetched Artist Popularity"
+      "Fetched Artist Followers", "Fetched Artist Popularity",
+      "StreamClout Stream Count", "StreamClout Timestamp"
     ];
     const csvRows = [headers.join(',')];
     sortedTableRows.forEach(row => {
@@ -254,12 +251,15 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         const match = row.matchDetails;
         const followerInfo = match.spotifyArtistId ? followerResults.get(match.spotifyArtistId) : undefined;
         rowData.push(
+          escapeCsvCell(match.coverArtUrl),
           escapeCsvCell(match.title), escapeCsvCell(match.artist), escapeCsvCell(match.album),
           escapeCsvCell(match.releaseDate), escapeCsvCell(match.matchConfidence),
           escapeCsvCell(match.platformLinks?.spotify), escapeCsvCell(match.platformLinks?.youtube),
           escapeCsvCell(match.spotifyArtistId), escapeCsvCell(match.spotifyTrackId), escapeCsvCell(match.youtubeVideoId || row.youtubeVideoTitle),
           escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.followers : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
-          escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.popularity : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A'))
+          escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.popularity : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
+          escapeCsvCell(match.streamCount),
+          escapeCsvCell(match.streamCountTimestamp ? new Date(match.streamCountTimestamp).toISOString() : '')
         );
       } else rowData.push(...Array(headers.length - rowData.length).fill(''));
       csvRows.push(rowData.join(','));
@@ -306,28 +306,30 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-320px)]">
           <table className="min-w-full text-sm" style={{tableLayout: 'fixed'}}>
              <colgroup>
-                <col style={{ width: '3%' }} /> {/* Source Icon */}
+                <col style={{ width: '3%' }} /> {/* Src Icon */}
                 <col style={{ width: '4%' }} /> {/* Links */}
-                <col style={{ width: '14%' }} /> {/* Song Title */}
-                <col style={{ width: '12%' }} /> {/* Artist */}
+                <col style={{ width: '5%' }} /> {/* Cover Art */}
+                <col style={{ width: '12%' }} /> {/* Song Title */}
+                <col style={{ width: '11%' }} /> {/* Artist */}
                 <col style={{ width: '9%' }} /> {/* Followers */}
-                <col style={{ width: '9%' }} /> {/* Streams */}
-                <col style={{ width: '11%' }} /> {/* Album */}
+                <col style={{ width: '10%' }} /> {/* Album */}
+                <col style={{ width: '10%' }} /> {/* Streams (SC) */}
                 <col style={{ width: '7%' }} /> {/* Released */}
-                <col style={{ width: '5%' }} /> {/* Conf. */}
-                <col style={{ width: '14%' }} /> {/* Your Upload */}
+                <col style={{ width: '6%' }} /> {/* Conf. */}
+                <col style={{ width: '10%' }} /> {/* Your Upload */}
                 <col style={{ width: '6%' }} /> {/* Action */}
-                <col style={{ width: '6%' }} /> {/* Platform Source text */}
+                <col style={{ width: '7%' }} /> {/* Platform Source text */}
             </colgroup>
             <thead className="bg-[#C0C0C0] border-b-2 border-b-[#808080] sticky top-0 z-10">
               <tr>
                 <HeaderCell className="text-center">Src</HeaderCell>
-                <HeaderCell className="text-center">Ext. Links</HeaderCell>
+                <HeaderCell className="text-center">Links</HeaderCell>
+                <HeaderCell className="text-center">Cover</HeaderCell>
                 <HeaderCell sortKey="title">Song Title</HeaderCell>
                 <HeaderCell sortKey="artist">Artist</HeaderCell>
                 <HeaderCell sortKey="followers" className="text-center">Followers</HeaderCell>
-                <HeaderCell sortKey="spotifyStreams" className="text-center">Streams</HeaderCell>
                 <HeaderCell sortKey="album">Album</HeaderCell>
+                <HeaderCell sortKey="streamCount" className="text-center">Streams (SC)</HeaderCell>
                 <HeaderCell sortKey="releaseDate" className="text-center">Released</HeaderCell>
                 <HeaderCell sortKey="matchConfidence" className="text-center">Conf.</HeaderCell>
                 <HeaderCell sortKey="originalScanDate">Your Upload/Source</HeaderCell>
@@ -342,7 +344,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                 const displayArtist = row.isMatchRow ? row.matchDetails?.artist : "N/A";
 
                 return (
-                <tr key={row.rowKey} className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'}`}>
+                <tr key={row.rowKey} className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:bg-blue-100`}>
                   <DataCell className="text-center"><SourceIcon source={row.platformSource} url={row.sourceUrl} title={row.youtubeVideoTitle || row.originalFileName} /></DataCell>
                   {row.isMatchRow && row.matchDetails ? (
                     <>
@@ -350,15 +352,31 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                         {row.matchDetails.platformLinks?.spotify && ( <a href={row.matchDetails.platformLinks.spotify} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 font-semibold" title={`Open ${row.matchDetails.title} on Spotify`}>SP</a> )}
                         {row.matchDetails.platformLinks?.youtube && ( <a href={row.matchDetails.platformLinks.youtube} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 font-semibold ml-1" title={`Search ${row.matchDetails.title} on YouTube`}>YT</a> )}
                       </DataCell>
+                       <DataCell className="text-center !p-0.5">
+                        {row.matchDetails.coverArtUrl ? (
+                            <img src={row.matchDetails.coverArtUrl} alt="Art" className="w-7 h-7 object-cover inline-block win95-border-inset" />
+                        ) : <div className="w-7 h-7 bg-gray-200 inline-block win95-border-inset flex items-center justify-center text-gray-400 text-[9px]">N/A</div>}
+                      </DataCell>
                       <DataCell title={displayTitle}>{displayTitle}</DataCell>
                       <DataCell title={displayArtist}>{displayArtist}</DataCell>
                       <DataCell className="text-center"> <ArtistFollowers followers={followerInfo?.status === 'success' ? followerInfo.followers : undefined} isLoading={followerInfo?.status === 'loading'} error={followerInfo?.status === 'error' ? followerInfo.reason : undefined} /> </DataCell>
-                      <DataCell className="text-center"> <StreamCountCell trackId={row.matchDetails.spotifyTrackId} /> </DataCell>
                       <DataCell title={row.matchDetails.album}>{row.matchDetails.album}</DataCell>
+                      <DataCell className="text-center">
+                        {typeof row.matchDetails.streamCount === 'number' ? (
+                            <>
+                                {row.matchDetails.streamCount.toLocaleString()}
+                                {row.matchDetails.streamCountTimestamp && (
+                                    <div className="text-[10px] text-gray-500 leading-tight">
+                                        {new Date(row.matchDetails.streamCountTimestamp).toLocaleDateString()}
+                                    </div>
+                                )}
+                            </>
+                        ) : <span className="text-xs text-gray-400">-</span>}
+                      </DataCell>
                       <DataCell className="text-center">{row.matchDetails.releaseDate}</DataCell>
                       <DataCell className="text-center"> <span className={`px-1 ${ row.matchDetails.matchConfidence > 80 ? 'text-green-700' : row.matchDetails.matchConfidence > 60 ? 'text-yellow-700' : 'text-red-700' }`}> {row.matchDetails.matchConfidence}% </span> </DataCell>
                     </>
-                  ) : ( <td colSpan={8} className="px-2 py-1 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
+                  ) : ( <td colSpan={9} className="px-2 py-1 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
                    <DataCell title={row.youtubeVideoTitle || row.originalFileName}> {row.youtubeVideoTitle || row.originalFileName} {row.statusMessage && row.isMatchRow && <div className="text-[10px] text-yellow-600 italic leading-tight">{row.statusMessage}</div>} </DataCell>
                   <DataCell className="text-center"> <Button onClick={() => onDeleteScan(row.logId)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300" title={`Delete scan record for ${row.originalFileName}`}> <TrashIcon className="h-3 w-3" /> </Button> </DataCell>
                   <DataCell className="text-center text-xs">{formatPlatformSource(row.platformSource)}</DataCell>
