@@ -19,7 +19,7 @@ type SortableColumn =
   | 'releaseDate'
   | 'matchConfidence'
   | 'originalScanDate'
-  | 'streamCount' // Added for StreamClout stream count
+  | 'streamCount'
   | 'platformSource';
 
 type SortDirection = 'asc' | 'desc';
@@ -29,6 +29,7 @@ interface PreviousScansProps {
   followerResults: Map<string, SpotifyFollowerResult>;
   onDeleteScan: (logId: string) => void;
   onClearAllScans: () => void;
+  isDeleting?: boolean; // Optional prop for disabling buttons
 }
 
 interface DisplayableTableRow {
@@ -79,7 +80,7 @@ const SourceIcon: React.FC<{ source: PlatformSource, url?: string, title?: strin
 SourceIcon.displayName = 'SourceIcon';
 
 
-const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults, onDeleteScan, onClearAllScans }) => {
+const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults, onDeleteScan, onClearAllScans, isDeleting }) => {
   const {
     isSpotifyConnected,
     spotifyUser,
@@ -92,7 +93,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [isLoadingExport, setIsLoadingExport] = useState(false);
   const [exportMessage, setExportMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-  
+
   const initialTableRows = useMemo((): DisplayableTableRow[] => {
     return scanLogs.reduce((acc, log: TrackScanLog, logIndex: number) => {
       const relevantMatchStatuses: TrackScanLogStatus[] = ['completed_match_found', 'scanned_match_found', 'imported_spotify_track'];
@@ -107,7 +108,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             originalFileName: log.originalFileName,
             originalScanDate: log.scanDate,
             matchDetails: match,
-            statusMessage: undefined, 
+            statusMessage: undefined,
             rowKey: `${log.logId}-match-${match.id || matchIndex}`,
             platformSource: log.platformSource,
             sourceUrl: log.sourceUrl || match.platformLinks?.spotify || match.platformLinks?.youtube,
@@ -121,7 +122,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         else if (log.status === 'error_youtube_dl') message = "YouTube Download Error";
         else if (log.status === 'error_ffmpeg') message = "Audio Processing Error (FFmpeg)";
         else if (log.status === 'skipped_previously_scanned') message = "Skipped (Previously Scanned)";
-        
+
         acc.push({
           isMatchRow: false,
           hasAnyMatchesInLog: false,
@@ -285,6 +286,18 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const containerStyles = "p-0.5 win95-border-outset bg-[#C0C0C0]";
   const innerContainerStyles = "p-2 bg-[#C0C0C0]";
 
+  const handleSingleDelete = (logId: string, fileName: string) => {
+    if (window.confirm(`Are you sure you want to delete the scan log for "${fileName}"? This action cannot be undone.`)) {
+      onDeleteScan(logId);
+    }
+  };
+
+  const handleClearAllConfirm = () => {
+    if (window.confirm("Are you sure you want to delete ALL scan logs? This action cannot be undone.")) {
+      onClearAllScans();
+    }
+  };
+
   if (scanLogs.length === 0 && sortedTableRows.length === 0) return null;
   const hasAnyMatchesInAnyLog = scanLogs.some(log => log.matches.length > 0 && (log.status === 'completed_match_found' || log.status === 'scanned_match_found' || log.status === 'imported_spotify_track'));
 
@@ -294,9 +307,9 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-lg font-normal text-black">Beat Matches & Scan Log</h3>
           <div className="flex items-center space-x-1">
-            {hasAnyMatchesInAnyLog && ( <Button onClick={handleExportPlaylist} size="sm" className="p-1 !text-xs hover:bg-gray-300" disabled={isLoadingExport || isLoadingSpotifyAuth || sortedTableRows.filter(row => row.isMatchRow && row.matchDetails?.spotifyTrackId).length === 0} isLoading={isLoadingExport} title="Export visible Spotify tracks to a new playlist">Export to Spotify</Button> )}
-            <Button onClick={handleExportToCSV} size="sm" className="p-1 !text-xs hover:bg-gray-300" title="Export current table view to CSV" icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>}>Export Table CSV</Button>
-            {scanLogs.length > 0 && ( <Button onClick={onClearAllScans} size="sm" className="p-1 hover:bg-gray-300" aria-label="Clear all scan records" title="Clear all scan records"><TrashIcon className="h-3.5 w-3.5" /></Button> )}
+            {hasAnyMatchesInAnyLog && ( <Button onClick={handleExportPlaylist} size="sm" className="p-1 !text-xs hover:bg-gray-300" disabled={isDeleting || isLoadingExport || isLoadingSpotifyAuth || sortedTableRows.filter(row => row.isMatchRow && row.matchDetails?.spotifyTrackId).length === 0} isLoading={isLoadingExport} title="Export visible Spotify tracks to a new playlist">Export to Spotify</Button> )}
+            <Button onClick={handleExportToCSV} size="sm" className="p-1 !text-xs hover:bg-gray-300" title="Export current table view to CSV" icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>} disabled={isDeleting}>Export Table CSV</Button>
+            {scanLogs.length > 0 && ( <Button onClick={handleClearAllConfirm} size="sm" className="p-1 hover:bg-gray-300" aria-label="Clear all scan records" title="Clear all scan records" disabled={isDeleting}><TrashIcon className="h-3.5 w-3.5" /></Button> )}
           </div>
         </div>
          {exportMessage && ( <div className={`mb-2 p-2 text-sm border ${exportMessage.type === 'success' ? 'bg-green-100 border-green-700 text-green-700' : 'bg-red-100 border-red-700 text-red-700'}`}>{exportMessage.text}</div> )}
@@ -378,7 +391,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                     </>
                   ) : ( <td colSpan={9} className="px-2 py-1 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
                    <DataCell title={row.youtubeVideoTitle || row.originalFileName}> {row.youtubeVideoTitle || row.originalFileName} {row.statusMessage && row.isMatchRow && <div className="text-[10px] text-yellow-600 italic leading-tight">{row.statusMessage}</div>} </DataCell>
-                  <DataCell className="text-center"> <Button onClick={() => onDeleteScan(row.logId)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300" title={`Delete scan record for ${row.originalFileName}`}> <TrashIcon className="h-3 w-3" /> </Button> </DataCell>
+                  <DataCell className="text-center"> <Button onClick={() => handleSingleDelete(row.logId, row.originalFileName)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300" title={`Delete scan record for ${row.originalFileName}`} disabled={isDeleting}> <TrashIcon className="h-3 w-3" /> </Button> </DataCell>
                   <DataCell className="text-center text-xs">{formatPlatformSource(row.platformSource)}</DataCell>
                 </tr>
               )})}
