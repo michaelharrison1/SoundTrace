@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback } from 'react';
 import Button from '../common/Button';
 
@@ -6,7 +7,8 @@ interface UrlInputFormsProps {
   onProcessMultipleVideoUrls: (urlsString: string) => void;
   onProcessSpotifyPlaylistUrl: (url: string) => void;
   onProcessSingleYouTubeVideoUrl: (url: string) => void;
-  onProcessYouTubeChannelUrl: (url: string) => void; // New prop for channel URL
+  onProcessYouTubeChannelUrl: (url: string) => void;
+  onProcessYouTubePlaylistUrl: (url: string) => void; // New prop for playlist URL
   isLoading: boolean;
 }
 
@@ -14,18 +16,21 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
   onProcessMultipleVideoUrls,
   onProcessSpotifyPlaylistUrl,
   onProcessSingleYouTubeVideoUrl,
-  onProcessYouTubeChannelUrl, // New prop
+  onProcessYouTubeChannelUrl,
+  onProcessYouTubePlaylistUrl, // New prop
   isLoading,
 }) => {
   const [multipleYoutubeVideoUrls, setMultipleYoutubeVideoUrls] = useState('');
   const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState('');
   const [singleYoutubeVideoUrl, setSingleYoutubeVideoUrl] = useState('');
-  const [youtubeChannelUrl, setYoutubeChannelUrl] = useState(''); // New state for channel URL
+  const [youtubeChannelUrl, setYoutubeChannelUrl] = useState('');
+  const [youtubePlaylistUrl, setYoutubePlaylistUrl] = useState(''); // New state for playlist URL
 
   const [multipleYoutubeError, setMultipleYoutubeError] = useState<string | null>(null);
   const [spotifyPlaylistError, setSpotifyPlaylistError] = useState<string | null>(null);
   const [singleYoutubeVideoError, setSingleYoutubeVideoError] = useState<string | null>(null);
-  const [youtubeChannelError, setYoutubeChannelError] = useState<string | null>(null); // New error state
+  const [youtubeChannelError, setYoutubeChannelError] = useState<string | null>(null);
+  const [youtubePlaylistError, setYoutubePlaylistError] = useState<string | null>(null); // New error state
 
   const handleMultipleYouTubeVideoSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -88,7 +93,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
     onProcessSpotifyPlaylistUrl(spotifyPlaylistUrl);
   }, [spotifyPlaylistUrl, onProcessSpotifyPlaylistUrl]);
 
-  const handleYouTubeChannelSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => { // New handler
+  const handleYouTubeChannelSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setYoutubeChannelError(null);
     if (!youtubeChannelUrl.trim()) {
@@ -107,8 +112,57 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
     onProcessYouTubeChannelUrl(youtubeChannelUrl);
   }, [youtubeChannelUrl, onProcessYouTubeChannelUrl]);
 
+  const handleYouTubePlaylistSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => { // New handler
+    event.preventDefault();
+    setYoutubePlaylistError(null);
+    if (!youtubePlaylistUrl.trim()) {
+      setYoutubePlaylistError("Please enter a YouTube Playlist URL.");
+      return;
+    }
+    try {
+      const parsedUrl = new URL(youtubePlaylistUrl);
+      if (!parsedUrl.hostname.includes("youtube.com") || !parsedUrl.pathname.includes("/playlist")) { // Basic check for playlist URL
+        throw new Error("Invalid YouTube Playlist URL format. Must be like https://www.youtube.com/playlist?list=...");
+      }
+    } catch (e: any) {
+      setYoutubePlaylistError(e.message || "Invalid YouTube Playlist URL format.");
+      return;
+    }
+    onProcessYouTubePlaylistUrl(youtubePlaylistUrl);
+  }, [youtubePlaylistUrl, onProcessYouTubePlaylistUrl]);
+
+
   return (
     <div className="space-y-3">
+      {/* Scan YouTube Playlist URL */}
+      <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
+        <div className="p-3 bg-[#C0C0C0]">
+          <h3 className="text-lg font-normal text-black mb-2">Scan Entire YouTube Playlist</h3>
+          <form onSubmit={handleYouTubePlaylistSubmit} className="space-y-2">
+            <div>
+              <label htmlFor="youtubePlaylistUrl" className="block text-sm text-black mb-0.5">YouTube Playlist URL:</label>
+              <input
+                id="youtubePlaylistUrl"
+                type="url"
+                value={youtubePlaylistUrl}
+                onChange={(e) => { setYoutubePlaylistUrl(e.target.value); setYoutubePlaylistError(null); }}
+                placeholder="e.g., https://www.youtube.com/playlist?list=PL..."
+                className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+                disabled={isLoading}
+                aria-label="YouTube Playlist URL"
+              />
+            </div>
+            {youtubePlaylistError && <p className="text-xs text-red-700 mt-1">{youtubePlaylistError}</p>}
+            <Button type="submit" size="md" isLoading={isLoading} disabled={isLoading || !youtubePlaylistUrl.trim()}>
+              {isLoading ? 'Initiating Playlist Scan...' : 'Initiate Playlist Scan Job'}
+            </Button>
+          </form>
+          <p className="text-xs text-gray-700 mt-1">
+            Scans all public videos from a YouTube playlist. <strong className="text-black">Requires the SoundTrace Downloader desktop app to be running.</strong> This may take a long time for large playlists.
+          </p>
+        </div>
+      </section>
+
       {/* Scan YouTube Channel URL */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">

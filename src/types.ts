@@ -1,4 +1,5 @@
 
+
 export interface User {
   id: string;
   username: string;
@@ -100,9 +101,9 @@ export interface FollowerSnapshot { date: string; cumulativeFollowers: number; }
 export type JobType =
   | 'file_upload_batch'
   | 'spotify_playlist_import'
-  | 'electron_youtube_scan' // Generic for Electron-based YT scans if differentiation isn't critical at top level
   | 'youtube_single_video_electron' // Specific job for a single YT video processed by Electron
-  | 'youtube_channel_electron_orchestrated'; // Job for a whole YT channel, orchestrated via Electron
+  | 'youtube_channel_electron_orchestrated' // Job for a whole YT channel, orchestrated via Electron
+  | 'youtube_playlist_electron_orchestrated'; // Job for a whole YT playlist, orchestrated via Electron
 
 export type JobStatus =
   | 'pending_setup'

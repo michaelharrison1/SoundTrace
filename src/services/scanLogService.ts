@@ -1,4 +1,5 @@
 
+
 import { TrackScanLog, ScanJob, JobCreationResponse, AllJobsResponse, SingleJobResponse, JobFileState, FileUploadResponse, JobType } from '../types';
 
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
@@ -97,6 +98,15 @@ export const scanLogService = {
     const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube-channel`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ channelUrl }), credentials: 'include',
+    });
+    return handleApiResponse<JobCreationResponse>(response);
+  },
+
+  initiateYouTubePlaylistJob: async (playlistUrl: string): Promise<JobCreationResponse> => {
+    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
+    const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube-playlist`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ playlistUrl }), credentials: 'include',
     });
     return handleApiResponse<JobCreationResponse>(response);
   },

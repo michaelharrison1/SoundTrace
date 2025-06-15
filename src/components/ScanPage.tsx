@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useRef } from 'react';
 import { User, TrackScanLog, JobFileState, ScanJob, JobCreationResponse } from '../types';
 import FileUpload from './FileUpload';
@@ -242,6 +243,20 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
   }, [onJobCreated, handleAuthError, sendToElectronDownloader]);
 
+  const handleProcessYouTubePlaylistUrl = useCallback(async (playlistUrl: string) => {
+    resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage(`Initiating job for YouTube playlist...`);
+    try {
+      const job = await scanLogService.initiateYouTubePlaylistJob(playlistUrl);
+      onJobCreated(job);
+      setCurrentOperationMessage(`Job ${job.id} for playlist created. Sending to local downloader for video discovery...`);
+      const electronResult = await sendToElectronDownloader('/process-youtube-playlist', { playlistUrl, jobId: job.id }, 'YouTube playlist');
+      if (electronResult.success) {
+        setCompletionMessage(`Job ${job.id} for playlist "${job.jobName}" sent to SoundTrace Downloader for processing. Check Job Console.`);
+      }
+    } catch (err: any) { handleJobInitiationError(err, "initiate YouTube playlist scan job"); }
+    finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
+  }, [onJobCreated, handleAuthError, sendToElectronDownloader]);
+
 
   const handleProcessSpotifyPlaylistUrl = useCallback(async (url: string) => {
     resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage("Initiating Spotify Playlist import job...");
@@ -256,7 +271,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
       <div className="p-3 win95-border-outset bg-yellow-100 text-black border border-yellow-700">
         <h4 className="font-semibold text-yellow-800">YouTube Video Scanning Update!</h4>
         <p className="text-sm">
-          To scan YouTube videos (single, multiple, or full channels), you now need the <strong className="text-yellow-900">SoundTrace Downloader</strong> desktop app.
+          To scan YouTube videos (single, multiple, playlists, or full channels), you now need the <strong className="text-yellow-900">SoundTrace Downloader</strong> desktop app.
           This app runs on your computer and handles downloads using your local browser cookies for better access.
         </p>
         <p className="text-xs mt-1">
@@ -278,7 +293,8 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
         onProcessMultipleVideoUrls={handleProcessMultipleYouTubeVideoUrls}
         onProcessSingleYouTubeVideoUrl={handleProcessSingleYouTubeVideoUrl}
         onProcessSpotifyPlaylistUrl={handleProcessSpotifyPlaylistUrl}
-        onProcessYouTubeChannelUrl={handleProcessYouTubeChannelUrl} // Pass new handler
+        onProcessYouTubeChannelUrl={handleProcessYouTubeChannelUrl}
+        onProcessYouTubePlaylistUrl={handleProcessYouTubePlaylistUrl} // Pass new handler
         isLoading={isInitiatingJob && !currentUploadingFile}
       />
       <ManualSpotifyAddForm onAddTrack={handleManualAdd} />
