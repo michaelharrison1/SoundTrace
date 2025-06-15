@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback } from 'react';
-import { ScanJob, JobStatus, JobFileState } from '../../types';
+import { ScanJob, JobStatus, JobFileState, JobType } from '../../types';
 import Button from '../common/Button';
 import CRTProgressBar from '../common/CRTProgressBar';
 import { scanLogService } from '../../services/scanLogService';
@@ -14,12 +14,18 @@ interface JobConsoleItemProps {
   onLogout: () => void;
 }
 
-const formatJobType = (type: ScanJob['jobType']): string => {
+const formatJobType = (type: JobType): string => {
   switch (type) {
     case 'file_upload_batch': return 'File Batch Scan';
     case 'spotify_playlist_import': return 'Spotify Playlist Import';
-    case 'electron_youtube_scan': return 'YouTube Scan (Desktop App)';
-    default: return type;
+    case 'youtube_single_video_electron': return 'YouTube Video Scan (Desktop)';
+    case 'youtube_channel_electron_orchestrated': return 'YouTube Channel Scan (Desktop)';
+    case 'youtube_playlist_electron_orchestrated': return 'YouTube Playlist Scan (Desktop)';
+    default:
+      // This ensures that if a new JobType is added, TypeScript will warn us
+      // if we haven't handled it here. For runtime, it will display the raw type.
+      const exhaustiveCheck: never = type;
+      return exhaustiveCheck;
   }
 };
 
@@ -31,15 +37,20 @@ const formatJobStatus = (status: JobStatus): string => {
     case 'queued_for_processing': return 'Queued for Processing';
     case 'in_progress_fetching': return 'Fetching Items...';
     case 'in_progress_processing': return 'Processing Items...';
+    case 'waiting_for_electron': return 'Waiting for Desktop App';
+    case 'processing_by_electron': return 'Processing (Desktop App)';
     case 'completed': return 'Completed';
     case 'completed_with_errors': return 'Completed with Errors';
     case 'failed_acr_credits': return 'Paused: ACR Credits Needed';
     case 'failed_youtube_api': return 'Failed: YouTube API Error';
+    case 'failed_electron_communication': return 'Failed: Desktop App Error';
     case 'failed_setup': return 'Failed: Setup Error';
     case 'failed_upload_incomplete': return 'Incomplete: Re-upload Files';
     case 'failed_other': return 'Failed: Unknown Error';
     case 'aborted': return 'Aborted by User';
-    default: return status;
+    default:
+      const exhaustiveCheck: never = status;
+      return exhaustiveCheck;
   }
 };
 
@@ -99,7 +110,8 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
   }, [job.id, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]); // Changed from job.jobId
 
   const isResumable = job.status === 'failed_acr_credits' || job.status === 'failed_upload_incomplete';
-  const isProcessing = job.status === 'in_progress_fetching' || job.status === 'in_progress_processing' || job.status === 'uploading_files' || job.status === 'queued_for_processing';
+  const isProcessing = ['in_progress_fetching', 'in_progress_processing', 'uploading_files', 'queued_for_processing', 'processing_by_electron', 'waiting_for_electron'].includes(job.status);
+
 
   const progressPercent = job.totalItems > 0 ? (job.itemsProcessed / job.totalItems) * 100 : 0;
 
@@ -134,7 +146,7 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
         {(isProcessing || job.totalItems > 0) && (
           <div>
             {isProcessing ? (
-              <CRTProgressBar isActive={true} text={`${job.itemsProcessed} / ${job.totalItems} items. ${job.lastProcessedItemInfo?.itemName ? `Last: ${job.lastProcessedItemInfo.itemName}`:'' }`} />
+              <CRTProgressBar isActive={true} text={`${job.itemsProcessed} / ${job.totalItems > 0 ? job.totalItems : '?'} items. ${job.lastProcessedItemInfo?.itemName ? `Last: ${job.lastProcessedItemInfo.itemName.substring(0,30)}${job.lastProcessedItemInfo.itemName.length > 30 ? '...' : ''}`:'' }`} />
             ) : (
               <div className="w-full h-5 bg-gray-300 win95-border-inset p-0.5" title={`${job.itemsProcessed}/${job.totalItems} items (${progressPercent.toFixed(0)}%)`}>
                 <div className="h-full bg-[#084B8A]" style={{ width: `${progressPercent}%` }}>
