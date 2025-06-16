@@ -1,21 +1,11 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "jsx": "react-jsx",                            // ✅ Enables JSX
-    "esModuleInterop": true,
-    "strict": true,
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "skipLibCheck": true,
     "noEmit": false,
-    "emitDeclarationOnly": false,
+    "emitDeclarationOnly": true,
     "declaration": true,
     "declarationMap": true,
-    "outDir": "dist",
-    "types": ["react", "react-dom", "node"]        // ✅ Add JSX types
+    "outDir": "dist"
   },
   "include": ["src"],
   "exclude": ["node_modules"]

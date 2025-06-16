@@ -9,10 +9,8 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
-    "baseUrl": ".",
     "types": ["react", "react-dom", "node"]
   },
   "include": ["src"],
