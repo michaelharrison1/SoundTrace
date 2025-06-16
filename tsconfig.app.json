@@ -17,7 +17,8 @@
       // If you plan to use absolute paths like "components/*"
       // you can define them here, e.g.:
       // "components/*": ["src/components/*"]
-    }
+    },
+    "types": ["react", "node"]
   },
   "include": ["src", "api"],
   "exclude": ["node_modules"]
