@@ -241,8 +241,11 @@ const AppContentInternal: React.FC = React.memo(() => {
     setIsLoading(false);
   }, []);
 
+  // Combine the two useEffect hooks that manage window opening
   useEffect(() => {
     if (isLoading) return;
+
+    const { pathname } = window.location;
 
     if (!currentUser) {
       const introWindow = openWindows.find(w => w.id === 'introduction');
@@ -255,6 +258,14 @@ const AppContentInternal: React.FC = React.memo(() => {
         openWindow('login', 'User Login', <LoginPage onLogin={handleLoginRegistrationSuccess} />, '/src/components/windows95icons/actions/key_16x16.png', { width: '380px', height: 'auto', isModal: true });
       } else if (!registerWindow && authView === 'register' && (!introWindow || introWindow.isMinimized === false)) {
         openWindow('register', 'Create Account', <RegistrationPage onRegister={handleLoginRegistrationSuccess} />, '/src/components/windows95icons/actions/add_user_16x16.png', { width: '380px', height: 'auto', isModal: true });
+      }
+
+      // Handle privacy policy and terms of service windows
+      if (pathname === '/privacy-policy' && !openWindows.some(w => w.id === 'privacy_startmenu')) {
+        openWindow('privacy_startmenu', 'Privacy Policy', <PrivacyPolicyPage />, '/src/components/windows95icons/apps/notepad_16x16.png', { width: '650px', height: '550px', isModal: true });
+      }
+      if (pathname === '/terms-of-service' && !openWindows.some(w => w.id === 'terms_startmenu')) {
+        openWindow('terms_startmenu', 'Terms of Service', <TermsOfServicePage />, '/src/components/windows95icons/apps/ms_dos_16x16.png', { width: '650px', height: '550px', isModal: true });
       }
     }
   }, [currentUser, isLoading, authView, openWindow, handleLoginRegistrationSuccess, openWindows]);
@@ -272,17 +283,6 @@ const AppContentInternal: React.FC = React.memo(() => {
 
   const { pathname } = window.location;
   if (pathname === '/spotify-callback-receiver') return <SpotifyCallbackReceiver />;
-
-  useEffect(() => {
-    if (!currentUser && !isLoading) {
-      if (pathname === '/privacy-policy' && !openWindows.some(w => w.id === 'privacy_startmenu')) {
-        openWindow('privacy_startmenu', 'Privacy Policy', <PrivacyPolicyPage />, '/src/components/windows95icons/apps/notepad_16x16.png', { width: '650px', height: '550px', isModal: true });
-      }
-      if (pathname === '/terms-of-service' && !openWindows.some(w => w.id === 'terms_startmenu')) {
-        openWindow('terms_startmenu', 'Terms of Service', <TermsOfServicePage />, '/src/components/windows95icons/apps/ms_dos_16x16.png', { width: '650px', height: '550px', isModal: true });
-      }
-    }
-  }, [pathname, currentUser, isLoading, openWindow, openWindows]);
 
 
   const activeWin = openWindows.reduce((max, win) => (win.zIndex > max.zIndex ? win : max), { zIndex: -1 } as AppWindow);
