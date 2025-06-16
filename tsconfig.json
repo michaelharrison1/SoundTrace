@@ -1,3 +1,4 @@
+
 {
   "compilerOptions": {
     "target": "ESNext",
@@ -17,7 +18,8 @@
       // If you plan to use absolute paths like "components/*"
       // you can define them here, e.g.:
       // "components/*": ["src/components/*"]
-    }
+    },
+    "types": ["react", "node"]
   },
   "include": ["src"],
   "exclude": ["node_modules"]
