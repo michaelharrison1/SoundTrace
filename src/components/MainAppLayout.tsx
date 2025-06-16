@@ -57,12 +57,12 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
   const getNavButtonClass = (viewType: ActiveView) => {
     const base = "px-3 py-1 text-black text-sm"; // VT323 default font size is larger
     // Apply Win95 border styles dynamically
-    const borderStyle = activeView === viewType 
-        ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' 
+    const borderStyle = activeView === viewType
+        ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]'
         : 'win95-border-outset hover:bg-gray-300';
     return `${base} ${borderStyle}`;
   };
-  
+
   const totalJobs = jobs.length;
   const activeOrPendingJobs = jobs.filter(job =>
     job.status !== 'completed' &&
@@ -129,7 +129,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
             <JobConsole
               jobs={jobs}
               onJobAction={onJobUpdate}
-              isLoading={isAppDataLoading} 
+              isLoading={isAppDataLoading}
               onRefreshJobs={onRefreshAllData}
               onLogout={onLogout}
             />
@@ -138,6 +138,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
             <DashboardViewPage
               user={user}
               previousScans={previousScans}
+              jobs={jobs} // Pass jobs for filtering
               onDeleteScan={onIndividualLogUpdate}
               onClearAllScans={onRefreshAllData}
             />

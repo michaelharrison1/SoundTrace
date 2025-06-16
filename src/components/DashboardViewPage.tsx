@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, TrackScanLogStatus } from '../types';
+import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, TrackScanLogStatus, ScanJob } from '../types';
 import PreviousScans from './PreviousScans';
 import ReachAnalyzer from './common/ReachAnalyzer';
 import ProgressBar from './common/ProgressBar';
@@ -10,11 +10,12 @@ import { scanLogService } from '../services/scanLogService';
 interface DashboardViewPageProps {
   user: User;
   previousScans: TrackScanLog[];
+  jobs: ScanJob[]; // Added jobs prop
   onDeleteScan: (logId?: string) => void;
   onClearAllScans: () => void;
 }
 
-const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousScans, onDeleteScan: refreshDataAfterSingleDelete, onClearAllScans: refreshDataAfterClearAll }) => {
+const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousScans, jobs, onDeleteScan: refreshDataAfterSingleDelete, onClearAllScans: refreshDataAfterClearAll }) => {
   const containerStyles = "p-4 win95-border-outset bg-[#C0C0C0] text-center";
 
   const [totalFollowers, setTotalFollowers] = useState<number | null | undefined>(undefined);
@@ -26,9 +27,16 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
+  const completedScans = useMemo(() => {
+    const completedJobIds = new Set(
+      jobs.filter(job => job.status === 'completed' || job.status === 'completed_with_errors').map(job => job.id)
+    );
+    return previousScans.filter(scan => completedJobIds.has(scan.scanJobId));
+  }, [previousScans, jobs]);
+
   const uniqueArtistIds = useMemo(() => {
     const ids = new Set<string>();
-    previousScans.forEach(log => {
+    completedScans.forEach(log => { // Use completedScans
       const relevantMatchStatuses: TrackScanLogStatus[] = ['completed_match_found', 'scanned_match_found', 'imported_spotify_track'];
       if (log.matches && log.matches.length > 0 && relevantMatchStatuses.includes(log.status)) {
         log.matches.forEach((match: AcrCloudMatch) => {
@@ -39,10 +47,10 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
       }
     });
     return Array.from(ids);
-  }, [previousScans]);
+  }, [completedScans]);
 
   useEffect(() => {
-    const newTotalStreams = previousScans.reduce((sum, log) => {
+    const newTotalStreams = completedScans.reduce((sum, log) => { // Use completedScans
       const relevantMatchStatuses: TrackScanLogStatus[] = ['completed_match_found', 'scanned_match_found', 'imported_spotify_track'];
       if (log.matches && relevantMatchStatuses.includes(log.status)) {
         return sum + log.matches.reduce((matchSum, match) => matchSum + (match.streamCount || 0), 0);
@@ -50,7 +58,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
       return sum;
     }, 0);
     setTotalStreams(newTotalStreams);
-  }, [previousScans]);
+  }, [completedScans]);
 
   useEffect(() => {
     let isMounted = true;
@@ -228,18 +236,18 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   }, [refreshDataAfterClearAll]);
 
 
-  if (previousScans.length === 0 && !isLoadingOverall) {
+  if (completedScans.length === 0 && !isLoadingOverall) { // Use completedScans
     return (
       <div className={containerStyles}>
         <span className="text-4xl text-gray-500" aria-hidden="true">♫</span>
-        <h2 className="text-lg font-normal text-black mt-1">No Scan History Yet</h2>
-        <p className="text-gray-700 mt-0.5 text-sm">Processed tracks and their matches will appear here.</p>
-        <p className="text-gray-700 mt-0.5 text-sm">Go to "New Scan Job" to start.</p>
+        <h2 className="text-lg font-normal text-black mt-1">No Completed Scan Data Yet</h2>
+        <p className="text-gray-700 mt-0.5 text-sm">Processed tracks from completed jobs and their matches will appear here.</p>
+        <p className="text-gray-700 mt-0.5 text-sm">Go to "New Scan Job" to start, then check "Job Console" for progress.</p>
       </div>
     );
   }
 
-  if (isLoadingOverall && historicalAnalyticsData.length === 0 && previousScans.length > 0) {
+  if (isLoadingOverall && historicalAnalyticsData.length === 0 && completedScans.length > 0) { // Use completedScans
      return (
       <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
         <ProgressBar text="Loading dashboard data..." />
@@ -255,13 +263,13 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         totalStreams={totalStreams}
         isLoading={isLoadingOverall}
         error={followerFetchError}
-        scanLogs={previousScans}
+        scanLogs={completedScans} // Pass completedScans
         followerResults={followerResults}
         historicalAnalyticsData={historicalAnalyticsData}
         onDeleteAnalyticsHistory={handleDeleteAnalyticsHistory}
       />
       <PreviousScans
-        scanLogs={previousScans}
+        scanLogs={completedScans} // Pass completedScans
         followerResults={followerResults}
         onDeleteScan={handleActualDeleteScan}
         onClearAllScans={handleActualClearAllScans}

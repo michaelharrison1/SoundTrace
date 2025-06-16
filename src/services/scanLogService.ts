@@ -1,5 +1,4 @@
 
-
 import { TrackScanLog, ScanJob, JobCreationResponse, AllJobsResponse, SingleJobResponse, JobFileState, FileUploadResponse, JobType } from '../types';
 
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
@@ -133,6 +132,16 @@ export const scanLogService = {
   deleteJob: async (jobId: string): Promise<void> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
     const response = await fetch(`${JOBS_BASE_URL}/${jobId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });
+    await handleApiResponse<void>(response);
+  },
+
+  deleteAllJobs: async (): Promise<void> => {
+    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
+    const response = await fetch(`${JOBS_BASE_URL}/all`, { // New endpoint for bulk delete
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
+    });
     await handleApiResponse<void>(response);
   },
 
