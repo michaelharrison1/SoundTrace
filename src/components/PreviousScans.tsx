@@ -93,7 +93,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [isLoadingExport, setIsLoadingExport] = useState(false);
   const [exportMessage, setExportMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-
+  
   const initialTableRows = useMemo((): DisplayableTableRow[] => {
     return scanLogs.reduce((acc, log: TrackScanLog, logIndex: number) => {
       const relevantMatchStatuses: TrackScanLogStatus[] = ['completed_match_found', 'scanned_match_found', 'imported_spotify_track'];
@@ -108,7 +108,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             originalFileName: log.originalFileName,
             originalScanDate: log.scanDate,
             matchDetails: match,
-            statusMessage: undefined,
+            statusMessage: undefined, 
             rowKey: `${log.logId}-match-${match.id || matchIndex}`,
             platformSource: log.platformSource,
             sourceUrl: log.sourceUrl || match.platformLinks?.spotify || match.platformLinks?.youtube,
@@ -122,7 +122,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         else if (log.status === 'error_youtube_dl') message = "YouTube Download Error";
         else if (log.status === 'error_ffmpeg') message = "Audio Processing Error (FFmpeg)";
         else if (log.status === 'skipped_previously_scanned') message = "Skipped (Previously Scanned)";
-
+        
         acc.push({
           isMatchRow: false,
           hasAnyMatchesInLog: false,
@@ -313,14 +313,12 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           </div>
         </div>
          {exportMessage && ( <div className={`mb-2 p-2 text-sm border ${exportMessage.type === 'success' ? 'bg-green-100 border-green-700 text-green-700' : 'bg-red-100 border-red-700 text-red-700'}`}>{exportMessage.text}</div> )}
-        <div className="text-xs text-gray-600 mb-1" title="Click column headers to sort.">ℹ️ Click column headers to sort.</div>
-
+        
         {!hasAnyMatchesInAnyLog && scanLogs.length > 0 ? ( <p className="text-black text-center py-2 text-sm">No song matches found in your scan history. {scanLogs.length} record(s) processed without matches or with errors.</p> ) : (
         <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-320px)]">
           <table className="min-w-full text-sm" style={{tableLayout: 'fixed'}}>
              <colgroup>
-                <col style={{ width: '3%' }} /> {/* Src Icon */}
-                <col style={{ width: '4%' }} /> {/* Links */}
+                <col style={{ width: '7%' }} /> {/* Combined Links (Icon + SP/YT Icons) */}
                 <col style={{ width: '5%' }} /> {/* Cover Art */}
                 <col style={{ width: '12%' }} /> {/* Song Title */}
                 <col style={{ width: '11%' }} /> {/* Artist */}
@@ -335,7 +333,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             </colgroup>
             <thead className="bg-[#C0C0C0] border-b-2 border-b-[#808080] sticky top-0 z-10">
               <tr>
-                <HeaderCell className="text-center">Src</HeaderCell>
                 <HeaderCell className="text-center">Links</HeaderCell>
                 <HeaderCell className="text-center">Cover</HeaderCell>
                 <HeaderCell sortKey="title">Song Title</HeaderCell>
@@ -358,13 +355,21 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
 
                 return (
                 <tr key={row.rowKey} className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:bg-blue-100`}>
-                  <DataCell className="text-center"><SourceIcon source={row.platformSource} url={row.sourceUrl} title={row.youtubeVideoTitle || row.originalFileName} /></DataCell>
+                  <DataCell className="text-center">
+                    <SourceIcon source={row.platformSource} url={row.sourceUrl} title={row.youtubeVideoTitle || row.originalFileName} />
+                    {row.isMatchRow && row.matchDetails?.platformLinks?.spotify && (
+                        <a href={row.matchDetails.platformLinks.spotify} target="_blank" rel="noopener noreferrer" className="inline-block ml-1 hover:opacity-75" title={`Open ${row.matchDetails.title} on Spotify`}>
+                            <SpotifyIcon className="w-3.5 h-3.5 text-green-600" />
+                        </a>
+                    )}
+                    {row.isMatchRow && row.matchDetails?.platformLinks?.youtube && (
+                        <a href={row.matchDetails.platformLinks.youtube} target="_blank" rel="noopener noreferrer" className="inline-block ml-1 hover:opacity-75" title={`Search ${row.matchDetails.title} on YouTube`}>
+                            <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
+                        </a>
+                    )}
+                  </DataCell>
                   {row.isMatchRow && row.matchDetails ? (
                     <>
-                      <DataCell className="text-center">
-                        {row.matchDetails.platformLinks?.spotify && ( <a href={row.matchDetails.platformLinks.spotify} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 font-semibold" title={`Open ${row.matchDetails.title} on Spotify`}>SP</a> )}
-                        {row.matchDetails.platformLinks?.youtube && ( <a href={row.matchDetails.platformLinks.youtube} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 font-semibold ml-1" title={`Search ${row.matchDetails.title} on YouTube`}>YT</a> )}
-                      </DataCell>
                        <DataCell className="text-center !p-0.5">
                         {row.matchDetails.coverArtUrl ? (
                             <img src={row.matchDetails.coverArtUrl} alt="Art" className="w-7 h-7 object-cover inline-block win95-border-inset" />
@@ -389,7 +394,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                       <DataCell className="text-center">{row.matchDetails.releaseDate}</DataCell>
                       <DataCell className="text-center"> <span className={`px-1 ${ row.matchDetails.matchConfidence > 80 ? 'text-green-700' : row.matchDetails.matchConfidence > 60 ? 'text-yellow-700' : 'text-red-700' }`}> {row.matchDetails.matchConfidence}% </span> </DataCell>
                     </>
-                  ) : ( <td colSpan={9} className="px-2 py-1 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
+                  ) : ( <td colSpan={8} className="px-2 py-1 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
                    <DataCell title={row.youtubeVideoTitle || row.originalFileName}> {row.youtubeVideoTitle || row.originalFileName} {row.statusMessage && row.isMatchRow && <div className="text-[10px] text-yellow-600 italic leading-tight">{row.statusMessage}</div>} </DataCell>
                   <DataCell className="text-center"> <Button onClick={() => handleSingleDelete(row.logId, row.originalFileName)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300" title={`Delete scan record for ${row.originalFileName}`} disabled={isDeleting}> <TrashIcon className="h-3 w-3" /> </Button> </DataCell>
                   <DataCell className="text-center text-xs">{formatPlatformSource(row.platformSource)}</DataCell>

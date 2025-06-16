@@ -1,6 +1,4 @@
 
-
-
 export interface User {
   id: string;
   username: string;
@@ -101,11 +99,37 @@ export interface SpotifyPlayerContextType {
 export interface SpotifyPlaylist { id: string; name: string; external_urls: { spotify: string; }; }
 
 // Renamed and updated for combined analytics
-export interface DailyAnalyticsSnapshot {
+export interface DailyAnalyticsSnapshot { // Represents aggregated (total) daily data
   date: string; // YYYY-MM-DD
   cumulativeFollowers: number;
-  cumulativeStreams?: number; // Optional for backward compatibility if some old data doesn't have it
+  cumulativeStreams?: number; 
 }
+
+// New interface for individual song's historical stream data points
+export interface HistoricalSongStreamEntry {
+  date: string; // YYYY-MM-DD
+  streams: number;
+}
+
+// New interface for predicted daily streams
+export interface PredictedStreamEntry {
+  date: string; // YYYY-MM-DD
+  predictedStreams: number;
+}
+
+
+// New interface for aggregated song data to be displayed in the list
+export interface AggregatedSongData {
+  spotifyTrackId: string; // Primary key for a song
+  title: string;
+  artist: string;
+  albumName?: string;
+  coverArtUrl?: string;
+  latestStreamCount: number;
+  latestStreamCountTimestamp?: string; 
+  spotifyArtistIdForAggregation?: string; // Added for accurate artist-level stream aggregation
+}
+
 
 export type JobType =
   | 'file_upload_batch'

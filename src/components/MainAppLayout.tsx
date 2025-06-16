@@ -7,7 +7,7 @@ import ScanPage from './ScanPage';
 import DashboardViewPage from './DashboardViewPage';
 import JobConsole from './jobConsole/JobConsole';
 import ProgressBar from './common/ProgressBar';
-import UploadIcon from './icons/UploadIcon';
+// Removed: import UploadIcon from './icons/UploadIcon'; // No longer needed for export button
 
 interface MainAppLayoutProps {
   user: User;
@@ -107,8 +107,10 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
 
         return () => {
             console.log('[MainAppLayout] Closing SSE connection.');
-            es.close();
-            eventSourceRef.current = null;
+            if (eventSourceRef.current) {
+              eventSourceRef.current.close();
+              eventSourceRef.current = null;
+            }
         };
     }
   }, [fetchData]); // Only fetchData (which depends on user & onLogout)
@@ -130,9 +132,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
     return `px-3 py-0.5 hover:bg-gray-300 ${activeView === viewType ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]' : 'win95-border-outset'}`;
   };
 
-  const handleExportAllData = useCallback(() => {
-    alert("Full data export (e.g., combined CSV/PDF of all sections) is coming soon! Individual tables may have their own export options.");
-  }, []);
+  // Removed handleExportAllData function
 
   const totalJobs = jobs.length;
   const activeOrPendingJobs = jobs.filter(job =>
@@ -170,17 +170,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({ user, onLogout }) => {
         >
           Dashboard ({previousScans.length} Logs)
         </Button>
-        <div className="ml-auto">
-            <Button
-              onClick={handleExportAllData}
-              size="sm"
-              className="win95-border-outset hover:bg-gray-300"
-              icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>}
-              title="Export all data (feature coming soon)"
-            >
-                Export All (Soon)
-            </Button>
-        </div>
+        {/* Export All button removed from here */}
       </nav>
 
       {isLoading && !error && (

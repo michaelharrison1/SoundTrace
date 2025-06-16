@@ -86,7 +86,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, soundTraceToken }),
-        credentials: 'omit', // Localhost typically doesn't need credentials sent unless specifically configured
+        credentials: 'omit', 
       });
 
       const data = await response.json();
@@ -108,7 +108,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
   };
 
 
-  const handleFilesSelectedForJob = useCallback(async (files: File[], numberOfSegments: number) => {
+  const handleFilesSelectedForJob = useCallback(async (files: File[]) => { // Removed numberOfSegments
     resetPageMessages();
     if (files.length === 0) return;
     setIsInitiatingJob(true);
@@ -127,6 +127,9 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
         newFileStates[i] = { ...newFileStates[i], status: 'uploading', uploadedBytes: 0 }; setFileStates([...newFileStates]);
         setCurrentOperationMessage(`Uploading ${file.name} (${i + 1}/${files.length})...`);
         try {
+          // Note: The audioProcessing.generateSnippetsForFile is no longer called here.
+          // The backend job 'file_upload_batch' in scanJobController.js now handles snippet generation
+          // using the uploaded original file. It will default to 1 segment.
           await scanLogService.uploadFileForJob(job.id, file, (loaded, total) => {
             const progress = total > 0 ? Math.round((loaded / total) * 100) : 0; setCurrentUploadingProgress(progress);
             newFileStates[i] = { ...newFileStates[i], uploadedBytes: loaded }; setFileStates([...newFileStates]);
@@ -165,7 +168,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
       const electronResult = await sendToElectronDownloader('/download-and-scan', { youtubeUrl: url, videoTitle: job.jobName, jobId: job.id }, 'single YouTube video');
       if (electronResult.success) {
         setCompletionMessage(`Job ${job.id} for "${job.jobName}" sent to SoundTrace Downloader. Check Job Console.`);
-      } // Error handled by sendToElectronDownloader
+      } 
     } catch (err: any) { handleJobInitiationError(err, "initiate single YouTube video job"); }
     finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
   }, [onJobCreated, handleAuthError, sendToElectronDownloader]);
@@ -238,7 +241,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
       const electronResult = await sendToElectronDownloader('/process-youtube-channel', { channelUrl, jobId: job.id }, 'YouTube channel');
       if (electronResult.success) {
         setCompletionMessage(`Job ${job.id} for channel "${job.jobName}" sent to SoundTrace Downloader for processing. Check Job Console.`);
-      } // Error handled by sendToElectronDownloader
+      } 
     } catch (err: any) { handleJobInitiationError(err, "initiate YouTube channel scan job"); }
     finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
   }, [onJobCreated, handleAuthError, sendToElectronDownloader]);
@@ -294,7 +297,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
         onProcessSingleYouTubeVideoUrl={handleProcessSingleYouTubeVideoUrl}
         onProcessSpotifyPlaylistUrl={handleProcessSpotifyPlaylistUrl}
         onProcessYouTubeChannelUrl={handleProcessYouTubeChannelUrl}
-        onProcessYouTubePlaylistUrl={handleProcessYouTubePlaylistUrl} // Pass new handler
+        onProcessYouTubePlaylistUrl={handleProcessYouTubePlaylistUrl} 
         isLoading={isInitiatingJob && !currentUploadingFile}
       />
       <ManualSpotifyAddForm onAddTrack={handleManualAdd} />

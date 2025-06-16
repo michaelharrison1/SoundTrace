@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { User } from '../types';
 import { authService } from '../services/authService';
@@ -104,11 +103,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
         )}
 
+        {/* Removed demo user hint for production
         {!isLoading && (
             <p className="mt-2 text-xs text-center text-blue-800">
                 Demo: user <span className="font-semibold text-black">producer</span>, pass <span className="font-semibold text-black">password123</span>
             </p>
         )}
+        */}
       </div>
     </div>
   );

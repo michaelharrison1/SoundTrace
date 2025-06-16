@@ -5,11 +5,27 @@
   <meta charset="UTF-8">
   <link rel="icon" type="image/svg+xml" href="/vite.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Security Headers -->
+  <meta http-equiv="Content-Security-Policy" 
+        content="default-src 'self'; 
+                 script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://esm.sh; 
+                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
+                 font-src 'self' https://fonts.gstatic.com; 
+                 img-src 'self' data: https:; 
+                 connect-src 'self' https://api.soundtrace.uk http://localhost:5001 ws://localhost:5001 https://esm.sh;
+                 object-src 'none'; 
+                 frame-ancestors 'none';
+                 base-uri 'self';
+                 form-action 'self';">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
   <title>SoundTrace</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com" integrity="sha384-PLACEHOLDER-TAILWIND"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" integrity="sha384-PLACEHOLDER-GOOGLE-FONT-VT323" crossorigin="anonymous">
   <link rel="preload" as="image" href="/src/components/background.jpg">
   <link rel="prerender" href="/privacy-policy">
   <link rel="prerender" href="/terms-of-service">
@@ -117,26 +133,27 @@
     .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
   </style>
 
-<script type="importmap">
+<script type="importmap" integrity="sha384-PLACEHOLDER-IMPORTMAP">
 {
   "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0",
     "react": "https://esm.sh/react@^19.1.0",
+    "react/": "https://esm.sh/react@^19.1.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.5.2",
+    "vite": "https://esm.sh/vite@^6.3.5",
+    "path": "https://esm.sh/path@^0.12.7",
+    "fs": "https://esm.sh/fs@^0.0.1-security",
+    "crypto": "https://esm.sh/crypto@^1.0.1",
+    "typescript-eslint": "https://esm.sh/typescript-eslint@^8.34.0",
+    "eslint-plugin-react-refresh": "https://esm.sh/eslint-plugin-react-refresh@^0.4.20",
     "@vercel/node": "https://esm.sh/@vercel/node@^5.2.2",
     "formidable": "https://esm.sh/formidable@^3.5.4",
-    "crypto": "https://esm.sh/crypto@^1.0.1",
-    "fs": "https://esm.sh/fs@^0.0.1-security",
-    "path": "https://esm.sh/path@^0.12.7",
-    "buffer": "https://esm.sh/buffer@^6.0.3",
-    "@eslint/js": "https://esm.sh/@eslint/js@^9.28.0",
-    "globals": "https://esm.sh/globals@^16.2.0",
     "eslint-plugin-react-hooks": "https://esm.sh/eslint-plugin-react-hooks@^5.2.0",
-    "eslint-plugin-react-refresh": "https://esm.sh/eslint-plugin-react-refresh@^0.4.20",
-    "typescript-eslint": "https://esm.sh/typescript-eslint@^8.34.0",
-    "vite": "https://esm.sh/vite@^6.3.5",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.5.2",
-    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
-    "react/": "https://esm.sh/react@^19.1.0/",
-    "@react-oauth/google": "https://esm.sh/@react-oauth/google@^0.12.2"
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "globals": "https://esm.sh/globals@^16.2.0",
+    "@eslint/js": "https://esm.sh/@eslint/js@^9.29.0",
+    "@react-oauth/google": "https://esm.sh/@react-oauth/google@^0.12.2",
+    "recharts": "https://esm.sh/recharts@^2.15.3"
   }
 }
 </script>
@@ -144,6 +161,6 @@
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>
   <div id="root"></div>
-  <script type="module" src="/src/index.tsx"></script>
+  <script type="module" src="/src/index.tsx" integrity="sha384-PLACEHOLDER-INDEX-TSX"></script>
 </body>
 </html>

@@ -1,7 +1,10 @@
+
 import React, { useMemo } from 'react';
 import ProgressBar from '../ProgressBar';
 import ArtistFollowers from '../ArtistFollowers';
 import { ArtistLeaderboardEntry, ArtistSortableColumn, SortDirection } from '../ReachAnalyzer'; // Import shared types
+import { formatFollowersDisplay } from './reachAnalyzerUtils';
+
 
 interface ArtistStatsTableProps {
   aggregatedArtistData: ArtistLeaderboardEntry[];
@@ -68,7 +71,7 @@ const ArtistStatsTable: React.FC<ArtistStatsTableProps> = ({
 }) => {
 
   const handleSort = (column: ArtistSortableColumn) => {
-    onSort(column); // This will toggle direction in parent if same column, or set new column/direction
+    onSort(column); 
   };
 
   const sortedData = useMemo(() => {
@@ -78,6 +81,7 @@ const ArtistStatsTable: React.FC<ArtistStatsTableProps> = ({
         case 'artistName': valA = a.artistName; valB = b.artistName; return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         case 'matchedTracksCount': valA = a.matchedTracksCount; valB = b.matchedTracksCount; break;
         case 'spotifyFollowers': valA = a.spotifyFollowers ?? -1; valB = b.spotifyFollowers ?? -1; break;
+        case 'totalArtistStreams': valA = a.totalArtistStreams ?? -1; valB = b.totalArtistStreams ?? -1; break; // Added sorting for total streams
         case 'mostRecentMatchDate':
             valA = a.mostRecentMatchDate ? new Date(a.mostRecentMatchDate).getTime() : 0;
             valB = b.mostRecentMatchDate ? new Date(b.mostRecentMatchDate).getTime() : 0;
@@ -103,12 +107,21 @@ const ArtistStatsTable: React.FC<ArtistStatsTableProps> = ({
       <p className="text-xs text-gray-600 text-center mb-1">Total Unique Artists: {aggregatedArtistData.length} &bull; Artist Level: {currentArtistLevel}</p>
       <div className="overflow-auto win95-border-inset bg-white flex-grow p-0.5">
         <table className="min-w-full text-sm" style={{ tableLayout: 'fixed' }}>
-          <colgroup><col style={{ width: '25%' }} /><col style={{ width: '12%' }} /><col style={{ width: '20%' }} /><col style={{ width: '15%' }} /><col style={{ width: '13%' }} /><col style={{ width: '15%' }} /></colgroup>
+          <colgroup>
+            <col style={{ width: '20%' }} /> {/* Artist */}
+            <col style={{ width: '10%' }} /> {/* Beat Matches */}
+            <col style={{ width: '18%' }} /> {/* Followers */}
+            <col style={{ width: '15%' }} /> {/* Total Streams */}
+            <col style={{ width: '12%' }} /> {/* Popularity */}
+            <col style={{ width: '12%' }} /> {/* Most Recent Match */}
+            <col style={{ width: '13%' }} /> {/* Genres */}
+          </colgroup>
           <thead className="bg-[#C0C0C0] sticky top-0 z-10">
             <tr>
               <HeaderCell sortKey="artistName" currentSortColumn={sortColumn} currentSortDirection={sortDirection} onSortClick={handleSort}>Artist</HeaderCell>
               <HeaderCell sortKey="matchedTracksCount" currentSortColumn={sortColumn} currentSortDirection={sortDirection} onSortClick={handleSort} className="text-center">Beat Matches</HeaderCell>
               <HeaderCell sortKey="spotifyFollowers" currentSortColumn={sortColumn} currentSortDirection={sortDirection} onSortClick={handleSort} className="text-center">Followers</HeaderCell>
+              <HeaderCell sortKey="totalArtistStreams" currentSortColumn={sortColumn} currentSortDirection={sortDirection} onSortClick={handleSort} className="text-center">Total Streams</HeaderCell>
               <HeaderCell sortKey="spotifyPopularity" currentSortColumn={sortColumn} currentSortDirection={sortDirection} onSortClick={handleSort} className="text-center">Popularity</HeaderCell>
               <HeaderCell sortKey="mostRecentMatchDate" currentSortColumn={sortColumn} currentSortDirection={sortDirection} onSortClick={handleSort} className="text-center" title="Release date of the artist’s most recent track that used your beat.">Most Recent Match</HeaderCell>
               <HeaderCell currentSortColumn={sortColumn} currentSortDirection={sortDirection} onSortClick={() => {}} className="text-center">Genres</HeaderCell>
@@ -125,9 +138,12 @@ const ArtistStatsTable: React.FC<ArtistStatsTableProps> = ({
                     <div className="w-12 h-2.5 bg-gray-300 win95-border-inset relative" title={`${artist.spotifyFollowers ?? 0} followers`}><div className="h-full bg-gradient-to-r from-cyan-500 to-teal-500" style={{ width: `${artist.followerBarPercent}%`, boxShadow: artist.followerBarPercent > 0 ? '0.5px 0.5px 0px #404040' : 'none' }}></div></div>
                   </div>
                 </DataCell>
+                <DataCell className="text-center">
+                  {typeof artist.totalArtistStreams === 'number' ? formatFollowersDisplay(artist.totalArtistStreams) : (artist.isFollowersLoading ? '...' : '-')}
+                </DataCell>
                 <DataCell className="text-center">{typeof artist.spotifyPopularity === 'number' ? artist.spotifyPopularity : (artist.isFollowersLoading && !artist.followersError ? '...' : '-')}<PopularityBar score={artist.spotifyPopularity} /></DataCell>
                 <DataCell className="text-center">{artist.mostRecentMatchDate || '-'}</DataCell>
-                <DataCell className="text-center"><div className="flex flex-wrap justify-center items-center gap-0.5">{(artist.genres && artist.genres.length > 0) ? artist.genres.slice(0,3).map(genre => (<span key={genre} className="text-xs px-1 py-0 bg-gray-200 group-hover:bg-gray-300 win95-border-inset text-gray-700 group-hover:text-black whitespace-nowrap">{genre}</span>)) : (artist.isFollowersLoading && !artist.followersError ? '...' : <span className="text-xs">-</span>)}</div></DataCell>
+                <DataCell className="text-center"><div className="flex flex-wrap justify-center items-center gap-0.5">{(artist.genres && artist.genres.length > 0) ? artist.genres.slice(0,2).map(genre => (<span key={genre} className="text-xs px-1 py-0 bg-gray-200 group-hover:bg-gray-300 win95-border-inset text-gray-700 group-hover:text-black whitespace-nowrap">{genre}</span>)) : (artist.isFollowersLoading && !artist.followersError ? '...' : <span className="text-xs">-</span>)}</div></DataCell>
               </tr>
             ))}
           </tbody>
