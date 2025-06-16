@@ -3,33 +3,36 @@ import React, { useState, useMemo } from 'react';
 import ProgressBar from '../ProgressBar';
 import Button from '../Button';
 import { DailyAnalyticsSnapshot, HistoricalSongStreamEntry } from '../../../types';
-import { formatFollowersDisplay } from './reachAnalyzerUtils'; // Keep using this for follower-like formatting
-// Importing Recharts components. Ensure 'recharts' is installed or added to importmap if not already.
-// For this exercise, assuming it's available or would be added.
-// If using esm.sh, you might need to import specific modules like:
-// import { ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush } from 'https://esm.sh/recharts?bundle';
-// For simplicity, using a generic import path.
-import { ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush, Line } from 'recharts';
+import { formatFollowersDisplay } from './reachAnalyzerUtils'; 
+import { ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush, Line, Rectangle as RechartsRectangle } from 'recharts';
 
 
 type TimeWindow = '30d' | '1y' | 'all';
 
 interface TimeBasedAnalyticsGraphProps {
-  data: (DailyAnalyticsSnapshot | HistoricalSongStreamEntry)[]; // Accepts either total or song-specific history
-  dataKey: keyof DailyAnalyticsSnapshot | keyof HistoricalSongStreamEntry; // e.g., "cumulativeFollowers", "cumulativeStreams", "streams"
+  data: (DailyAnalyticsSnapshot | HistoricalSongStreamEntry)[]; 
+  dataKey: keyof DailyAnalyticsSnapshot | keyof HistoricalSongStreamEntry; 
   isLoading: boolean;
-  onDeleteHistory?: () => Promise<void>; // Make optional
+  onDeleteHistory?: () => Promise<void>; 
   graphColor: string;
   valueLabel: string;
   title: string;
   description: string;
 }
 
+const CustomBarShape = (props: any) => {
+  const { x, y, width, height, fill } = props;
+  if (height <= 0) return null;
+  // Simple rectangle, Win95 borders applied via className
+  return <rect x={x} y={y} width={width} height={height} fill={fill} className="win95-border-outset" />;
+};
+
+
 const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
   data,
   dataKey,
   isLoading,
-  onDeleteHistory, // Now optional
+  onDeleteHistory, 
   graphColor,
   valueLabel,
   title,
@@ -42,7 +45,7 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
     const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     if (selectedTimeWindow === 'all') {
-      return sortedData; // For "All Time" with Brush, show all data
+      return sortedData; 
     }
 
     const mostRecentDate = new Date(sortedData[sortedData.length - 1].date);
@@ -97,7 +100,7 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
     if (active && payload && payload.length && label) {
       const date = new Date(label).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric'});
       return (
-        <div className="win95-border-outset bg-[#FEFEE0] p-1.5 text-xs text-black shadow-md">
+        <div className="bg-[#fefee0] p-1.5 text-xs text-black win95-border-outset">
           <p className="font-semibold">{date}</p>
           <p>{`${valueLabel}: ${formatFollowersDisplay(payload[0].value)}`}</p>
         </div>
@@ -107,7 +110,7 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
   };
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 p-2 win95-border-outset bg-[#C0C0C0]">
       <div className="flex flex-col sm:flex-row justify-center items-center mb-1 text-center">
         <h4 className="text-base font-semibold text-black mb-1 sm:mb-0 sm:mr-2">{title}</h4>
         <div className="flex space-x-1 mb-1 sm:mb-0">
@@ -124,13 +127,14 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
             </Button>
           ))}
         </div>
-        {onDeleteHistory && data.length > 0 && ( // Conditionally render delete button
+        {onDeleteHistory && data.length > 0 && (
           <Button
             onClick={onDeleteHistory}
             size="sm"
-            className="!text-xs !px-1 !py-0 sm:ml-2 win95-button-sm !bg-red-200 hover:!bg-red-300 !border-red-500 !shadow-[0.5px_0.5px_0px_#800000]"
+            className="!text-xs !px-1 !py-0 sm:ml-2 !bg-red-200 hover:!bg-red-300 !border-red-500 !shadow-[0.5px_0.5px_0px_#800000]"
             title={`Delete all ${valueLabel.toLowerCase()} history data. This action cannot be undone.`}
             disabled={isLoading}
+            variant="danger"
           >
             Delete History
           </Button>
@@ -142,61 +146,38 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
          <div className="my-4"><ProgressBar text={`Processing ${valueLabel.toLowerCase()} data...`} /></div>
        )}
 
-      <div className="p-0.5 border-transparent border-2" style={{ height: 250 }}>
+      <div className="p-1 win95-border-inset bg-gray-700" style={{ height: 250 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={dataToDisplay} margin={{ top: 5, right: 5, left: -25, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#555555" />
+          <ComposedChart data={dataToDisplay} margin={{ top: 5, right: 15, left: -15, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.2)" />
             <XAxis 
                 dataKey="date" 
                 tickFormatter={(tick: string) => new Date(tick).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                tick={{ fontSize: 10, fill: '#000000' }}
+                tick={{ fontSize: 10, fill: '#FFFFFF' }}
                 interval="preserveStartEnd"
                 minTickGap={30}
             />
             <YAxis 
                 tickFormatter={(tick: number) => formatFollowersDisplay(tick)}
-                tick={{ fontSize: 10, fill: '#000000' }}
-                domain={[0, 'dataMax + dataMax*0.1']} // Add some padding to max
+                tick={{ fontSize: 10, fill: '#FFFFFF' }}
+                domain={[0, 'dataMax + dataMax*0.1']} 
             />
-            <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(200,200,200,0.2)'}}/>
-            {/* <Legend wrapperStyle={{fontSize: "12px"}}/> */}
-            <Bar dataKey={dataKey as string} name={valueLabel} barSize={20} fill={graphColor} shape={<Rectangle radius={[2, 2, 0, 0]}/>} />
-            <Line type="monotone" dataKey={dataKey as string} stroke={graphColor} strokeWidth={1.5} dot={false} activeDot={{ r: 4, stroke: '#000000', strokeWidth: 1 }} name={valueLabel} />
+            <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(200,200,200,0.1)'}}/>
+            <Bar dataKey={dataKey as string} name={valueLabel} barSize={20} fill={graphColor} shape={<CustomBarShape />} />
+            <Line type="monotone" dataKey={dataKey as string} stroke={graphColor} strokeWidth={1.5} dot={false} activeDot={{ r: 4, stroke: '#FFFFFF', strokeWidth: 1 }} name={valueLabel} />
             <Brush 
                 dataKey="date" 
                 height={25} 
-                stroke="#808080" 
-                fill="rgba(192,192,192,0.3)"
+                stroke="#666666" 
+                fill="rgba(128,128,128,0.3)"
                 tickFormatter={(tick: string) => new Date(tick).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 travellerWidth={10}
+                className="win95-brush-handle"
              />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
-  );
-};
-
-// Custom shape for Bar to allow top radius
-const Rectangle = (props: any) => {
-  const { x, y, width, height, radius } = props;
-  if (height === 0) return null; // Don't render if height is 0
-
-  const [r1, r2, r3, r4] = Array.isArray(radius) ? radius : [radius, radius, radius, radius];
-  
-  return (
-    <path
-      d={`M${x},${y + r1} 
-         A${r1},${r1},0,0,1,${x + r1},${y} 
-         L${x + width - r2},${y} 
-         A${r2},${r2},0,0,1,${x + width},${y + r2} 
-         L${x + width},${y + height - r3}
-         A${r3},${r3},0,0,1,${x + width - r3},${y + height}
-         L${x + r4},${y + height}
-         A${r4},${r4},0,0,1,${x},${y + height - r4}
-         Z`}
-      fill={props.fill}
-    />
   );
 };
 

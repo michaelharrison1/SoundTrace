@@ -1,13 +1,14 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { AggregatedSongData } from '../../../types';
-import useLocalStorage from '../../../../hooks/useLocalStorage'; // Assuming correct path
-import { formatFollowersDisplay } from './reachAnalyzerUtils'; // For stream count display
+import useLocalStorage from '../../../../hooks/useLocalStorage';
+import { formatFollowersDisplay } from './reachAnalyzerUtils';
+import ProgressBar from '../ProgressBar'; // Assuming ProgressBar is styled for Win95 theme
 
 interface EstimatedRevenueTabProps {
   uniqueSongsWithStreamCounts: AggregatedSongData[];
   totalStreams: number | null | undefined;
-  isLoading: boolean; // Overall loading state from parent
+  isLoading: boolean;
 }
 
 const EstimatedRevenueTab: React.FC<EstimatedRevenueTabProps> = ({
@@ -15,35 +16,43 @@ const EstimatedRevenueTab: React.FC<EstimatedRevenueTabProps> = ({
   totalStreams,
   isLoading,
 }) => {
-  const [payoutRate, setPayoutRate] = useLocalStorage<number>('soundtrace_payoutRate', 0.004);
+  const [payoutRate, setPayoutRate] = useLocalStorage<number>('soundtrace_payoutRate_v2', 0.0035);
   const [inputPayoutRate, setInputPayoutRate] = useState<string>(payoutRate.toString());
+  const [inputError, setInputError] = useState<string | null>(null);
 
-  const handlePayoutRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePayoutRateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputPayoutRate(e.target.value);
     const newRate = parseFloat(e.target.value);
     if (!isNaN(newRate) && newRate >= 0) {
       setPayoutRate(newRate);
+      setInputError(null);
+    } else if (e.target.value.trim() === "") {
+        setInputError("Payout rate cannot be empty.");
+    } else {
+      setInputError("Invalid rate. Please enter a positive number.");
     }
-  };
+  }, [setPayoutRate]);
   
-  const handlePayoutRateBlur = () => {
-    // If input is invalid on blur, reset it to the last valid stored rate
+  const handlePayoutRateBlur = useCallback(() => {
     const newRate = parseFloat(inputPayoutRate);
     if (isNaN(newRate) || newRate < 0) {
-        setInputPayoutRate(payoutRate.toString());
+        setInputPayoutRate(payoutRate.toString()); // Revert to last valid stored rate
+        setInputError(newRate < 0 ? "Rate must be positive." : "Invalid number for payout rate.");
     } else {
-        setPayoutRate(newRate); // Ensure payoutRate state is updated if only inputPayoutRate changed
+        setPayoutRate(newRate); // Ensure stored value is updated if valid
+        setInputError(null);
     }
-  };
+  }, [inputPayoutRate, payoutRate, setPayoutRate]);
 
   const calculatedTotalRevenue = useMemo(() => {
-    if (typeof totalStreams !== 'number' || totalStreams === null || isNaN(payoutRate)) {
+    if (typeof totalStreams !== 'number' || totalStreams === null || isNaN(payoutRate) || payoutRate < 0) {
       return null;
     }
     return totalStreams * payoutRate;
   }, [totalStreams, payoutRate]);
 
   const songsWithRevenue = useMemo(() => {
+    if (isNaN(payoutRate) || payoutRate < 0) return [];
     return uniqueSongsWithStreamCounts
       .map(song => ({
         ...song,
@@ -53,19 +62,24 @@ const EstimatedRevenueTab: React.FC<EstimatedRevenueTabProps> = ({
   }, [uniqueSongsWithStreamCounts, payoutRate]);
 
   const formatCurrency = (value: number | null | undefined) => {
-    if (value === null || typeof value === 'undefined') return 'N/A';
-    // Show more precision for smaller amounts
-    const precision = value < 1 ? 4 : 2;
-    return `$${value.toLocaleString(undefined, { minimumFractionDigits: precision, maximumFractionDigits: precision })}`;
+    if (value === null || typeof value === 'undefined' || isNaN(value)) {
+      return 'N/A';
+    }
+    return value.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 4 });
   };
 
   return (
-    <div className="p-2 text-black">
-      <h4 className="text-base font-semibold text-black mb-2 text-center">Estimated Spotify Revenue</h4>
-      
-      <div className="mb-3 p-2 win95-border-inset bg-gray-100">
-        <label htmlFor="payoutRate" className="block text-sm font-normal text-black mb-0.5">
-          Per-Stream Payout Rate ($):
+    <div className="p-3 space-y-4 text-black">
+      <div>
+        <h3 className="text-lg font-semibold text-center mb-1">Estimated Streaming Revenue</h3>
+        <p className="text-xs text-gray-700 text-center mb-2">
+          Based on StreamClout data. This is a rough estimate and actual earnings may vary.
+        </p>
+      </div>
+
+      <div className="p-2 win95-border-outset bg-gray-100 text-sm">
+        <label htmlFor="payoutRate" className="block font-normal mb-1">
+          Payout Rate per Stream (USD):
         </label>
         <input
           id="payoutRate"
@@ -75,60 +89,62 @@ const EstimatedRevenueTab: React.FC<EstimatedRevenueTabProps> = ({
           onBlur={handlePayoutRateBlur}
           step="0.0001"
           min="0"
-          className="w-full sm:w-1/3 px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
-          aria-label="Per-stream payout rate"
+          className="w-32 px-2 py-1 text-sm bg-white text-black win95-border-inset focus:outline-none rounded-none"
+          aria-label="Payout rate per stream"
         />
+        {inputError && <p className="text-xs text-red-600 mt-0.5">{inputError}</p>}
         <p className="text-xs text-gray-600 mt-0.5">
-          Default is $0.004. Adjust based on your distributor or estimates. Saved locally.
+          (e.g., Spotify average is often cited around $0.003 - $0.005)
         </p>
       </div>
 
-      <div className="mb-4 text-center p-2 win95-border-outset bg-gray-100">
-        <p className="text-sm text-black">Total Estimated Revenue:</p>
-        <p className="text-2xl font-bold text-green-700">
-          {isLoading && typeof totalStreams === 'undefined' ? 'Calculating...' : formatCurrency(calculatedTotalRevenue)}
-        </p>
-      </div>
-
-      <h5 className="text-sm font-semibold text-black mt-3 mb-1">Per-Song Revenue Breakdown:</h5>
-      {isLoading && songsWithRevenue.length === 0 ? (
-        <p className="text-center text-gray-600 py-3">Loading song data...</p>
-      ) : songsWithRevenue.length === 0 ? (
-        <p className="text-center text-gray-600 py-3">No songs with stream data found to estimate revenue.</p>
+      {isLoading && typeof totalStreams === 'undefined' ? (
+        <ProgressBar text="Loading total stream data..." />
       ) : (
-        <div className="max-h-80 overflow-y-auto win95-border-inset bg-white p-0.5">
-          <table className="min-w-full text-sm" style={{ tableLayout: 'fixed' }}>
-            <thead className="bg-[#C0C0C0] sticky top-0 z-10">
-              <tr>
-                <th scope="col" className="px-2 py-1 text-left font-normal text-black win95-border-outset border-b-2 border-r-2 border-b-[#808080] border-r-[#808080]" style={{ width: '45%' }}>Song Title</th>
-                <th scope="col" className="px-2 py-1 text-left font-normal text-black win95-border-outset border-b-2 border-r-2 border-b-[#808080] border-r-[#808080]" style={{ width: '25%' }}>Artist</th>
-                <th scope="col" className="px-2 py-1 text-center font-normal text-black win95-border-outset border-b-2 border-r-2 border-b-[#808080] border-r-[#808080]" style={{ width: '15%' }}>Streams</th>
-                <th scope="col" className="px-2 py-1 text-center font-normal text-black win95-border-outset border-b-2 border-b-[#808080]" style={{ width: '15%' }}>Est. Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              {songsWithRevenue.map(song => (
-                <tr key={song.spotifyTrackId} className="border-b border-gray-300 last:border-b-0">
-                  <td className="px-2 py-1.5 text-gray-800 truncate" title={song.title}>{song.title}</td>
-                  <td className="px-2 py-1.5 text-gray-800 truncate" title={song.artist}>{song.artist}</td>
-                  <td className="px-2 py-1.5 text-gray-800 text-center">{formatFollowersDisplay(song.latestStreamCount)}</td>
-                  <td className="px-2 py-1.5 text-gray-800 text-center font-semibold">{formatCurrency(song.estimatedRevenue)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="p-2 win95-border-outset bg-green-100">
+          <h4 className="font-semibold text-green-800">Total Estimated Revenue:</h4>
+          <p className="text-2xl font-bold text-green-700">
+            {formatCurrency(calculatedTotalRevenue)}
+          </p>
+          {typeof totalStreams === 'number' && (
+            <p className="text-xs text-green-600">
+              (from {formatFollowersDisplay(totalStreams)} total streams at ${payoutRate.toFixed(4)}/stream)
+            </p>
+          )}
         </div>
       )}
 
-      <div className="mt-4 p-2 win95-border-outset bg-yellow-100 text-yellow-800 border border-yellow-700">
-        <p className="text-sm font-semibold">Disclaimer:</p>
-        <ul className="list-disc list-inside text-xs space-y-0.5 mt-0.5">
-          <li>Revenue estimates are based on the per-stream rate you provide and aggregated stream counts from StreamClout.</li>
-          <li>Actual payout rates vary significantly based on distributor, listener location, subscription type (free/premium), and other factors.</li>
-          <li>These figures are for estimation purposes only and do not represent actual earnings.</li>
-          <li>StreamClout data might have its own update frequency and accuracy limitations.</li>
-        </ul>
-      </div>
+      {isLoading && songsWithRevenue.length === 0 ? (
+         <ProgressBar text="Loading song revenue data..." />
+      ) : songsWithRevenue.length > 0 ? (
+        <div className="space-y-2">
+          <h4 className="text-base font-semibold">Per-Song Estimated Revenue:</h4>
+          <div className="max-h-60 overflow-y-auto win95-border-inset bg-white p-0.5">
+            <table className="min-w-full text-xs">
+              <thead className="sticky top-0 z-10">
+                <tr>
+                  <th className="px-2 py-1 text-left font-normal text-black bg-gray-300 win95-border-outset border-b-2 border-r-2 border-gray-400">Song Title</th>
+                  <th className="px-2 py-1 text-left font-normal text-black bg-gray-300 win95-border-outset border-b-2 border-r-2 border-gray-400">Artist</th>
+                  <th className="px-2 py-1 text-right font-normal text-black bg-gray-300 win95-border-outset border-b-2 border-r-2 border-gray-400">Streams (SC)</th>
+                  <th className="px-2 py-1 text-right font-normal text-black bg-gray-300 win95-border-outset border-b-2 border-gray-400">Est. Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {songsWithRevenue.map((song, index) => (
+                  <tr key={song.spotifyTrackId || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                    <td className="px-2 py-1 border-b border-gray-300 truncate" title={song.title}>{song.title}</td>
+                    <td className="px-2 py-1 border-b border-gray-300 truncate" title={song.artist}>{song.artist}</td>
+                    <td className="px-2 py-1 border-b border-gray-300 text-right">{formatFollowersDisplay(song.latestStreamCount)}</td>
+                    <td className="px-2 py-1 border-b border-gray-300 text-right">{formatCurrency(song.estimatedRevenue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : !isLoading ? (
+        <p className="text-center text-gray-600">No stream data available to calculate revenue.</p>
+      ) : null}
     </div>
   );
 };

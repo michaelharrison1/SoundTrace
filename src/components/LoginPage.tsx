@@ -2,6 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { User } from '../types';
 import { authService } from '../services/authService';
+import Button from './common/Button';
 import ProgressBar from './common/ProgressBar';
 
 interface LoginPageProps {
@@ -32,68 +33,83 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   }, [username, password, onLogin]);
 
   return (
-    <div className="p-4 flex flex-col justify-center h-full text-black"> {/* Ensure text color is black */}
-      <div className="flex justify-center mb-3">
-        <img src="/src/components/windows95icons/actions/key_32x32.png" alt="Login" width="32" height="32" style={{imageRendering: 'pixelated'}} />
-      </div>
-      <h2 className="text-lg font-normal text-center mb-1">User Login</h2>
-      <p className="text-xs text-center mb-3">
-          Enter your username and password.
-      </p>
-
-      {error && !isLoading && (
-        <div className="mb-2 p-1 text-xs field-row bg-red-100 border border-red-500 text-red-700" role="alert">
-          <strong>Login Error:</strong> {error}
+    <div className="bg-[#C0C0C0] p-0.5 win95-border-outset w-full h-full flex flex-col">
+      <div className="bg-[#C0C0C0] p-4 border-2 border-transparent h-full flex flex-col justify-center flex-grow">
+        <div className="flex justify-center mb-4">
+          <span className="text-3xl text-[#084B8A]" aria-hidden="true">♫</span>
         </div>
-      )}
+        <h2 className="text-2xl font-normal text-center text-black mb-1">Account Login</h2>
+        <p className="text-sm text-center text-black mb-5">
+            Enter your credentials to access your dashboard.
+        </p>
 
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <div className="field-row-stacked">
-          <label htmlFor="login-username">Username:</label>
-          <input
-            id="login-username"
-            name="username"
-            type="text"
-            autoComplete="username"
-            required
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            aria-label="Username"
-            disabled={isLoading}
-          />
-        </div>
-
-        <div className="field-row-stacked">
-          <label htmlFor="login-password">Password:</label>
-          <input
-            id="login-password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-label="Password"
-            disabled={isLoading}
-          />
-        </div>
-
-        {!isLoading && (
-          <div className="field-row mt-3 flex justify-center space-x-2"> {/* Use field-row for button alignment */}
-            <button type="submit" disabled={isLoading} style={{minWidth: '80px'}}>
-              OK
-            </button>
-            {/* Optional: Add a Cancel button if it makes sense for the flow */}
-            {/* <button type="button" onClick={() => console.log('Login Cancelled')} style={{minWidth: '80px'}}>Cancel</button> */}
+        {error && !isLoading && (
+          <div className="mb-3 p-2 bg-red-200 text-black border border-black text-sm">
+            {error}
           </div>
         )}
-      </form>
 
-      {isLoading && (
-        <div className="mt-3">
-          <ProgressBar text="Authenticating..." />
-        </div>
-      )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="username" className="block text-sm font-normal text-black mb-0.5">
+              Username:
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+              placeholder="Enter username"
+              aria-label="Username"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-normal text-black mb-0.5">
+              Password:
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+              placeholder="Enter password"
+              aria-label="Password"
+              disabled={isLoading}
+            />
+          </div>
+
+          {!isLoading && (
+            <Button type="submit" size="md" disabled={isLoading} className="w-full">
+              Login
+            </Button>
+          )}
+        </form>
+
+        {isLoading && (
+          <div className="mt-4">
+            <ProgressBar text="Logging in..." />
+            <p className="mt-1 text-xs text-center text-gray-700">
+              This may take up to a minute.
+            </p>
+          </div>
+        )}
+
+        {!isLoading && (
+            <p className="mt-2 text-xs text-center text-blue-800">
+                Demo: user <span className="font-semibold text-black">producer</span>, pass <span className="font-semibold text-black">password123</span>
+            </p>
+        )}
+      </div>
     </div>
   );
 };

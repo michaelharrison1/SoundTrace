@@ -1,5 +1,4 @@
 
-
 import React, { useState, useCallback } from 'react';
 import Button from '../common/Button';
 
@@ -8,7 +7,7 @@ interface UrlInputFormsProps {
   onProcessSpotifyPlaylistUrl: (url: string) => void;
   onProcessSingleYouTubeVideoUrl: (url: string) => void;
   onProcessYouTubeChannelUrl: (url: string) => void;
-  onProcessYouTubePlaylistUrl: (url: string) => void; // New prop for playlist URL
+  onProcessYouTubePlaylistUrl: (url: string) => void;
   isLoading: boolean;
 }
 
@@ -17,20 +16,20 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
   onProcessSpotifyPlaylistUrl,
   onProcessSingleYouTubeVideoUrl,
   onProcessYouTubeChannelUrl,
-  onProcessYouTubePlaylistUrl, // New prop
+  onProcessYouTubePlaylistUrl,
   isLoading,
 }) => {
   const [multipleYoutubeVideoUrls, setMultipleYoutubeVideoUrls] = useState('');
   const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState('');
   const [singleYoutubeVideoUrl, setSingleYoutubeVideoUrl] = useState('');
   const [youtubeChannelUrl, setYoutubeChannelUrl] = useState('');
-  const [youtubePlaylistUrl, setYoutubePlaylistUrl] = useState(''); // New state for playlist URL
+  const [youtubePlaylistUrl, setYoutubePlaylistUrl] = useState('');
 
   const [multipleYoutubeError, setMultipleYoutubeError] = useState<string | null>(null);
   const [spotifyPlaylistError, setSpotifyPlaylistError] = useState<string | null>(null);
   const [singleYoutubeVideoError, setSingleYoutubeVideoError] = useState<string | null>(null);
   const [youtubeChannelError, setYoutubeChannelError] = useState<string | null>(null);
-  const [youtubePlaylistError, setYoutubePlaylistError] = useState<string | null>(null); // New error state
+  const [youtubePlaylistError, setYoutubePlaylistError] = useState<string | null>(null);
 
   const handleMultipleYouTubeVideoSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -112,7 +111,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
     onProcessYouTubeChannelUrl(youtubeChannelUrl);
   }, [youtubeChannelUrl, onProcessYouTubeChannelUrl]);
 
-  const handleYouTubePlaylistSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => { // New handler
+  const handleYouTubePlaylistSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setYoutubePlaylistError(null);
     if (!youtubePlaylistUrl.trim()) {
@@ -121,7 +120,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
     }
     try {
       const parsedUrl = new URL(youtubePlaylistUrl);
-      if (!parsedUrl.hostname.includes("youtube.com") || !parsedUrl.pathname.includes("/playlist")) { // Basic check for playlist URL
+      if (!parsedUrl.hostname.includes("youtube.com") || !parsedUrl.pathname.includes("/playlist")) {
         throw new Error("Invalid YouTube Playlist URL format. Must be like https://www.youtube.com/playlist?list=...");
       }
     } catch (e: any) {
@@ -134,7 +133,6 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* Scan YouTube Playlist URL */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">
           <h3 className="text-lg font-normal text-black mb-2">Scan Entire YouTube Playlist</h3>
@@ -163,7 +161,6 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
         </div>
       </section>
 
-      {/* Scan YouTube Channel URL */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">
           <h3 className="text-lg font-normal text-black mb-2">Scan Entire YouTube Channel</h3>
@@ -192,7 +189,6 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
         </div>
       </section>
 
-      {/* Scan Multiple YouTube Video URLs */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">
           <h3 className="text-lg font-normal text-black mb-2">Scan Multiple YouTube Video URLs</h3>
@@ -220,7 +216,6 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
         </div>
       </section>
 
-      {/* Single YouTube Video URL Processing */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">
           <h3 className="text-lg font-normal text-black mb-2">Scan Single YouTube Video</h3>
@@ -249,7 +244,6 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
         </div>
       </section>
 
-      {/* Spotify Playlist URL Processing */}
       <section className="p-0.5 win95-border-outset bg-[#C0C0C0]">
         <div className="p-3 bg-[#C0C0C0]">
           <h3 className="text-lg font-normal text-black mb-2">Import Spotify Playlist Tracks</h3>

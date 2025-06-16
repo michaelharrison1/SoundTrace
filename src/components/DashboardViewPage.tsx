@@ -1,17 +1,17 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, TrackScanLogStatus } from '../types'; // Updated import
+import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, TrackScanLogStatus } from '../types';
 import PreviousScans from './PreviousScans';
 import ReachAnalyzer from './common/ReachAnalyzer';
 import ProgressBar from './common/ProgressBar';
 import { analyticsService } from '../services/analyticsService';
-import { scanLogService } from '../services/scanLogService'; // Import scanLogService
+import { scanLogService } from '../services/scanLogService';
 
 interface DashboardViewPageProps {
   user: User;
   previousScans: TrackScanLog[];
-  onDeleteScan: (logId?: string) => void; // Callback to refresh data after single delete (MainAppLayout's handleIndividualLogUpdate)
-  onClearAllScans: () => void; // Callback to refresh data after clearing all (MainAppLayout's refreshAllData)
+  onDeleteScan: (logId?: string) => void; 
+  onClearAllScans: () => void; 
 }
 
 const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousScans, onDeleteScan: refreshDataAfterSingleDelete, onClearAllScans: refreshDataAfterClearAll }) => {
@@ -24,7 +24,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   const [isFollowerLoading, setIsFollowerLoading] = useState<boolean>(false);
   const [historicalAnalyticsData, setHistoricalAnalyticsData] = useState<DailyAnalyticsSnapshot[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(true);
-  const [isDeleting, setIsDeleting] = useState<boolean>(false); // For delete operations
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const uniqueArtistIds = useMemo(() => {
     const ids = new Set<string>();
@@ -197,7 +197,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     setIsDeleting(true);
     try {
       await scanLogService.deleteScanLog(logId);
-      refreshDataAfterSingleDelete(logId); // Trigger refresh in parent
+      refreshDataAfterSingleDelete(logId); 
       alert('Scan log deleted successfully.');
     } catch (error: any) {
       console.error("Error deleting scan log:", error);
@@ -211,7 +211,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     setIsDeleting(true);
     try {
       await scanLogService.clearAllScanLogs();
-      refreshDataAfterClearAll(); // Trigger refresh in parent
+      refreshDataAfterClearAll(); 
       alert('All scan logs cleared successfully.');
     } catch (error: any) {
       console.error("Error clearing all scan logs:", error);
@@ -243,7 +243,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   }
 
   return (
-    <div>
+    <div className="bg-[#C0C0C0] p-1"> {/* Main container with gray background */}
       <ReachAnalyzer
         totalFollowers={totalFollowers}
         totalStreams={totalStreams}
@@ -259,7 +259,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         followerResults={followerResults}
         onDeleteScan={handleActualDeleteScan} 
         onClearAllScans={handleActualClearAllScans}
-        isDeleting={isDeleting} // Pass deleting state
+        isDeleting={isDeleting} 
       />
     </div>
   );

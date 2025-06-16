@@ -1,9 +1,8 @@
 
-
 import React, { useState, useCallback } from 'react';
 import { ScanJob, JobStatus, JobFileState, JobType } from '../../types';
 import Button from '../common/Button';
-import CRTProgressBar from '../common/CRTProgressBar';
+import ProgressBar from '../common/ProgressBar'; // Changed from CRTProgressBar
 import { scanLogService } from '../../services/scanLogService';
 
 interface JobConsoleItemProps {
@@ -23,8 +22,6 @@ const formatJobType = (type: JobType): string => {
     case 'youtube_channel_electron_orchestrated': return 'YouTube Channel Scan (Desktop)';
     case 'youtube_playlist_electron_orchestrated': return 'YouTube Playlist Scan (Desktop)';
     default:
-      // This ensures that if a new JobType is added, TypeScript will warn us
-      // if we haven't handled it here. For runtime, it will display the raw type.
       const exhaustiveCheck: never = type;
       return exhaustiveCheck;
   }
@@ -81,8 +78,8 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
     setIsDeleting(true);
     onInteractionStart();
     try {
-      await scanLogService.deleteJob(job.id); // Changed from job.jobId
-      onJobAction(); // Notify parent to refresh
+      await scanLogService.deleteJob(job.id);
+      onJobAction(); 
     } catch (err: any) {
       console.error("Error deleting job:", err);
       if (handleAuthError(err)) return;
@@ -91,15 +88,15 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
       setIsDeleting(false);
       onInteractionEnd();
     }
-  }, [job.id, job.jobName, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]); // Changed from job.jobId
+  }, [job.id, job.jobName, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]);
 
   const handleResume = useCallback(async () => {
     setError(null);
     setIsResuming(true);
     onInteractionStart();
     try {
-      const updatedJob = await scanLogService.resumeJob(job.id); // Changed from job.jobId
-      onJobAction(updatedJob); // Notify parent to refresh with updated job
+      const updatedJob = await scanLogService.resumeJob(job.id);
+      onJobAction(updatedJob);
     } catch (err: any) {
       console.error("Error resuming job:", err);
       if (handleAuthError(err)) return;
@@ -108,11 +105,10 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
       setIsResuming(false);
       onInteractionEnd();
     }
-  }, [job.id, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]); // Changed from job.jobId
+  }, [job.id, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]);
 
   const isResumable = job.status === 'failed_acr_credits' || job.status === 'failed_upload_incomplete';
   const isProcessing = ['in_progress_fetching', 'in_progress_processing', 'uploading_files', 'queued_for_processing', 'processing_by_electron', 'waiting_for_electron'].includes(job.status);
-
 
   const progressPercent = job.totalItems > 0 ? (job.itemsProcessed / job.totalItems) * 100 : 0;
 
@@ -130,7 +126,7 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
         <div className="flex justify-between items-start">
           <div>
             <h3 className="text-base font-semibold text-black">{job.jobName}</h3>
-            <p className="text-xs text-gray-700">ID: {job.id} | Type: {formatJobType(job.jobType)}</p> {/* Changed from job.jobId */}
+            <p className="text-xs text-gray-700">ID: {job.id} | Type: {formatJobType(job.jobType)}</p>
             <p className="text-xs text-gray-700">Created: {new Date(job.createdAt).toLocaleString()}</p>
           </div>
           <div className="text-right">
@@ -146,17 +142,9 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
 
         {(isProcessing || job.totalItems > 0) && (
           <div>
-            {isProcessing ? (
-              <CRTProgressBar isActive={true} text={`${job.itemsProcessed} / ${job.totalItems > 0 ? job.totalItems : '?'} items. ${job.lastProcessedItemInfo?.itemName ? `Last: ${job.lastProcessedItemInfo.itemName.substring(0,30)}${job.lastProcessedItemInfo.itemName.length > 30 ? '...' : ''}`:'' }`} />
-            ) : (
-              <div className="w-full h-5 bg-gray-300 win95-border-inset p-0.5" title={`${job.itemsProcessed}/${job.totalItems} items (${progressPercent.toFixed(0)}%)`}>
-                <div className="h-full bg-[#084B8A]" style={{ width: `${progressPercent}%` }}>
-                   <span className="text-[10px] text-white pl-1 mix-blend-difference whitespace-nowrap">
-                        {job.itemsProcessed}/{job.totalItems} ({progressPercent.toFixed(0)}%)
-                    </span>
-                </div>
-              </div>
-            )}
+            <ProgressBar 
+              text={isProcessing ? `${job.itemsProcessed} / ${job.totalItems > 0 ? job.totalItems : '?'} items. ${job.lastProcessedItemInfo?.itemName ? `Last: ${job.lastProcessedItemInfo.itemName.substring(0,30)}${job.lastProcessedItemInfo.itemName.length > 30 ? '...' : ''}`:'' }` : undefined}
+            />
             {job.itemsWithMatches > 0 && <p className="text-xs text-green-700 mt-0.5">{job.itemsWithMatches} item(s) with matches found.</p>}
             {job.itemsFailed > 0 && <p className="text-xs text-red-700 mt-0.5">{job.itemsFailed} item(s) failed processing.</p>}
           </div>
@@ -175,9 +163,9 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
           <Button
             onClick={handleDelete}
             size="sm"
+            variant="danger"
             isLoading={isDeleting}
             disabled={isGloballyLoading || isResuming}
-            className="!bg-red-200 hover:!bg-red-300 !border-t-red-100 !border-l-red-100 !border-b-red-500 !border-r-red-500 active:!bg-red-400 active:!border-t-red-500 active:!border-l-red-500 active:!border-b-red-100 active:!border-r-red-100"
           >
             Delete Job
           </Button>

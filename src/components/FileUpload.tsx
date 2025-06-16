@@ -2,18 +2,18 @@
 import React, { useState, useCallback, useRef } from 'react';
 import Button from './common/Button';
 import UploadIcon from './icons/UploadIcon';
-// Removed TARGET_SAMPLE_RATE import as it's no longer used in the text
-import { JobFileState } from '../types'; 
+import { TARGET_SAMPLE_RATE } from '../utils/audioProcessing';
+import { JobFileState } from '../types';
 
 interface FileUploadProps {
-  onFilesSelectedForJob: (files: File[]) => void; 
+  onFilesSelectedForJob: (files: File[], numberOfSegments: number) => void;
   isLoading: boolean;
-  currentFileStates: JobFileState[]; 
-  currentUploadingFile: string | null; 
-  currentUploadingProgress: number; 
+  currentFileStates: JobFileState[];
+  currentUploadingFile: string | null;
+  currentUploadingProgress: number;
 }
 
-const MAX_ORIGINAL_FILE_SIZE_BYTES = 50 * 1024 * 1024; 
+const MAX_ORIGINAL_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const MAX_ORIGINAL_FILE_SIZE_MB = MAX_ORIGINAL_FILE_SIZE_BYTES / (1024 * 1024);
 
 
@@ -27,6 +27,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [selectedOriginalFiles, setSelectedOriginalFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedSegments, setSelectedSegments] = useState<number>(3);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -99,11 +100,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
     setDragOver(false);
   }, []);
 
-  const handleInitiateJobClick = useCallback(() => { 
+  const handleInitiateJobClick = useCallback(() => {
     if (selectedOriginalFiles.length > 0 && !isLoading) {
-      onFilesSelectedForJob(selectedOriginalFiles); 
+      onFilesSelectedForJob(selectedOriginalFiles, selectedSegments);
     }
-  }, [selectedOriginalFiles, isLoading, onFilesSelectedForJob]);
+  }, [selectedOriginalFiles, isLoading, onFilesSelectedForJob, selectedSegments]);
 
   const openFileDialog = useCallback(() => {
     fileInputRef.current?.click();
@@ -115,6 +116,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   const handleClearAllFiles = useCallback(() => {
     setSelectedOriginalFiles([]);
+  }, []);
+
+  const handleSegmentChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedSegments(parseInt(event.target.value, 10));
   }, []);
 
   return (
@@ -145,9 +150,26 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <p className="text-sm text-black">
             Drag & drop audio files or <span className="font-semibold underline">click here</span>.
           </p>
-          <p className="text-xs text-gray-700 mt-0.5">Supports: MP3, WAV, AAC, etc.</p>
-          {/* Removed text: "Originals up to ${MAX_ORIGINAL_FILE_SIZE_MB}MB" */}
-          {/* Removed text: "Note: All audio is processed at stereo, ${TARGET_SAMPLE_RATE / 1000}kHz." */}
+          <p className="text-xs text-gray-700 mt-0.5">Supports: MP3, WAV, AAC, etc. (Originals up to ${MAX_ORIGINAL_FILE_SIZE_MB}MB)</p>
+          <p className="text-xs text-black font-semibold mt-0.5">Note: All segments are stereo, ${TARGET_SAMPLE_RATE / 1000}kHz. More segments can take longer but improve accuracy.</p>
+        </div>
+
+        <div className="mt-2 mb-1">
+          <span className="text-sm text-black mr-2 font-normal">Scan Intensity (Segments):</span>
+          {[1, 2, 3].map(num => (
+            <label key={num} className="mr-2 text-sm text-black">
+              <input 
+                type="radio" 
+                name="segments" 
+                value={num} 
+                checked={selectedSegments === num} 
+                onChange={handleSegmentChange} 
+                className="mr-0.5 align-middle"
+                disabled={isLoading}
+              />
+              {num} Segment{num > 1 ? 's' : ''} ({num === 1 ? 'Fastest' : num === 2 ? 'Balanced' : 'Thorough'})
+            </label>
+          ))}
         </div>
         
         {selectedOriginalFiles.length > 0 && (
@@ -202,7 +224,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         {selectedOriginalFiles.length > 0 && (
           <Button
             onClick={handleInitiateJobClick}
-            isLoading={isLoading} 
+            isLoading={isLoading}
             disabled={selectedOriginalFiles.length === 0 || isLoading}
             className="w-full mt-3"
             size="md"

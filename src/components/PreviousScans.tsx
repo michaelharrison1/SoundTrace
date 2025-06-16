@@ -1,3 +1,4 @@
+
 import React, {useState, useMemo, JSX} from 'react';
 import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, PlatformSource, TrackScanLogStatus } from '../types';
 import Button from './common/Button';
@@ -28,7 +29,7 @@ interface PreviousScansProps {
   followerResults: Map<string, SpotifyFollowerResult>;
   onDeleteScan: (logId: string) => void;
   onClearAllScans: () => void;
-  isDeleting?: boolean; // Optional prop for disabling buttons
+  isDeleting?: boolean; 
 }
 
 interface DisplayableTableRow {
@@ -282,8 +283,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     <td className={`px-2 py-1 text-gray-800 truncate whitespace-nowrap ${className || ''}`} {...props}> {children} </td>
   )); DataCell.displayName = 'DataCell';
 
-  const containerStyles = "p-0.5 win95-border-outset bg-[#C0C0C0]";
-  const innerContainerStyles = "p-2 bg-[#C0C0C0]";
 
   const handleSingleDelete = (logId: string, fileName: string) => {
     if (window.confirm(`Are you sure you want to delete the scan log for "${fileName}"? This action cannot be undone.`)) {
@@ -301,37 +300,41 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const hasAnyMatchesInAnyLog = scanLogs.some(log => log.matches.length > 0 && (log.status === 'completed_match_found' || log.status === 'scanned_match_found' || log.status === 'imported_spotify_track'));
 
   return (
-    <div className={containerStyles}>
-      <div className={innerContainerStyles}>
+    <div className="win95-border-outset bg-[#C0C0C0] p-0.5">
+      <div className="p-2 bg-[#C0C0C0]">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-lg font-normal text-black">Beat Matches & Scan Log</h3>
           <div className="flex items-center space-x-1">
-            {hasAnyMatchesInAnyLog && ( <Button onClick={handleExportPlaylist} size="sm" className="p-1 !text-xs hover:bg-gray-300" disabled={isDeleting || isLoadingExport || isLoadingSpotifyAuth || sortedTableRows.filter(row => row.isMatchRow && row.matchDetails?.spotifyTrackId).length === 0} isLoading={isLoadingExport} title="Export visible Spotify tracks to a new playlist">Export to Spotify</Button> )}
-            <Button onClick={handleExportToCSV} size="sm" className="p-1 !text-xs hover:bg-gray-300" title="Export current table view to CSV" icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>} disabled={isDeleting}>Export Table CSV</Button>
-            {scanLogs.length > 0 && ( <Button onClick={handleClearAllConfirm} size="sm" className="p-1 hover:bg-gray-300" aria-label="Clear all scan records" title="Clear all scan records" disabled={isDeleting}><TrashIcon className="h-3.5 w-3.5" /></Button> )}
+            {hasAnyMatchesInAnyLog && ( <Button onClick={handleExportPlaylist} size="sm" className="p-1 !text-xs hover:bg-gray-300 win95-button-sm" disabled={isDeleting || isLoadingExport || isLoadingSpotifyAuth || sortedTableRows.filter(row => row.isMatchRow && row.matchDetails?.spotifyTrackId).length === 0} isLoading={isLoadingExport} title="Export visible Spotify tracks to a new playlist">Export to Spotify</Button> )}
+            <Button onClick={handleExportToCSV} size="sm" className="p-1 !text-xs hover:bg-gray-300 win95-button-sm" title="Export current table view to CSV" icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>} disabled={isDeleting}>Export Table CSV</Button>
+            {scanLogs.length > 0 && ( <Button onClick={handleClearAllConfirm} size="sm" className="p-1 hover:bg-gray-300 win95-button-sm" aria-label="Clear all scan records" title="Clear all scan records" disabled={isDeleting}><TrashIcon className="h-3.5 w-3.5" /></Button> )}
           </div>
         </div>
          {exportMessage && ( <div className={`mb-2 p-2 text-sm border ${exportMessage.type === 'success' ? 'bg-green-100 border-green-700 text-green-700' : 'bg-red-100 border-red-700 text-red-700'}`}>{exportMessage.text}</div> )}
         
+        <div className="text-xs text-gray-600 mb-1" title="Click column headers to sort.">ℹ️ Click column headers to sort.</div>
+
         {!hasAnyMatchesInAnyLog && scanLogs.length > 0 ? ( <p className="text-black text-center py-2 text-sm">No song matches found in your scan history. {scanLogs.length} record(s) processed without matches or with errors.</p> ) : (
         <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-320px)]">
           <table className="min-w-full text-sm" style={{tableLayout: 'fixed'}}>
              <colgroup>
-                <col style={{ width: '7%' }} /> {/* Combined Links (Icon + SP/YT Icons) */}
-                <col style={{ width: '5%' }} /> {/* Cover Art */}
-                <col style={{ width: '12%' }} /> {/* Song Title */}
-                <col style={{ width: '11%' }} /> {/* Artist */}
-                <col style={{ width: '9%' }} /> {/* Followers */}
-                <col style={{ width: '10%' }} /> {/* Album */}
-                <col style={{ width: '10%' }} /> {/* Streams (SC) */}
-                <col style={{ width: '7%' }} /> {/* Released */}
-                <col style={{ width: '6%' }} /> {/* Conf. */}
-                <col style={{ width: '10%' }} /> {/* Your Upload */}
-                <col style={{ width: '6%' }} /> {/* Action */}
-                <col style={{ width: '7%' }} /> {/* Platform Source text */}
+                <col style={{ width: '3%' }} /> 
+                <col style={{ width: '4%' }} /> 
+                <col style={{ width: '5%' }} /> 
+                <col style={{ width: '12%' }} /> 
+                <col style={{ width: '11%' }} /> 
+                <col style={{ width: '9%' }} /> 
+                <col style={{ width: '10%' }} /> 
+                <col style={{ width: '10%' }} /> 
+                <col style={{ width: '7%' }} /> 
+                <col style={{ width: '6%' }} /> 
+                <col style={{ width: '10%' }} /> 
+                <col style={{ width: '6%' }} /> 
+                <col style={{ width: '7%' }} /> 
             </colgroup>
             <thead className="bg-[#C0C0C0] border-b-2 border-b-[#808080] sticky top-0 z-10">
               <tr>
+                <HeaderCell className="text-center">Src</HeaderCell>
                 <HeaderCell className="text-center">Links</HeaderCell>
                 <HeaderCell className="text-center">Cover</HeaderCell>
                 <HeaderCell sortKey="title">Song Title</HeaderCell>
@@ -359,16 +362,16 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                   row.matchDetails?.platformLinks?.spotify
                 );
 
-                if (shouldShowSourceIcon) {
-                  iconsToRender.push(
-                    <SourceIcon
-                      key="source-icon"
-                      source={row.platformSource}
-                      url={row.sourceUrl}
-                      title={row.youtubeVideoTitle || row.originalFileName}
-                    />
-                  );
-                }
+                // if (shouldShowSourceIcon) { // This logic was causing source icon to hide for spotify imports; revert to always show if distinct
+                //   iconsToRender.push(
+                //     <SourceIcon
+                //       key="source-icon"
+                //       source={row.platformSource}
+                //       url={row.sourceUrl}
+                //       title={row.youtubeVideoTitle || row.originalFileName}
+                //     />
+                //   );
+                // }
 
                 if (row.isMatchRow && row.matchDetails?.platformLinks?.spotify) {
                   iconsToRender.push(
@@ -385,10 +388,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                   );
                 }
                 if (row.isMatchRow && row.matchDetails?.platformLinks?.youtube) {
-                  const isDuplicateYouTubeLink = shouldShowSourceIcon &&
-                                                row.platformSource === 'electron_youtube_item' &&
-                                                row.sourceUrl === row.matchDetails.platformLinks.youtube;
-                  if (!isDuplicateYouTubeLink) {
                     iconsToRender.push(
                       <a
                         key="youtube-track-link"
@@ -401,12 +400,11 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                         <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
                       </a>
                     );
-                  }
                 }
-
 
                 return (
                 <tr key={row.rowKey} className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:bg-blue-100`}>
+                  <DataCell className="text-center"><SourceIcon source={row.platformSource} url={row.sourceUrl} title={row.youtubeVideoTitle || row.originalFileName} /></DataCell>
                   <DataCell className="text-center">
                      {iconsToRender.map((icon, index) => (
                         <span key={index} className={index > 0 ? "ml-1" : ""}>
@@ -440,9 +438,9 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                       <DataCell className="text-center">{row.matchDetails.releaseDate}</DataCell>
                       <DataCell className="text-center"> <span className={`px-1 ${ row.matchDetails.matchConfidence > 80 ? 'text-green-700' : row.matchDetails.matchConfidence > 60 ? 'text-yellow-700' : 'text-red-700' }`}> {row.matchDetails.matchConfidence}% </span> </DataCell>
                     </>
-                  ) : ( <td colSpan={8} className="px-2 py-1 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
+                  ) : ( <td colSpan={8} className="px-2 py-1.5 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
                    <DataCell title={row.youtubeVideoTitle || row.originalFileName}> {row.youtubeVideoTitle || row.originalFileName} {row.statusMessage && row.isMatchRow && <div className="text-[10px] text-yellow-600 italic leading-tight">{row.statusMessage}</div>} </DataCell>
-                  <DataCell className="text-center"> <Button onClick={() => handleSingleDelete(row.logId, row.originalFileName)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300" title={`Delete scan record for ${row.originalFileName}`} disabled={isDeleting}> <TrashIcon className="h-3 w-3" /> </Button> </DataCell>
+                  <DataCell className="text-center"> <Button onClick={() => handleSingleDelete(row.logId, row.originalFileName)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300 win95-button-sm" title={`Delete scan record for ${row.originalFileName}`} disabled={isDeleting}> <TrashIcon className="h-3 w-3" /> </Button> </DataCell>
                   <DataCell className="text-center text-xs">{formatPlatformSource(row.platformSource)}</DataCell>
                 </tr>
               )})}

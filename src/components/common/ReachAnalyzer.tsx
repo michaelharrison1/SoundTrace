@@ -1,16 +1,16 @@
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import ProgressBar from './ProgressBar'; // Corrected path
-import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, AggregatedSongData, TrackScanLogStatus } from '../../types'; // Updated import
-import ArtistFollowers from './ArtistFollowers'; // Corrected path
+import ProgressBar from './ProgressBar'; 
+import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, AggregatedSongData, TrackScanLogStatus } from '../../types'; 
+import ArtistFollowers from './ArtistFollowers'; 
 import CollaborationRadarGraph from './CollaborationRadarGraph';
 import Button from '../common/Button';
 import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
 import TimeBasedAnalyticsGraph from './reachAnalyzer/TimeBasedAnalyticsGraph';
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
-import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils'; // Corrected path
-import RetroDNAVisualizer from './reachAnalyzer/RetroDNAVisualizer'; // Import new 3D DNA visualizer
+import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils'; 
+import RetroDNAVisualizer from './reachAnalyzer/RetroDNAVisualizer'; 
 import SongStreamDetail from './reachAnalyzer/SongStreamDetail';
 import EstimatedRevenueTab from './reachAnalyzer/EstimatedRevenueTab';
 
@@ -54,11 +54,11 @@ export interface BeatStatsEntry {
 }
 
 const FakeWindowIcon: React.FC = React.memo(() => (
-  <div className="w-4 h-4 bg-gray-300 border border-t-white border-l-white border-r-gray-500 border-b-gray-500 inline-flex items-center justify-center mr-1 align-middle">
-    <div className="w-[7px] h-[7px] bg-[#000080]"></div>
-  </div>
-));
-
+    <div className="w-4 h-4 bg-gray-300 border border-t-white border-l-white border-r-gray-500 border-b-gray-500 inline-flex items-center justify-center mr-1 align-middle">
+      <div className="w-[7px] h-[7px] bg-[#000080]"></div>
+    </div>
+  ));
+FakeWindowIcon.displayName = 'FakeWindowIcon';
 
 const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   totalFollowers,
@@ -86,16 +86,13 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
   useEffect(() => {
     const updateDimensions = () => {
-      if (visualizerContainerRef.current && activeMonitorTab === 'streamHistory') { // Only update if tab is active
+      if (visualizerContainerRef.current && activeMonitorTab === 'streamHistory') {
         setVisualizerDimensions({
           width: visualizerContainerRef.current.offsetWidth,
-          // Ensure a minimum height for the visualizer
           height: Math.max(250, visualizerContainerRef.current.offsetHeight || 300) 
         });
       }
     };
-  
-    // Debounce resize handler slightly for performance
     let resizeTimeout: ReturnType<typeof setTimeout>;
     const debouncedUpdateDimensions = () => {
       clearTimeout(resizeTimeout);
@@ -103,21 +100,15 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
     };
   
     if (activeMonitorTab === 'streamHistory') {
-        // Initial call to set dimensions. Use a small timeout to ensure layout is stable.
         const initialTimeout = setTimeout(updateDimensions, 50); 
         window.addEventListener('resize', debouncedUpdateDimensions);
-        
-        // Also listen for window visibility changes if relevant (not strictly necessary for resize)
-        // document.addEventListener('visibilitychange', updateDimensions);
-
         return () => {
           clearTimeout(initialTimeout);
           clearTimeout(resizeTimeout);
           window.removeEventListener('resize', debouncedUpdateDimensions);
-          // document.removeEventListener('visibilitychange', updateDimensions);
         };
     }
-  }, [activeMonitorTab]); // Rerun when tab changes
+  }, [activeMonitorTab]);
 
 
   useEffect(() => {
@@ -457,9 +448,10 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
       <div className="title-bar flex items-center justify-between bg-[#000080] text-white px-1 py-0.5 h-6 select-none">
         <div className="flex items-center"><FakeWindowIcon /><span className="font-bold text-sm">Reach Analyzer</span></div>
         <div className="flex space-x-0.5">
-          <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs" aria-label="Minimize">_</button>
-          <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs flex items-center justify-center" aria-label="Maximize"><div className="w-2 h-2 border border-black"></div></button>
-          <button className="win95-button-sm bg-[#C0C0C0] text-black font-bold font-mono w-4 h-4 leading-none text-xs" aria-label="Close">X</button>
+          {/* Placeholder for window controls; functionality removed for tabbed layout */}
+          <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs" aria-label="Minimize" disabled>_</button>
+          <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs flex items-center justify-center" aria-label="Maximize" disabled><div className="w-2 h-2 border border-black"></div></button>
+          <button className="win95-button-sm bg-[#C0C0C0] text-black font-bold font-mono w-4 h-4 leading-none text-xs" aria-label="Close" disabled>X</button>
         </div>
       </div>
       <div className="menu-bar flex space-x-0 select-none">
@@ -483,7 +475,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         ))}
       </div>
       <div className="tab-content-wrapper p-0.5 pt-0 bg-[#C0C0C0]">
-        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[380px] flex flex-col" role="tabpanel" aria-labelledby={`tab-${activeMonitorTab}`}>
+        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[350px] flex flex-col" role="tabpanel" aria-labelledby={`tab-${activeMonitorTab}`}>
           {renderTabContent()}
         </div>
       </div>

@@ -6,7 +6,7 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Security Headers -->
+  <!-- Security Headers (from current version) -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self';
                  script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh https://accounts.google.com https://apis.google.com;
@@ -21,94 +21,130 @@
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 
-  <title>SoundTrace 95</title>
+  <title>SoundTrace</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/98.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-  <!-- Preload actual icons if known, placeholder for now -->
-  <!-- <link rel="preload" as="image" href="/src/components/windows95icons/apps/my_computer_32x32.png"> -->
+  <link rel="preload" as="image" href="/src/assets/background.jpg"> {/* Corrected path */}
   <link rel="prerender" href="/privacy-policy">
   <link rel="prerender" href="/terms-of-service">
 
   <style>
     body {
-      background-image: url('/src/assets/background.png'); /* New background image */
+      background-color: #C0C0C0; /* Windows 95 gray */
+      font-family: 'VT323', monospace;
+      color: #000000; /* Default text black */
+      font-size: 16px; /* VT323 looks better a bit larger */
+      margin: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      background-color: #008080; /* Fallback color */
-      font-family: "Pixelated MS Sans Serif", "VT323", monospace;
-      color: #222222; /* Darker gray for text for better readability on teal/gray */
-      font-size: 16px;
-      margin: 0;
-      -webkit-font-smoothing: none;
-      -moz-osx-font-smoothing: grayscale;
-      image-rendering: pixelated;
-      image-rendering: -moz-crisp-edges;
-      image-rendering: crisp-edges;
-      overflow: hidden; /* Prevent body scrollbars */
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
+      background-attachment: fixed;
+    }
+    body.logged-out-background {
+      background-image: url('/src/assets/background.jpg'); /* Corrected path */
+    }
+    body.logged-in-background {
+      background-image: none;
+      background-color: #C0C0C0; /* Ensure gray background for logged-in state */
     }
 
-    #root {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden; /* Important for desktop layout */
+    /* Minimal scrollbar styling for consistency */
+    ::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
     }
-
-    /* 98.css scrollbar styling (if not automatically applied by the library) */
-    ::-webkit-scrollbar { width: 16px; height: 16px; }
-    ::-webkit-scrollbar-track { background-color: #dfdfdf; }
+    ::-webkit-scrollbar-track {
+      background: #DFDFDF; /* Lighter gray track */
+    }
     ::-webkit-scrollbar-thumb {
-        background-color: #c0c0c0; border: 1px solid;
-        border-color: #f0f0f0 #808080 #808080 #f0f0f0;
-        box-shadow: 1px 1px 0px #000000 inset;
+      background: #808080; /* Darker gray thumb */
+      border: 1px solid #C0C0C0;
     }
-    ::-webkit-scrollbar-button {
-        background-color: #c0c0c0; border: 1px solid;
-        border-color: #f0f0f0 #808080 #808080 #f0f0f0;
-        box-shadow: 1px 1px 0px #000000 inset;
-        display: block; height: 16px; width: 16px;
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555555;
     }
-    * { scrollbar-width: auto; scrollbar-color: #c0c0c0 #dfdfdf; }
+    * { scrollbar-width: thin; scrollbar-color: #808080 #DFDFDF; }
 
-    /* Standard borders from 98.css are preferred. These are for custom elements if needed. */
+
+    /* Win95 style borders */
     .win95-border-outset {
       border-style: solid; border-width: 2px;
       border-top-color: #FFFFFF; border-left-color: #FFFFFF;
       border-bottom-color: #808080; border-right-color: #808080;
-      box-shadow: 1px 1px 0px #000000; /* Adjusted shadow for consistency */
+      box-shadow: 1px 1px 0px #000000;
     }
     .win95-border-inset {
       border-style: solid; border-width: 2px;
       border-top-color: #808080; border-left-color: #808080;
       border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
-      box-shadow: none; /* Inset usually doesn't have outer shadow */
+    }
+    svg {
+       stroke: #000000 !important; /* Ensure icons are black for VT323 theme */
     }
 
-    svg { /* Keeping this, might need adjustments based on icon set */
-      stroke: currentColor; /* Default, but icons might have their own fill/stroke */
-    }
-
-    /* Progress bar styling (98.css might provide this) */
+    /* Progress bar styling from oldfrontend */
     @keyframes progressBarMarqueeAnim {
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
     }
     .progress-bar-blocks-container {
-      width: 200%;
+      width: 200%; /* Effectively makes it look like infinite blocks */
       animation: progressBarMarqueeAnim 1.2s linear infinite;
       will-change: transform;
     }
-    .progress-bar-block { /* Standard Win95 progress bar block color */
-      height: 100%; background-color: #000080;
+    .progress-bar-block {
+      height: 100%; background-color: #084B8A; /* Dark blue, consistent with old style */
     }
 
+    /* CRT Scan Line Animation from oldfrontend */
+    .crt-scan-bar-container {
+      width: 100%; height: 100%;
+      background-color: #1a1a1a; /* Dark CRT background */
+      overflow: hidden; position: relative;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+    }
+    .crt-scan-line {
+      position: absolute; top: 0; bottom: 0;
+      width: 3px; /* Width of the scan line */
+      background-color: #33ff33; /* Bright green scan line */
+      box-shadow: 0 0 5px #33ff33, 0 0 10px #33ff33, 0 0 15px #33ff33;
+      animation: crt-scan-anim 1.5s linear infinite;
+      will-change: left;
+    }
+    @keyframes crt-scan-anim {
+      0% { left: -3px; /* Start off-screen left */ }
+      100% { left: 100%; /* End off-screen right */ }
+    }
+    
+    /* General purpose button styling from oldfrontend (Button.tsx will also reflect this) */
+    .win95-button-sm {
+      font-family: inherit; background-color: #c0c0c0; color: #000000;
+      border-style: solid; border-width: 1px;
+      border-top-color: #FFFFFF; border-left-color: #FFFFFF;
+      border-bottom-color: #808080; border-right-color: #808080;
+      box-shadow: 0.5px 0.5px 0px #000000; padding: 1px 3px; font-size: 1em; /* VT323 may need adjusted font size here */
+      line-height: 1; align-items: center; justify-content: center; display: inline-flex;
+      min-width: 20px; min-height: 20px;
+    }
+    .win95-button-sm:active:not(:disabled) {
+      border-top-color: #808080; border-left-color: #808080;
+      border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
+      box-shadow: none; transform: translate(0.5px, 0.5px);
+    }
+     .win95-button-sm:disabled {
+        color: #808080; text-shadow: 1px 1px 0 #ffffff; cursor: default;
+    }
+    .win95-button-sm:disabled:active {
+        transform: none; box-shadow: 0.5px 0.5px 0px #000000;
+        border-top-color: #FFFFFF; border-left-color: #FFFFFF;
+        border-bottom-color: #808080; border-right-color: #808080;
+    }
+
+    /* Tooltip styles from oldfrontend */
     .tooltip { position: relative; display: inline-block; }
     .tooltip .tooltiptext {
       visibility: hidden; width: max-content; background-color: #fefee0; color: #000000;
@@ -118,273 +154,8 @@
     }
     .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
 
-    /* Desktop Icons */
-    .desktop-icon-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 90px; /* Slightly wider for 2 lines of text */
-      padding: 8px 4px;
-      margin: 4px 8px; /* Adjusted margin for vertical stacking */
-      cursor: default; /* Changed from pointer to default as they are non-interactive */
-      text-align: center;
-      border: 1px solid transparent;
-      user-select: none;
-    }
-    /* Removed :focus and .selected styles for desktop-icon-container as they are non-interactive */
-    .desktop-icon-container img {
-      width: 32px; height: 32px;
-      margin-bottom: 6px;
-      image-rendering: pixelated;
-    }
-    .desktop-icon-container span {
-      font-size: 12px;
-      color: white;
-      text-shadow: 1px 1px 0px #000000;
-      padding: 1px 3px;
-      line-height: 1.2;
-      display: block; /* Ensure span takes up block for centering */
-      max-width: 100%;
-      word-wrap: break-word; /* Allow text to wrap */
-      overflow-wrap: break-word;
-    }
-     /* Removed .selected span styles */
-
-    /* Window Styling (not draggable, but modal-like) */
-    .app-window-frame { /* Using 98.css 'window' class */
-      position: absolute;
-      /* Default position, App.tsx can override */
-      top: 5%;
-      left: 10%;
-      width: 80%;
-      height: 80%;
-      max-width: 900px; /* Max size for larger screens */
-      max-height: 700px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
-      z-index: 100; /* Base z-index */
-    }
-    .app-window-frame.active {
-      z-index: 200; /* Active window on top */
-    }
-     .app-window-frame .window-body {
-        display: flex;
-        flex-direction: column;
-        flex-grow: 1;
-        overflow: hidden; /* Important: child should manage its own scroll */
-    }
-    .app-window-frame .window-body > * {
-        flex-grow: 1; /* Make the content (e.g., DashboardViewPage) fill the window body */
-        overflow: auto; /* Allow content to scroll */
-        display: flex; /* If content itself needs to be a flex container */
-        flex-direction: column; /* If content stacks items */
-    }
-    .window-hidden {
-      display: none !important;
-    }
-
-
-    /* Taskbar */
-    .taskbar {
-      height: 38px; /* Increased taskbar height */
-      background-color: #c0c0c0;
-      border-top: 2px solid #FFFFFF;
-      display: flex;
-      align-items: center;
-      padding: 2px 3px; /* Adjusted padding */
-      position: relative;
-      z-index: 500; /* Above windows */
-      flex-shrink: 0; /* Prevent taskbar from shrinking */
-    }
-    .taskbar-start-button {
-      padding: 2px 8px;
-      margin-right: 4px;
-      display: flex;
-      align-items: center;
-      height: calc(100% - 4px); /* Adjust height to fit */
-    }
-    .taskbar-start-button img {
-      width: 20px; /* Slightly larger start icon */
-      height: 20px;
-      margin-right: 5px;
-    }
-    .taskbar-divider {
-      width: 2px;
-      height: calc(100% - 6px); /* Adjust height */
-      background-color: #808080;
-      border-right: 1px solid #FFFFFF;
-      margin: 0 3px;
-    }
-    .taskbar-tabs {
-      display: flex;
-      align-items: center;
-      height: 100%;
-      flex-grow: 1;
-      overflow-x: auto; /* In case of many tabs */
-      margin-left: 10px; /* Move tabs to the right */
-    }
-    .taskbar-tab {
-      padding: 3px 8px; /* Increased padding */
-      margin: 2px 1px;
-      min-width: 130px; /* Increased min-width */
-      max-width: 190px; /* Increased max-width */
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      font-size: 13px;
-      height: calc(100% - 4px); /* Fit within taskbar */
-    }
-    .taskbar-tab img {
-        width: 16px; height: 16px;
-        margin-right: 5px; /* Increased margin for icon */
-        object-fit: contain;
-        image-rendering: pixelated;
-    }
-    .taskbar-tab.active { /* 98.css handles active button state well */
-      /* border-style: inset; */ /* 98.css handles this */
-    }
-    .taskbar-clock {
-      padding: 2px 8px; /* Adjust padding */
-      height: calc(100% - 6px); /* Match button height */
-      min-width: 75px; /* Slightly wider */
-      text-align: center;
-      border-style: solid; border-width: 1px;
-      border-color: #808080 #FFFFFF #FFFFFF #808080; /* Sunken appearance */
-      margin-left: auto; /* Pushes to the right */
-      font-size: 13px; /* Increased font size */
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* Start Menu */
-    .start-menu {
-      position: absolute;
-      bottom: 38px; /* Above increased taskbar */
-      left: 0;
-      background-color: #c0c0c0;
-      border: 2px solid;
-      border-color: #FFFFFF #808080 #808080 #FFFFFF;
-      box-shadow: 2px 2px 3px rgba(0,0,0,0.3);
-      z-index: 1000;
-      width: 220px; /* Slightly wider */
-      padding: 2px;
-      display: flex;
-      flex-direction: column;
-    }
-    .start-menu-item {
-      display: flex;
-      align-items: center;
-      padding: 6px 10px; /* Increased padding */
-      font-size: 13px;
-      color: #000000;
-      cursor: default;
-      text-decoration: none; /* For <a> tags */
-    }
-    .start-menu-item:hover, .start-menu-item:focus {
-      background-color: #000080; /* Windows selection blue */
-      color: #FFFFFF;
-      outline: none;
-    }
-    .start-menu-item img {
-      width: 20px; height: 20px;
-      margin-right: 10px; /* Increased margin */
-      object-fit: contain;
-    }
-    .start-menu-separator {
-      height: 1px;
-      background-color: #808080;
-      border-bottom: 1px solid #FFFFFF;
-      margin: 3px 0; /* Increased margin */
-    }
-    .start-menu-sidebar {
-        background-color: #808080; /* Dark gray for sidebar */
-        writing-mode: vertical-rl;
-        transform: rotate(180deg);
-        color: white;
-        font-weight: bold;
-        padding: 12px 5px; /* Increased padding */
-        text-align: center;
-        font-size: 20px; /* Larger font for sidebar */
-    }
-
-
-    /* Tailwind reset for 98.css compatibility */
-    /* Most of these resets are already handled by 98.css itself */
-    /* but ensuring font-family and basic box model are good. */
-    button, input, optgroup, select, textarea {
-      font-family: "Pixelated MS Sans Serif", "VT323", monospace;
-    }
-    /* Default focus style for 98.css. Ensure it's not overridden too harshly */
-    *:focus {
-        /* outline: 1px dotted #000000; /* 98.css standard focus */
-    }
-
-    /* Ensure Tailwind preflight doesn't interfere with 98.css button specific padding/border */
-    button {
-        padding: revert; /* Revert to 98.css padding if tailwind overrides */
-        border-width: revert;
-    }
-    input[type="text"], input[type="password"], input[type="url"], input[type="number"], textarea {
-        padding: 2px 3px; /* Typical 98.css padding */
-    }
-
-    /* Styles for tab content inside a window */
-    .window-tab-content {
-      flex-grow: 1;
-      padding: 10px; /* Standard padding for content within window tab */
-      overflow-y: auto; /* Scroll content if it overflows */
-      background-color: #c0c0c0; /* Match window background */
-      border: 1px solid;
-      border-color: #808080 #FFFFFF #FFFFFF #808080; /* Standard inset border for content areas */
-      margin: 2px; /* Space from tab controls */
-    }
-    .window-tab-content > div, .window-tab-content > form {
-        height: 100%; /* Ensure direct child takes full height for scroll */
-        display: flex;
-        flex-direction: column;
-    }
-    .window-tab-content .field-row, .window-tab-content .sunken-panel { /* 98.css classes */
-      margin-bottom: 8px;
-    }
-
-    /* CRT Scan Bar for Job Console Items */
-    .crt-scan-bar-container {
-      position: relative;
-      overflow: hidden;
-      background-color: #1a2a1a; /* Dark green background */
-    }
-    .crt-scan-line {
-      position: absolute;
-      top: 0;
-      left: -5%; /* Start off-screen */
-      width: 2%; /* Width of the scan line */
-      height: 100%;
-      background-color: #32cd32; /* Bright green scan line */
-      box-shadow: 0 0 5px #32cd32, 0 0 10px #32cd32;
-      opacity: 0.7;
-      animation: crtScanAnimation 2s linear infinite;
-      will-change: transform;
-    }
-
-    @keyframes crtScanAnimation {
-      0% { transform: translateX(0) scaleY(1); }
-      48% { transform: translateX(2500%) scaleY(0.95); } /* Move across 100% / (2%/width) = 50 * 100% -> 5000% for full 2s sweep if width is 2%*/
-                                                       /* Given container width (100%) and line width (2%), it needs to travel 50 times its width. */
-                                                       /* For a 2s animation, it means 25 units of its own width per second. */
-                                                       /* If we want it to sweep across in 2s, it travels 100 units. 100 / 2 = 50. 50 * its width = 50 * 2% = 100% of container. */
-                                                       /* So, needs to translateX( (100/line_width_percent - 1) * 100%) = (100/2 -1)*100 = 4900% */
-                                                       /* Let's try a large value: 2500% means it travels 25 times the container width. */
-      50% { transform: translateX(2500%) scaleY(0.3); opacity: 0.3;} /* Momentarily dimmer/thinner at the end */
-      52% { transform: translateX(0) scaleY(0.3); opacity: 0; } /* Jump back off-screen left, faded */
-      55% { transform: translateX(0) scaleY(1); opacity: 0.7; } /* Reappear */
-      100% { transform: translateX(2500%) scaleY(0.95); }
-    }
-
   </style>
+
 <script type="importmap">
 {
   "imports": {
@@ -412,6 +183,7 @@
 </script>
 </head>
 <body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
   <div id="root"></div>
   <script type="module" src="/src/index.tsx"></script>
 </body>

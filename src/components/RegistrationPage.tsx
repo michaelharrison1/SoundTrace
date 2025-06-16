@@ -2,6 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { User } from '../types';
 import { authService } from '../services/authService';
+import Button from './common/Button';
 import ProgressBar from './common/ProgressBar';
 
 interface RegistrationPageProps {
@@ -47,81 +48,96 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister }) => {
   }, [username, password, confirmPassword, onRegister]);
 
   return (
-    <div className="p-4 flex flex-col justify-center h-full text-black">
-       <div className="flex justify-center mb-3">
-         <img src="/src/components/windows95icons/actions/add_user_32x32.png" alt="Register User" width="32" height="32" style={{imageRendering: 'pixelated'}} />
-      </div>
-      <h2 className="text-lg font-normal text-center mb-1">Create New Account</h2>
-      <p className="text-xs text-center mb-3">
-        Enter details to register for SoundTrace 95.
-      </p>
-
-      {error && !isLoading && (
-        <div className="mb-2 p-1 text-xs field-row bg-red-100 border border-red-500 text-red-700" role="alert">
-          <strong>Registration Error:</strong> {error}
+    <div className="bg-[#C0C0C0] p-0.5 win95-border-outset w-full h-full flex flex-col">
+      <div className="bg-[#C0C0C0] p-4 border-2 border-transparent h-full flex flex-col justify-center flex-grow">
+        <div className="flex justify-center mb-4">
+          <span className="text-3xl text-[#084B8A]" aria-hidden="true">♫</span>
         </div>
-      )}
+        <h2 className="text-2xl font-normal text-center text-black mb-1">Create Account</h2>
+        <p className="text-sm text-center text-black mb-5">
+          Join SoundTrace to start scanning your instrumentals.
+        </p>
 
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <div className="field-row-stacked">
-          <label htmlFor="reg-username">Username:</label>
-          <input
-            id="reg-username"
-            name="username"
-            type="text"
-            autoComplete="username"
-            required
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            aria-label="Choose a username"
-            disabled={isLoading}
-          />
-        </div>
-
-        <div className="field-row-stacked">
-          <label htmlFor="reg-password">Password:</label>
-          <input
-            id="reg-password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-label="Create a password (min. 6 characters)"
-            disabled={isLoading}
-          />
-        </div>
-
-        <div className="field-row-stacked">
-          <label htmlFor="reg-confirm-password">Confirm Password:</label>
-          <input
-            id="reg-confirm-password"
-            name="confirmPassword"
-            type="password"
-            autoComplete="new-password"
-            required
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            aria-label="Confirm your password"
-            disabled={isLoading}
-          />
-        </div>
-
-        {!isLoading && (
-          <div className="field-row mt-3 flex justify-center space-x-2">
-            <button type="submit" disabled={isLoading} style={{minWidth: '80px'}}>
-              Register
-            </button>
+        {error && !isLoading && (
+          <div className="mb-3 p-2 bg-red-200 text-black border border-black text-sm">
+            {error}
           </div>
         )}
-      </form>
 
-      {isLoading && (
-        <div className="mt-3">
-          <ProgressBar text="Registering..." />
-        </div>
-      )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="reg-username" className="block text-sm font-normal text-black mb-0.5">
+              Username:
+            </label>
+            <input
+              id="reg-username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+              placeholder="Choose a username"
+              aria-label="Choose a username"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="reg-password" className="block text-sm font-normal text-black mb-0.5">
+              Password:
+            </label>
+            <input
+              id="reg-password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+              placeholder="Create a password (min. 6 chars)"
+              aria-label="Create a password"
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="reg-confirm-password" className="block text-sm font-normal text-black mb-0.5">
+              Confirm Password:
+            </label>
+            <input
+              id="reg-confirm-password"
+              name="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-2 py-1 bg-white text-black win95-border-inset focus:outline-none rounded-none"
+              placeholder="Confirm your password"
+              aria-label="Confirm your password"
+              disabled={isLoading}
+            />
+          </div>
+
+          {!isLoading && (
+            <Button type="submit" size="md" disabled={isLoading} className="w-full">
+              Register
+            </Button>
+          )}
+        </form>
+
+        {isLoading && (
+          <div className="mt-4">
+            <ProgressBar text="Creating Account..." />
+            <p className="mt-1 text-xs text-center text-gray-700">
+              This may take up to a minute.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

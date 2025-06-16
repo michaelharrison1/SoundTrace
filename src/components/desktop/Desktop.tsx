@@ -15,7 +15,7 @@ const Desktop: React.FC<DesktopProps> = ({ icons }) => {
       className="flex-grow p-2 flex flex-col flex-nowrap items-start content-start overflow-y-auto relative"
       style={{ backgroundColor: 'transparent' }} // Background is now handled by body CSS
       role="main"
-      aria-label="Desktop area with icons"
+      aria-label="Desktop area with icons" 
     >
       {/* Desktop Icons */}
       {icons.map(icon => (

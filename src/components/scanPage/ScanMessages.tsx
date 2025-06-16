@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface ScanMessagesProps {
@@ -16,7 +17,7 @@ const ScanMessages: React.FC<ScanMessagesProps> = ({
   manualAddMessage
 }) => {
   if (isLoading) {
-    return null; // Loading progress is handled by ProgressBar in ScanPage
+    return null;
   }
 
   const hasAnyMessage = error || scanCompletionMessage || alreadyScannedMessage || manualAddMessage;
@@ -26,7 +27,7 @@ const ScanMessages: React.FC<ScanMessagesProps> = ({
   }
 
   return (
-    <div className="p-0.5 win95-border-outset bg-[#C0C0C0]">
+    <div className="p-0.5 win95-border-outset bg-[#C0C0C0] mt-3">
       <div className="p-2 bg-[#C0C0C0] space-y-1.5">
         {scanCompletionMessage && (
           <div className="p-2 bg-green-200 text-black border border-black">

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Button from '../common/Button';
 
@@ -8,7 +9,7 @@ interface ManualSpotifyAddFormProps {
 const ManualSpotifyAddForm: React.FC<ManualSpotifyAddFormProps> = ({ onAddTrack }) => {
   const [manualSpotifyLink, setManualSpotifyLink] = useState<string>('');
   const [isAddingManualLink, setIsAddingManualLink] = useState<boolean>(false);
-  const [formMessage, setFormMessage] = useState<string | null>(null); // For messages related to this form specifically
+  const [formMessage, setFormMessage] = useState<string | null>(null); 
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -23,10 +24,8 @@ const ManualSpotifyAddForm: React.FC<ManualSpotifyAddFormProps> = ({ onAddTrack 
     
     setIsAddingManualLink(false);
     if (success) {
-      setManualSpotifyLink(''); // Clear form only on success
-      // Success message will be handled by the parent ScanPage's manualAddMessage
+      setManualSpotifyLink(''); 
     }
-    // Error message is also handled by parent ScanPage's manualAddMessage
   };
 
   return (
@@ -51,7 +50,7 @@ const ManualSpotifyAddForm: React.FC<ManualSpotifyAddFormProps> = ({ onAddTrack 
             {isAddingManualLink ? 'Adding...' : 'Add to Scan Log'}
           </Button>
         </form>
-        {formMessage && ( // Display form-specific validation messages here
+        {formMessage && (
             <div className={`mt-2 p-1.5 text-xs border bg-red-100 border-red-700 text-red-700`}>
                 {formMessage}
             </div>

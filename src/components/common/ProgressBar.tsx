@@ -16,12 +16,12 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ text, className, textClassNam
     <div className={`w-full ${className || ''}`} aria-live="polite">
       {text && <p className={`text-black text-sm mb-1 text-center ${textClassName || ''}`}>{text}</p>}
       <div
-        className="h-5 bg-white win95-border-inset p-0.5"
+        className="h-5 bg-white win95-border-inset p-0.5" // Ensure this has the inset border
         role="progressbar"
         aria-label={text || "Loading progress"}
         aria-busy="true"
       >
-        <div className="h-full w-full overflow-hidden bg-white relative">
+        <div className="h-full w-full overflow-hidden bg-white relative"> {/* Inner container for blocks */}
           <div className="absolute top-0 left-0 h-full progress-bar-blocks-container flex">
             {[...Array(numberOfBlocks * 2)].map((_, i) => ( // *2 because container is 200% width
               <div

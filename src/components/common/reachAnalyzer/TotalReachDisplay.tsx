@@ -1,3 +1,4 @@
+
 import React from 'react';
 import ProgressBar from '../ProgressBar';
 import { BarConfig, MAX_BAR_SLOTS, CHART_BACKGROUND_COLOR, GRID_COLOR, formatFollowersDisplay } from './reachAnalyzerUtils';
