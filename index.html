@@ -5,28 +5,28 @@
   <meta charset="UTF-8">
   <link rel="icon" type="image/svg+xml" href="/vite.svg">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+
   <!-- Security Headers -->
-  <meta http-equiv="Content-Security-Policy" 
-        content="default-src 'self'; 
-                 script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh; 
-                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com;
-                 font-src 'self' https://fonts.gstatic.com https://unpkg.com data:; 
-                 img-src 'self' data: https:; 
-                 connect-src 'self' https://api.soundtrace.uk http://localhost:5001 ws://localhost:5001 https://esm.sh http://localhost:48757;
-                 object-src 'none'; 
-                 frame-ancestors 'none';
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh https://accounts.google.com https://apis.google.com;
+                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://accounts.google.com;
+                 font-src 'self' https://fonts.gstatic.com https://unpkg.com data:;
+                 img-src 'self' data: https:;
+                 connect-src 'self' https://api.soundtrace.uk http://localhost:5001 ws://localhost:5001 https://esm.sh http://localhost:48757 https://accounts.google.com https://www.google.com https://apis.google.com https://fonts.gstatic.com;
+                 object-src 'none';
                  base-uri 'self';
-                 form-action 'self';">
+                 form-action 'self';
+                 frame-src 'self' https://accounts.google.com;">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 
   <title>SoundTrace 95</title>
-  <script src="https://cdn.tailwindcss.com" ></script>
-  <link rel="stylesheet" href="https://unpkg.com/98.css" crossorigin="anonymous">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/98.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
   <!-- Preload actual icons if known, placeholder for now -->
   <!-- <link rel="preload" as="image" href="/src/components/windows95icons/apps/my_computer_32x32.png"> -->
   <link rel="prerender" href="/privacy-policy">
@@ -37,7 +37,7 @@
       background-color: #008080; /* Windows 95 Teal */
       font-family: "Pixelated MS Sans Serif", "VT323", monospace;
       color: #222222; /* Darker gray for text for better readability on teal/gray */
-      font-size: 16px; 
+      font-size: 16px;
       margin: 0;
       -webkit-font-smoothing: none;
       -moz-osx-font-smoothing: grayscale;
@@ -72,7 +72,7 @@
         display: block; height: 16px; width: 16px;
     }
     * { scrollbar-width: auto; scrollbar-color: #c0c0c0 #dfdfdf; }
-    
+
     /* Standard borders from 98.css are preferred. These are for custom elements if needed. */
     .win95-border-outset {
       border-style: solid; border-width: 2px;
@@ -94,15 +94,15 @@
     /* Progress bar styling (98.css might provide this) */
     @keyframes progressBarMarqueeAnim {
       0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); } 
+      100% { transform: translateX(-50%); }
     }
     .progress-bar-blocks-container {
-      width: 200%; 
+      width: 200%;
       animation: progressBarMarqueeAnim 1.2s linear infinite;
       will-change: transform;
     }
     .progress-bar-block { /* Standard Win95 progress bar block color */
-      height: 100%; background-color: #000080; 
+      height: 100%; background-color: #000080;
     }
 
     .tooltip { position: relative; display: inline-block; }
@@ -155,7 +155,7 @@
     .app-window-frame { /* Using 98.css 'window' class */
       position: absolute;
       /* Default position, App.tsx can override */
-      top: 5%; 
+      top: 5%;
       left: 10%;
       width: 80%;
       height: 80%;
@@ -249,7 +249,7 @@
       margin-left: auto; /* Pushes to the right */
       font-size: 12px;
     }
-    
+
     /* Start Menu */
     .start-menu {
       position: absolute;
@@ -341,7 +341,60 @@
       margin-bottom: 8px;
     }
 
+    /* CRT Scan Bar for Job Console Items */
+    .crt-scan-bar-container {
+      position: relative;
+      overflow: hidden;
+      background-color: #1a2a1a; /* Dark green background */
+    }
+    .crt-scan-line {
+      position: absolute;
+      top: 0;
+      left: -5%; /* Start off-screen */
+      width: 2%; /* Width of the scan line */
+      height: 100%;
+      background-color: #32cd32; /* Bright green scan line */
+      box-shadow: 0 0 5px #32cd32, 0 0 10px #32cd32;
+      opacity: 0.7;
+      animation: crtScanAnimation 2s linear infinite;
+      will-change: transform;
+    }
+
+    @keyframes crtScanAnimation {
+      0% { transform: translateX(0) scaleY(1); }
+      48% { transform: translateX(2500%) scaleY(0.95); } /* Move across 100% / (2%/width) = 50 * 100% -> 5000% for full 2s sweep if width is 2%*/
+                                                       /* Given container width (100%) and line width (2%), it needs to travel 50 times its width. */
+                                                       /* For a 2s animation, it means 25 units of its own width per second. */
+                                                       /* If we want it to sweep across in 2s, it travels 100 units. 100 / 2 = 50. 50 * its width = 50 * 2% = 100% of container. */
+                                                       /* So, needs to translateX( (100/line_width_percent - 1) * 100%) = (100/2 -1)*100 = 4900% */
+                                                       /* Let's try a large value: 2500% means it travels 25 times the container width. */
+      50% { transform: translateX(2500%) scaleY(0.3); opacity: 0.3;} /* Momentarily dimmer/thinner at the end */
+      52% { transform: translateX(0) scaleY(0.3); opacity: 0; } /* Jump back off-screen left, faded */
+      55% { transform: translateX(0) scaleY(1); opacity: 0.7; } /* Reappear */
+      100% { transform: translateX(2500%) scaleY(0.95); }
+    }
+
   </style>
+<script type="importmap">
+{
+  "imports": {
+    "path": "https://esm.sh/path@^0.12.7",
+    "fs": "https://esm.sh/fs@^0.0.1-security",
+    "crypto": "https://esm.sh/crypto@^1.0.1",
+    "typescript-eslint": "https://esm.sh/typescript-eslint@^8.34.0",
+    "eslint-plugin-react-refresh": "https://esm.sh/eslint-plugin-react-refresh@^0.4.20",
+    "@vercel/node": "https://esm.sh/@vercel/node@^5.2.2",
+    "formidable": "https://esm.sh/formidable@^3.5.4",
+    "eslint-plugin-react-hooks": "https://esm.sh/eslint-plugin-react-hooks@^5.2.0",
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "globals": "https://esm.sh/globals@^16.2.0",
+    "@eslint/js": "https://esm.sh/@eslint/js@^9.29.0",
+    "@react-oauth/google": "https://esm.sh/@react-oauth/google@^0.12.2",
+    "recharts": "https://esm.sh/recharts@^2.15.3",
+    "three": "https://esm.sh/three@^0.177.0"
+  }
+}
+</script>
 </head>
 <body>
   <div id="root"></div>
