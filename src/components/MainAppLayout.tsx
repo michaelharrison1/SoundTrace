@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { User, TrackScanLog, ScanJob } from '../types';
 import Button from './common/Button';
 import ScanPage from './ScanPage';
@@ -34,6 +34,25 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
   onIndividualLogUpdate,
 }) => {
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
+  const [redirectToJobConsole, setRedirectToJobConsole] = useState<boolean>(false);
+  const [newJobId, setNewJobId] = useState<string | null>(null);
+
+  // Effect to handle redirection to job console
+  useEffect(() => {
+    if (redirectToJobConsole) {
+      setActiveView('jobs');
+      setRedirectToJobConsole(false);
+    }
+  }, [redirectToJobConsole]);
+
+  // Function to handle job creation and redirect to job console
+  const handleJobCreated = useCallback((job?: ScanJob | Partial<ScanJob>) => {
+    if (job?.id) {
+      setNewJobId(job.id);
+    }
+    setRedirectToJobConsole(true);
+    onJobUpdate(job);
+  }, [onJobUpdate]);
 
   const getNavButtonClass = (viewType: ActiveView) => {
     const base = "px-3 py-1 text-black text-sm"; // VT323 default font size is larger
@@ -51,10 +70,6 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
     !job.status.startsWith('failed_') &&
     job.status !== 'completed_with_errors'
   ).length;
-
-  const handleExportAllData = useCallback(() => {
-    alert("Full data export (e.g., combined CSV/PDF of all sections) is coming soon! Individual tables may have their own export options.");
-  }, []);
 
 
   return (
@@ -84,17 +99,6 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         >
           Dashboard ({previousScans.length} Logs)
         </Button>
-        <div className="ml-auto"> {/* Pushes export button to the right */}
-             <Button
-              onClick={handleExportAllData}
-              size="sm"
-              className="win95-border-outset hover:bg-gray-300"
-              icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>}
-              title="Export all data (feature coming soon)"
-            >
-                Export All (Soon)
-            </Button>
-        </div>
       </nav>
 
       {isAppDataLoading && (
@@ -117,7 +121,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
           {activeView === 'scan' && (
             <ScanPage
               user={user}
-              onJobCreated={onJobUpdate}
+              onJobCreated={handleJobCreated}
               onLogout={onLogout}
             />
           )}

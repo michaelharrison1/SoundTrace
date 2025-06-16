@@ -6,7 +6,6 @@ import MainAppLayout from './components/MainAppLayout';
 import { User, TrackScanLog, ScanJob } from './types';
 import ProgressBar from './components/common/ProgressBar';
 import { SpotifyProvider, SpotifyCallbackReceiver } from './contexts/SpotifyContext';
-import { GoogleApiProvider } from './contexts/GoogleAuthContext';
 import { authService } from './services/authService';
 import AuthHeaderContent from './components/app/AuthHeaderContent';
 import AppIntroduction from './components/app/AppIntroduction';
@@ -262,10 +261,8 @@ const AppContentInternal: React.FC = React.memo(() => {
 AppContentInternal.displayName = 'AppContentInternal';
 
 const App: React.FC = () => (
-  <GoogleApiProvider>
-    <SpotifyProvider>
-      <AppContentInternal />
-    </SpotifyProvider>
-  </GoogleApiProvider>
+  <SpotifyProvider>
+    <AppContentInternal />
+  </SpotifyProvider>
 );
 export default App;

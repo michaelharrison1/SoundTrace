@@ -9,6 +9,7 @@ import UploadIcon from './icons/UploadIcon';
 import MusicNoteIcon from './icons/MusicNoteIcon';
 import SpotifyIcon from './icons/SpotifyIcon';
 import { YoutubeIcon } from './icons/YoutubeIcon';
+import Win95SpotifyIcon from './icons/Win95SpotifyIcon';
 
 
 type SortableColumn =
@@ -57,6 +58,7 @@ const formatPlatformSource = (source: PlatformSource): string => {
   }
 };
 
+// Keeping the SourceIcon component for reference but it's no longer used in the table
 const SourceIcon: React.FC<{ source: PlatformSource, url?: string, title?: string, className?: string }> = React.memo(({ source, url, title: propTitle, className }) => {
     let icon = <MusicNoteIcon className="w-3.5 h-3.5 text-gray-600" />;
     let defaultTitle = formatPlatformSource(source);
@@ -111,7 +113,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             statusMessage: undefined, 
             rowKey: `${log.logId}-match-${match.id || matchIndex}`,
             platformSource: log.platformSource,
-            sourceUrl: log.sourceUrl || match.platformLinks?.spotify || match.platformLinks?.youtube,
+            sourceUrl: match.platformLinks?.spotify, // Only use Spotify link
             youtubeVideoTitle: match.youtubeVideoTitle || log.youtubeVideoTitle,
           });
         });
@@ -132,7 +134,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           statusMessage: message,
           rowKey: `${log.logId}-status-${logIndex}`,
           platformSource: log.platformSource,
-          sourceUrl: log.sourceUrl,
+          sourceUrl: undefined, // No Spotify link for error rows
           youtubeVideoTitle: log.youtubeVideoTitle,
         });
       }
@@ -312,14 +314,12 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
         </div>
          {exportMessage && ( <div className={`mb-2 p-2 text-sm border ${exportMessage.type === 'success' ? 'bg-green-100 border-green-700 text-green-700' : 'bg-red-100 border-red-700 text-red-700'}`}>{exportMessage.text}</div> )}
         
-        <div className="text-xs text-gray-600 mb-1" title="Click column headers to sort.">ℹ️ Click column headers to sort.</div>
 
         {!hasAnyMatchesInAnyLog && scanLogs.length > 0 ? ( <p className="text-black text-center py-2 text-sm">No song matches found in your scan history. {scanLogs.length} record(s) processed without matches or with errors.</p> ) : (
         <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-320px)]">
           <table className="min-w-full text-sm" style={{tableLayout: 'fixed'}}>
              <colgroup>
-                <col style={{ width: '3%' }} /> 
-                <col style={{ width: '4%' }} /> 
+                <col style={{ width: '5%' }} /> 
                 <col style={{ width: '5%' }} /> 
                 <col style={{ width: '12%' }} /> 
                 <col style={{ width: '11%' }} /> 
@@ -328,13 +328,12 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                 <col style={{ width: '10%' }} /> 
                 <col style={{ width: '7%' }} /> 
                 <col style={{ width: '6%' }} /> 
-                <col style={{ width: '10%' }} /> 
+                <col style={{ width: '12%' }} /> 
                 <col style={{ width: '6%' }} /> 
                 <col style={{ width: '7%' }} /> 
             </colgroup>
             <thead className="bg-[#C0C0C0] border-b-2 border-b-[#808080] sticky top-0 z-10">
               <tr>
-                <HeaderCell className="text-center">Src</HeaderCell>
                 <HeaderCell className="text-center">Links</HeaderCell>
                 <HeaderCell className="text-center">Cover</HeaderCell>
                 <HeaderCell sortKey="title">Song Title</HeaderCell>
@@ -404,13 +403,20 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
 
                 return (
                 <tr key={row.rowKey} className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:bg-blue-100`}>
-                  <DataCell className="text-center"><SourceIcon source={row.platformSource} url={row.sourceUrl} title={row.youtubeVideoTitle || row.originalFileName} /></DataCell>
-                  <DataCell className="text-center">
-                     {iconsToRender.map((icon, index) => (
-                        <span key={index} className={index > 0 ? "ml-1" : ""}>
-                          {icon}
-                        </span>
-                      ))}
+                    <DataCell className="text-center">
+                    {row.isMatchRow && row.matchDetails?.platformLinks?.spotify ? (
+                      <a
+                        href={row.matchDetails.platformLinks.spotify}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block hover:opacity-75"
+                        title={`Open ${row.matchDetails.title} on Spotify`}
+                      >
+                        <Win95SpotifyIcon className="w-4 h-4" />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
                   </DataCell>
                   {row.isMatchRow && row.matchDetails ? (
                     <>

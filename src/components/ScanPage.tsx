@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { User, TrackScanLog, JobFileState, ScanJob, JobCreationResponse } from '../types';
 import FileUpload from './FileUpload';
+import AutoDetectInputForms from './scanPage/AutoDetectInputForms';
 import UrlInputForms from './scanPage/UrlInputForms';
 import { scanLogService } from '../services/scanLogService';
 import ManualSpotifyAddForm from './scanPage/ManualSpotifyAddForm';
@@ -147,8 +148,13 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
 
   const handleManualAdd = async (link: string): Promise<boolean> => {
     resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage("Adding Spotify track to log...");
-    try { const newLog = await scanLogService.addSpotifyTrackToLog(link); onJobCreated();
-      setManualAddMessage(`Successfully added "${newLog.originalFileName}" to log.`); setCompletionMessage(null); return true;
+    try { 
+      const newLog = await scanLogService.addSpotifyTrackToLog(link); 
+      // Create a partial job object to trigger redirection
+      onJobCreated({ id: newLog.logId, jobName: newLog.originalFileName });
+      setManualAddMessage(`Successfully added "${newLog.originalFileName}" to log.`); 
+      setCompletionMessage(null); 
+      return true;
     } catch (err: any) { if (handleAuthError(err)) return false; setManualAddMessage(`Error: ${err.message || 'Failed to add Spotify track.'}`); return false; }
     finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
   };
@@ -265,6 +271,86 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
     finally { setIsInitiatingJob(false); setCurrentOperationMessage(''); }
   }, [onJobCreated, handleAuthError]);
 
+  // Auto-detect and process YouTube URL (any type)
+  const handleProcessYouTubeUrl = useCallback(async (url: string) => {
+    resetPageMessages();
+    
+    // Check if it's multiple URLs (contains line breaks)
+    if (url.includes('\n')) {
+      const lines = url.split('\n').filter(line => line.trim().length > 0);
+      if (lines.length > 1) {
+        handleProcessMultipleYouTubeVideoUrls(url);
+        return;
+      }
+    }
+
+    try {
+      const parsedUrl = new URL(url);
+      
+      // Check if it's a playlist
+      if (parsedUrl.pathname.includes('/playlist') || parsedUrl.searchParams.has('list')) {
+        setCurrentOperationMessage(`Detected YouTube playlist. Processing...`);
+        handleProcessYouTubePlaylistUrl(url);
+        return;
+      }
+      
+      // Check if it's a channel
+      if (parsedUrl.pathname.startsWith('/@') || 
+          parsedUrl.pathname.startsWith('/channel/') || 
+          parsedUrl.pathname.startsWith('/user/')) {
+        setCurrentOperationMessage(`Detected YouTube channel. Processing...`);
+        handleProcessYouTubeChannelUrl(url);
+        return;
+      }
+      
+      // Default to single video
+      setCurrentOperationMessage(`Detected YouTube video. Processing...`);
+      handleProcessSingleYouTubeVideoUrl(url);
+      
+    } catch (e) {
+      setError(`Invalid YouTube URL: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      setIsInitiatingJob(false);
+    }
+  }, [
+    handleProcessMultipleYouTubeVideoUrls, 
+    handleProcessYouTubePlaylistUrl, 
+    handleProcessYouTubeChannelUrl, 
+    handleProcessSingleYouTubeVideoUrl
+  ]);
+
+  // Auto-detect and process Spotify URL (track or playlist)
+  const handleProcessSpotifyUrl = useCallback(async (url: string) => {
+    resetPageMessages();
+    
+    try {
+      const parsedUrl = new URL(url);
+      
+      if (!parsedUrl.hostname.includes('open.spotify.com')) {
+        setError('Not a valid Spotify URL');
+        return;
+      }
+      
+      // Check if it's a track
+      if (parsedUrl.pathname.includes('/track/')) {
+        setCurrentOperationMessage(`Detected Spotify track. Processing...`);
+        handleManualAdd(url);
+        return;
+      }
+      
+      // Check if it's a playlist
+      if (parsedUrl.pathname.includes('/playlist/')) {
+        setCurrentOperationMessage(`Detected Spotify playlist. Processing...`);
+        handleProcessSpotifyPlaylistUrl(url);
+        return;
+      }
+      
+      setError('Unrecognized Spotify URL format');
+      
+    } catch (e) {
+      setError(`Invalid Spotify URL: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    }
+  }, [handleManualAdd, handleProcessSpotifyPlaylistUrl]);
+
   return (
     <div className="space-y-3 bg-[#C0C0C0] p-2">
       <div className="p-3 win95-border-outset bg-yellow-100 text-black border border-yellow-700">
@@ -287,6 +373,11 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
         currentFileStates={fileStates}
         currentUploadingFile={currentUploadingFile}
         currentUploadingProgress={currentUploadingProgress}
+      />
+      <AutoDetectInputForms
+        onProcessYouTubeUrl={handleProcessYouTubeUrl}
+        onProcessSpotifyUrl={handleProcessSpotifyUrl}
+        isLoading={isInitiatingJob && !currentUploadingFile}
       />
       <UrlInputForms
         onProcessMultipleVideoUrls={handleProcessMultipleYouTubeVideoUrls}

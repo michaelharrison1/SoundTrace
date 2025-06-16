@@ -2,8 +2,8 @@
 export const SNIPPET_DURATION_SECONDS = 21;
 export const TARGET_SAMPLE_RATE = 44100;
 export const TARGET_CHANNELS = 2; // Stereo
-export const MAX_SNIPPETS_PER_FILE = 3;
-const MIN_AUDIO_DURATION_FOR_ADDITIONAL_SNIPPETS = SNIPPET_DURATION_SECONDS * 1.5;
+export const MAX_SNIPPETS_PER_FILE = 1; // Only one segment per file
+// const MIN_AUDIO_DURATION_FOR_ADDITIONAL_SNIPPETS = SNIPPET_DURATION_SECONDS * 1.5; // No longer needed
 
 // Helper function to convert AudioBuffer to WAV Blob
 export const audioBufferToWavBlob = (buffer: AudioBuffer): Blob => {
@@ -114,66 +114,17 @@ export const generateSnippetsForFile = async (file: File, numberOfSegmentsToScan
       const originalAudioBuffer = await mainAudioContext.decodeAudioData(arrayBuffer);
 
       const snippets: File[] = [];
-      const processedStartTimes: number[] = [];
 
-      // Segment 1: Start of the file (always generate if possible)
+      // Always generate only one segment from the start of the file (first 20 seconds)
       const firstSnippet = await generateSingleSnippetFromBuffer(originalAudioBuffer, 0, file.name, 1);
       if (firstSnippet) {
         snippets.push(firstSnippet);
-        processedStartTimes.push(0);
       } else {
-        console.warn(`[audioProcessing] Could not generate first snippet for ${file.name}.`);
-        return null; // If the first snippet fails, treat as an error for this file
+        console.warn(`[audioProcessing] Could not generate snippet for ${file.name}.`);
+        return null; // If the snippet fails, treat as an error for this file
       }
 
-      const totalDuration = originalAudioBuffer.duration;
-      let attempts = 0;
-      const maxAttemptsPerRandomSnippet = 10;
-
-      // Segment 2 (Random)
-      if (numberOfSegmentsToScan >= 2 && snippets.length < numberOfSegmentsToScan && snippets.length < MAX_SNIPPETS_PER_FILE && totalDuration >= MIN_AUDIO_DURATION_FOR_ADDITIONAL_SNIPPETS) {
-        attempts = 0;
-        while(attempts < maxAttemptsPerRandomSnippet && snippets.length < Math.min(numberOfSegmentsToScan, MAX_SNIPPETS_PER_FILE)) {
-          const proposedStartS2 = SNIPPET_DURATION_SECONDS * 0.5 + Math.random() * (totalDuration - SNIPPET_DURATION_SECONDS * 1.5);
-          if (proposedStartS2 >= 0 && (totalDuration - proposedStartS2) >= SNIPPET_DURATION_SECONDS * 0.5) {
-            if (Math.abs(proposedStartS2 - processedStartTimes[0]) > SNIPPET_DURATION_SECONDS * 0.75) {
-                const secondSnippet = await generateSingleSnippetFromBuffer(originalAudioBuffer, proposedStartS2, file.name, snippets.length + 1);
-                if (secondSnippet) {
-                    snippets.push(secondSnippet);
-                    processedStartTimes.push(proposedStartS2);
-                    break;
-                }
-            }
-          }
-          attempts++;
-        }
-      }
-
-      // Segment 3 (Random, distinct from S1 and S2)
-      if (numberOfSegmentsToScan >= 3 && snippets.length < numberOfSegmentsToScan && snippets.length < MAX_SNIPPETS_PER_FILE && totalDuration >= SNIPPET_DURATION_SECONDS * 2.5) {
-        attempts = 0;
-        while(attempts < maxAttemptsPerRandomSnippet && snippets.length < Math.min(numberOfSegmentsToScan, MAX_SNIPPETS_PER_FILE)) {
-            const proposedStartS3 = Math.random() * (totalDuration - SNIPPET_DURATION_SECONDS);
-            let isDistinct = true;
-            for(const prevStart of processedStartTimes) {
-                if (Math.abs(proposedStartS3 - prevStart) < SNIPPET_DURATION_SECONDS * 0.75) {
-                    isDistinct = false;
-                    break;
-                }
-            }
-            if (isDistinct && (totalDuration - proposedStartS3) >= SNIPPET_DURATION_SECONDS * 0.5) {
-                 const thirdSnippet = await generateSingleSnippetFromBuffer(originalAudioBuffer, proposedStartS3, file.name, snippets.length + 1);
-                 if (thirdSnippet) {
-                    snippets.push(thirdSnippet);
-                    // processedStartTimes.push(proposedStartS3); // Not strictly needed to store this if no further distinct segments
-                    break;
-                 }
-            }
-            attempts++;
-        }
-      }
-
-      return snippets.length > 0 ? snippets : null;
+      return snippets;
 
     } catch (error) {
       console.error(`[audioProcessing] General error processing file ${file.name}:`, error);

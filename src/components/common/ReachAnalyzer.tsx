@@ -10,7 +10,6 @@ import TimeBasedAnalyticsGraph from './reachAnalyzer/TimeBasedAnalyticsGraph';
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils'; 
-import RetroDNAVisualizer from './reachAnalyzer/RetroDNAVisualizer'; 
 import SongStreamDetail from './reachAnalyzer/SongStreamDetail';
 import EstimatedRevenueTab from './reachAnalyzer/EstimatedRevenueTab';
 
@@ -370,17 +369,6 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               title="Total Streams Over Time"
               description="Track total stream volume growth over time from StreamClout data."
             />
-             <hr className="my-3 border-t-2 border-b-2 border-t-gray-400 border-b-white" />
-             <h4 className="text-base font-semibold text-black text-center mt-3 mb-1">DNA Track Visualizer</h4>
-             <p className="text-xs text-gray-600 text-center mb-2">Retro 3D DNA visualization. For aesthetic purposes.</p>
-            
-            {visualizerDimensions.width > 0 ? (
-              <RetroDNAVisualizer />
-            ) : (
-              <div className="flex items-center justify-center flex-grow">
-                <ProgressBar text="Loading DNA Visualizer..." />
-              </div>
-            )}
 
             {selectedSongForDetail && (
                 <SongStreamDetail
