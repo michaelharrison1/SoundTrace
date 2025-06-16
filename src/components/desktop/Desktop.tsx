@@ -12,10 +12,10 @@ interface DesktopProps {
 const Desktop: React.FC<DesktopProps> = ({ icons }) => {
   return (
     <div
-      className="flex-grow p-2 flex flex-row flex-wrap content-start items-start overflow-hidden relative"
-      style={{ backgroundColor: 'transparent' }}
+      className="flex-grow p-2 flex flex-col flex-nowrap items-start content-start overflow-y-auto relative"
+      style={{ backgroundColor: 'transparent' }} // Background is now handled by body CSS
       role="main"
-      aria-label="Desktop area with icons" // Updated aria-label
+      aria-label="Desktop area with icons"
     >
       {/* Desktop Icons */}
       {icons.map(icon => (

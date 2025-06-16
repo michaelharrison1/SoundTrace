@@ -34,7 +34,11 @@
 
   <style>
     body {
-      background-color: #008080; /* Windows 95 Teal */
+      background-image: url('/src/assets/background.png'); /* New background image */
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-color: #008080; /* Fallback color */
       font-family: "Pixelated MS Sans Serif", "VT323", monospace;
       color: #222222; /* Darker gray for text for better readability on teal/gray */
       font-size: 16px;
@@ -121,7 +125,7 @@
       align-items: center;
       width: 90px; /* Slightly wider for 2 lines of text */
       padding: 8px 4px;
-      margin: 8px;
+      margin: 4px 8px; /* Adjusted margin for vertical stacking */
       cursor: default; /* Changed from pointer to default as they are non-interactive */
       text-align: center;
       border: 1px solid transparent;
@@ -218,12 +222,13 @@
       height: 100%;
       flex-grow: 1;
       overflow-x: auto; /* In case of many tabs */
+      margin-left: 10px; /* Move tabs to the right */
     }
     .taskbar-tab {
-      padding: 2px 6px; /* Adjust padding */
+      padding: 3px 8px; /* Increased padding */
       margin: 2px 1px;
-      min-width: 120px; /* Increased min-width */
-      max-width: 180px; /* Increased max-width */
+      min-width: 130px; /* Increased min-width */
+      max-width: 190px; /* Increased max-width */
       text-overflow: ellipsis;
       white-space: nowrap;
       overflow: hidden;

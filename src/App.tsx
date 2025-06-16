@@ -158,7 +158,6 @@ const AppContentInternal: React.FC = React.memo(() => {
       { id: 'dashboard', title: 'User Dashboard', icon: '/src/components/windows95icons/apps/my_computer_16x16.png', content: <DashboardViewPage user={user} previousScans={previousScans} onDeleteScan={refreshAllData} onClearAllScans={refreshAllData} />, isMinimized: false, zIndex: 101, width: 'min(80vw, 900px)', height: 'min(80vh, 700px)', isModal: false },
       { id: 'scan', title: 'New Scan Job', icon: '/src/components/windows95icons/actions/scan_disk_16x16.png', content: <ScanPage user={user} onJobCreated={handleJobUpdate} onLogout={handleLogout}/>, isMinimized: true, zIndex: 100, width: 'min(80vw, 900px)', height: 'min(80vh, 700px)', isModal: false },
       { id: 'jobs', title: 'Job Console', icon: '/src/components/windows95icons/apps/tasks_16x16.png', content: <JobConsole jobs={jobs} onJobAction={handleJobUpdate} isLoading={isAppDataLoading} onRefreshJobs={refreshAllData} onLogout={handleLogout} />, isMinimized: true, zIndex: 100, width: 'min(80vw, 900px)', height: 'min(80vh, 700px)', isModal: false },
-      { id: 'links', title: 'Useful Links', icon: '/src/components/windows95icons/apps/internet_explorer_16x16.png', content: <div className="p-4 space-y-2 text-black"> <p>Visit the <a href="https://soundtrace.uk" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">SoundTrace Website</a>.</p> <p>Download the <a href="https://soundtrace.uk/download/latest" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">SoundTrace Downloader App</a> for YouTube scanning.</p> </div>, isMinimized: true, zIndex: 100, width: '400px', height: 'auto', isModal: false },
   ], [previousScans, jobs, isAppDataLoading, refreshAllData, handleLogout, handleJobUpdate]);
 
   useEffect(() => {
@@ -209,7 +208,7 @@ const AppContentInternal: React.FC = React.memo(() => {
       prev.map(w =>
         w.id === id
           ? { ...w, isMinimized: false, zIndex: nextZIndex }
-          : w.isModal ? w : { ...w, isMinimized: true }
+          : w.isModal ? w : { ...w, isMinimized: true } // Minimize other non-modal windows
       )
     );
     setNextZIndex(prev => prev + 1);
@@ -247,7 +246,6 @@ const AppContentInternal: React.FC = React.memo(() => {
       { id: 'dashboard_icon', name: 'My Computer (Dashboard)', icon: '/src/components/windows95icons/apps/my_computer_32x32.png', action: () => {} },
       { id: 'scan_icon', name: 'New Scan Job', icon: '/src/components/windows95icons/apps/file_cabinet_32x32.png', action: () => {} },
       { id: 'jobs_icon', name: 'Job Console', icon: '/src/components/windows95icons/apps/tasks_32x32.png', action: () => {} },
-      { id: 'links_icon', name: 'Useful Links', icon: '/src/components/windows95icons/apps/internet_explorer_32x32.png', action: () => {} },
       { id: 'recyclebin_icon', name: 'Recycle Bin', icon: '/src/components/windows95icons/apps/recycle_bin_full_32x32.png', action: () => {} },
     ];
   }, []);
