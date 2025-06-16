@@ -1,15 +1,14 @@
 
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import LoginPage from './components/LoginPage';
 import RegistrationPage from './components/RegistrationPage';
 import { User } from './types';
 import ProgressBar from './components/common/ProgressBar';
 import { SpotifyProvider, SpotifyCallbackReceiver } from './contexts/SpotifyContext';
-import { GoogleApiProvider } from './contexts/GoogleAuthContext'; 
+import { GoogleApiProvider } from './contexts/GoogleAuthContext';
 import { authService } from './services/authService';
 import AppIntroduction from './components/app/AppIntroduction';
-import PrivacyPolicyPage from './components/PrivacyPolicyPage'; 
+import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import TermsOfServicePage from './components/TermsOfServicePage';
 
 import Desktop from './components/desktop/Desktop';
@@ -41,7 +40,7 @@ const AppContentInternal: React.FC = React.memo(() => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [authView, setAuthView] = useState<AuthView>('login');
-  
+
   const [openWindows, setOpenWindows] = useState<AppWindow[]>([]);
   const [nextZIndex, setNextZIndex] = useState(101); // Start z-index for windows
 
@@ -55,13 +54,13 @@ const AppContentInternal: React.FC = React.memo(() => {
 
   const handleAuthError = useCallback((err: any, operation?: string) => {
     const isAuthError = (err.status === 401 || err.status === 403) ||
-                          (typeof err.message === 'string' && 
+                          (typeof err.message === 'string' &&
                            (err.message.toLowerCase().includes('token is not valid') ||
                             err.message.toLowerCase().includes('not authenticated') ||
                             err.message.toLowerCase().includes('authorization denied')));
     if (isAuthError) {
         console.warn(`[App] Auth error during "${operation || 'unknown operation'}". Logging out.`, err.message);
-        handleLogout(false); 
+        handleLogout(false);
         return true;
     }
     return false;
@@ -75,12 +74,12 @@ const AppContentInternal: React.FC = React.memo(() => {
     try {
       const logsPromise = scanLogService.getScanLogs();
       const jobsPromise = scanLogService.getAllJobs();
-      
+
       const [logs, userJobs] = await Promise.all([logsPromise, jobsPromise]);
 
       setPreviousScans(logs.sort((a, b) => new Date(b.scanDate).getTime() - new Date(a.scanDate).getTime()));
       setJobs(userJobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      
+
       if (source === 'initial' || source === 'manual') setAppDataError(null);
     } catch (err: any) {
       if(!handleAuthError(err, 'fetch app data')) {
@@ -94,7 +93,7 @@ const AppContentInternal: React.FC = React.memo(() => {
 
   useEffect(() => {
     if (currentUser && (eventSourceRef.current === null || eventSourceRef.current.readyState === EventSource.CLOSED)) {
-        fetchData('initial'); 
+        fetchData('initial');
 
         const token = localStorage.getItem('authToken');
         if (token && API_BASE_URL) {
@@ -142,13 +141,15 @@ const AppContentInternal: React.FC = React.memo(() => {
     setOpenWindows(prev => {
       const existingWindowIndex = prev.findIndex(w => w.id === id);
       if (existingWindowIndex !== -1) {
-        return prev.map((w, index) => 
+        // If window exists, bring to front and ensure it's not minimized
+        return prev.map((w, index) =>
           index === existingWindowIndex ? { ...w, isMinimized: false, zIndex: nextZIndex } : w
         );
       } else {
-        return [...prev, { 
-          id, title, content, icon, 
-          isMinimized: false, zIndex: nextZIndex, 
+        // If new window, add it
+        return [...prev, {
+          id, title, content, icon,
+          isMinimized: false, zIndex: nextZIndex,
           width: options?.width || (id.startsWith('privacy_') || id.startsWith('terms_')) ? '650px' : (id === 'introduction' ? '550px' : 'min(80vw, 900px)'),
           height: options?.height || (id.startsWith('privacy_') || id.startsWith('terms_')) ? '550px' : (id === 'introduction' ? 'auto' : 'min(80vh, 700px)'),
           isModal: options?.isModal || false,
@@ -179,33 +180,32 @@ const AppContentInternal: React.FC = React.memo(() => {
      refreshAllData();
   }, [refreshAllData]);
 
-  const handleJobUpdate = useCallback(() => { // Renamed from onJobCreated for clarity, as it's a general update trigger
+  const handleJobUpdate = useCallback(() => {
     refreshAllData();
   }, [refreshAllData]);
 
   const handleLoginRegistrationSuccess = useCallback((user: User) => {
     setCurrentUser(user);
-    setAuthView('login'); 
-    closeWindow('login');
-    closeWindow('register');
-    closeWindow('introduction');
+    setAuthView('login');
+    // Close auth-related modal windows after successful login/registration
+    setOpenWindows(prev => prev.filter(w => w.id !== 'login' && w.id !== 'register' && w.id !== 'introduction'));
     // openWindow('dashboard', 'User Dashboard', <DashboardViewPage user={user} previousScans={previousScans} onDeleteScan={handleIndividualLogUpdate} onClearAllScans={refreshAllData} />, '/src/components/windows95icons/apps/my_computer_16x16.png');
-  }, [closeWindow, openWindow, refreshAllData, handleIndividualLogUpdate]); // Removed previousScans from deps as Dashboard will get it via prop
+  }, [/* Removed closeWindow, openWindow from deps here as setOpenWindows is used directly */ refreshAllData, handleIndividualLogUpdate]);
 
   const handleLogout = useCallback(async (closeOpenWindows = true) => {
-    try { await authService.logout(); } 
+    try { await authService.logout(); }
     catch (err) { console.error("Error during backend logout:", err); }
     finally {
-      localStorage.removeItem('authToken'); 
+      localStorage.removeItem('authToken');
       localStorage.removeItem('currentUserDetails');
       setCurrentUser(null);
       setAuthView('login');
-      if(closeOpenWindows) setOpenWindows([]); 
+      if(closeOpenWindows) setOpenWindows([]);
       if (document.activeElement && typeof (document.activeElement as HTMLElement).blur === 'function') {
         (document.activeElement as HTMLElement).blur();
       }
     }
-  }, []);
+  }, [/* Removed setOpenWindows as it's directly called in the function body, other state setters are stable */]);
 
 
   const desktopIcons = useMemo(() => {
@@ -214,12 +214,12 @@ const AppContentInternal: React.FC = React.memo(() => {
       { id: 'dashboard', name: 'My Computer (Dashboard)', icon: '/src/components/windows95icons/apps/my_computer_32x32.png', action: () => openWindow('dashboard', 'User Dashboard', <DashboardViewPage user={currentUser} previousScans={previousScans} onDeleteScan={handleIndividualLogUpdate} onClearAllScans={refreshAllData} />, '/src/components/windows95icons/apps/my_computer_16x16.png') },
       { id: 'scan', name: 'New Scan Job', icon: '/src/components/windows95icons/apps/file_cabinet_32x32.png', action: () => openWindow('scan', 'New Scan Job', <ScanPage user={currentUser} onJobCreated={handleJobUpdate} onLogout={handleLogout}/>, '/src/components/windows95icons/actions/scan_disk_16x16.png') },
       { id: 'jobs', name: 'Job Console', icon: '/src/components/windows95icons/apps/tasks_32x32.png', action: () => openWindow('jobs', 'Job Console', <JobConsole jobs={jobs} onJobAction={handleJobUpdate} isLoading={isAppDataLoading} onRefreshJobs={refreshAllData} onLogout={handleLogout} />, '/src/components/windows95icons/apps/tasks_16x16.png') },
-      { id: 'links', name: 'Useful Links', icon: '/src/components/windows95icons/apps/internet_explorer_32x32.png', action: () => openWindow('links', 'Useful Links', 
+      { id: 'links', name: 'Useful Links', icon: '/src/components/windows95icons/apps/internet_explorer_32x32.png', action: () => openWindow('links', 'Useful Links',
         <div className="p-4 space-y-2 text-black">
             <p>Visit the <a href="https://soundtrace.uk" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">SoundTrace Website</a>.</p>
             <p>Download the <a href="https://soundtrace.uk/download/latest" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">SoundTrace Downloader App</a> for YouTube scanning.</p>
-        </div>, 
-        '/src/components/windows95icons/apps/internet_explorer_16x16.png', {width: '400px', height: 'auto'}) 
+        </div>,
+        '/src/components/windows95icons/apps/internet_explorer_16x16.png', {width: '400px', height: 'auto'})
       },
       { id: 'recyclebin', name: 'Recycle Bin', icon: '/src/components/windows95icons/apps/recycle_bin_full_32x32.png', action: () => alert("Nothing to recycle yet!")},
     ];
@@ -236,29 +236,32 @@ const AppContentInternal: React.FC = React.memo(() => {
       }
     } catch (error) {
       console.error("Error reading auth data from localStorage:", error);
-      localStorage.removeItem('authToken'); 
+      localStorage.removeItem('authToken');
       localStorage.removeItem('currentUserDetails');
     }
     setIsLoading(false);
   }, []);
 
-   useEffect(() => {
-    if (!currentUser && !isLoading) {
-      const introAlreadyOpen = openWindows.some(w => w.id === 'introduction');
-      const loginAlreadyOpen = openWindows.some(w => w.id === 'login');
-      const registerAlreadyOpen = openWindows.some(w => w.id === 'register');
+  useEffect(() => {
+    if (isLoading) return; // Don't do anything if still loading initial auth state
 
-      if (!introAlreadyOpen) {
+    if (!currentUser) {
+      const introWindow = openWindows.find(w => w.id === 'introduction');
+      const loginWindow = openWindows.find(w => w.id === 'login');
+      const registerWindow = openWindows.find(w => w.id === 'register');
+
+      if (!introWindow && !loginWindow && !registerWindow) {
+        // If no auth-related windows are open, open introduction first.
+        // Subsequent runs of this effect (if openWindows changes) will handle login/register.
         openWindow('introduction', 'Welcome to SoundTrace 95', <AppIntroduction />, '/src/components/windows95icons/apps/sound_recorder_16x16.png', { width: '550px', height: 'auto', isModal: true });
-      }
-      if (authView === 'login' && !loginAlreadyOpen) {
+      } else if (!loginWindow && authView === 'login' && (!introWindow || introWindow.isMinimized === false /*Ensure intro is visible or logic allows opening login anyway*/) ) {
         openWindow('login', 'User Login', <LoginPage onLogin={handleLoginRegistrationSuccess} />, '/src/components/windows95icons/actions/key_16x16.png', { width: '380px', height: 'auto', isModal: true });
-      } else if (authView === 'register' && !registerAlreadyOpen) {
+      } else if (!registerWindow && authView === 'register' && (!introWindow || introWindow.isMinimized === false)) {
         openWindow('register', 'Create Account', <RegistrationPage onRegister={handleLoginRegistrationSuccess} />, '/src/components/windows95icons/actions/add_user_16x16.png', { width: '380px', height: 'auto', isModal: true });
       }
     }
   }, [currentUser, isLoading, authView, openWindow, handleLoginRegistrationSuccess, openWindows]);
-  
+
 
   if (isLoading) {
     return (
@@ -272,7 +275,7 @@ const AppContentInternal: React.FC = React.memo(() => {
 
   const { pathname } = window.location;
   if (pathname === '/spotify-callback-receiver') return <SpotifyCallbackReceiver />;
-  // For direct navigation to privacy/terms when not logged in.
+
   useEffect(() => {
     if (!currentUser && !isLoading) {
       if (pathname === '/privacy-policy' && !openWindows.some(w => w.id === 'privacy_startmenu')) {
@@ -291,13 +294,13 @@ const AppContentInternal: React.FC = React.memo(() => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden" id="soundtrace-desktop-environment">
-      <Desktop 
-        icons={desktopIcons} 
-        openWindows={openWindows.filter(w => !w.isModal && !w.isMinimized)} 
+      <Desktop
+        icons={desktopIcons}
+        openWindows={openWindows.filter(w => !w.isModal && !w.isMinimized)}
         activeWindowId={activeWindowId}
         focusWindow={focusWindow}
       />
-      
+
       {openWindows.filter(w => w.isModal && !w.isMinimized).map(win => (
          <WindowFrame
             key={win.id}
@@ -317,11 +320,11 @@ const AppContentInternal: React.FC = React.memo(() => {
           </WindowFrame>
       ))}
 
-      <Taskbar 
-        openWindows={openWindows} 
+      <Taskbar
+        openWindows={openWindows}
         activeWindowId={activeWindowId}
-        onTabClick={focusWindow} 
-        onCloseTab={closeWindow} // Added for potential future use
+        onTabClick={focusWindow}
+        onCloseTab={closeWindow}
         currentUser={currentUser}
         onLogout={() => handleLogout(true)}
         onSwitchAuthView={setAuthView}
