@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { User } from '../../types';
-import { AuthView } from '../../App';
+import { AuthView, AppWindow } from '../../App'; // Added AppWindow for options type clarity
 
 // Example imports for window content (adjust paths as needed)
 import PrivacyPolicyPage from '../PrivacyPolicyPage';
@@ -16,14 +16,14 @@ interface StartMenuProps {
   currentUser: User | null;
   onSwitchAuthView: (view: AuthView) => void;
   currentAuthView: AuthView; // To show which one is active
-  onOpenWindow: (id: string, title: string, content: React.ReactNode, icon?: string, options?: any) => void;
+  onOpenWindow: (id: string, title: string, content: React.ReactElement, icon?: string, options?: Partial<Pick<AppWindow, 'width' | 'height' | 'isModal'>>) => void;
 }
 
-const StartMenuItem: React.FC<{ icon: string; label: string; onClick: () => void; shortcut?: string; disabled?: boolean; hasSubmenu?: boolean }> = 
+const StartMenuItem: React.FC<{ icon: string; label: string; onClick: () => void; shortcut?: string; disabled?: boolean; hasSubmenu?: boolean }> =
   ({ icon, label, onClick, shortcut, disabled, hasSubmenu }) => (
-  <a 
-    href="#" 
-    className={`start-menu-item ${disabled ? 'text-gray-500 pointer-events-none opacity-70' : 'hover:bg-[#000080] hover:text-white'}`} 
+  <a
+    href="#"
+    className={`start-menu-item ${disabled ? 'text-gray-500 pointer-events-none opacity-70' : 'hover:bg-[#000080] hover:text-white'}`}
     onClick={(e) => { e.preventDefault(); if(!disabled) onClick(); }}
     role="menuitem"
     aria-disabled={disabled}
@@ -77,7 +77,7 @@ const StartMenu: React.FC<StartMenuProps> = ({ onClose, onLogout, currentUser, o
     await googleDisconnectHook();
     onClose();
   };
-  
+
   const connectStatusStyles = "text-xs ml-1";
 
   return (
@@ -87,18 +87,18 @@ const StartMenu: React.FC<StartMenuProps> = ({ onClose, onLogout, currentUser, o
            SoundTrace 95
         </div>
         <div className="flex-grow flex flex-col"> {/* Ensures items stack vertically */}
-            
+
             {currentUser && (
                 <>
-                    <StartMenuItem 
-                        icon={isSpotifyConnected ? '/src/components/windows95icons/apps/cd_player_20x20.png' : '/src/components/windows95icons/actions/no_20x20.png'} 
+                    <StartMenuItem
+                        icon={isSpotifyConnected ? '/src/components/windows95icons/apps/cd_player_20x20.png' : '/src/components/windows95icons/actions/no_20x20.png'}
                         label={isSpotifyConnected ? `Spotify: ${spotifyUser?.displayName?.substring(0,10) || 'Connected'}` : 'Connect Spotify'}
-                        onClick={isSpotifyConnected ? handleSpotifyDisconnect : handleSpotifyConnect} 
+                        onClick={isSpotifyConnected ? handleSpotifyDisconnect : handleSpotifyConnect}
                     />
-                    <StartMenuItem 
+                    <StartMenuItem
                         icon={isGoogleConnected ? '/src/components/windows95icons/apps/google_icon_20x20.png' : '/src/components/windows95icons/actions/no_20x20.png'}
                         label={isGoogleConnected ? `Google: ${googleUser?.googleDisplayName?.substring(0,10) || 'Connected'}` : 'Connect Google'}
-                        onClick={isGoogleConnected ? handleGoogleDisconnect : handleGoogleConnect} 
+                        onClick={isGoogleConnected ? handleGoogleDisconnect : handleGoogleConnect}
                     />
                     <div className="start-menu-separator"></div>
                 </>
@@ -109,29 +109,29 @@ const StartMenu: React.FC<StartMenuProps> = ({ onClose, onLogout, currentUser, o
 
             <StartMenuItem icon="/src/components/windows95icons/actions/help_book_16x16.png" label="Help" onClick={() => { alert('SoundTrace 95 Help: Explore the desktop icons to access features. For issues, contact support@soundtrace.uk.'); onClose(); }} />
             <div className="start-menu-separator"></div>
-            
+
             <StartMenuItem icon="/src/components/windows95icons/apps/notepad_20x20.png" label="Privacy Policy" onClick={handlePrivacyClick} />
             <StartMenuItem icon="/src/components/windows95icons/apps/ms_dos_20x20.png" label="Terms of Service" onClick={handleTermsClick} />
-            
+
             <div className="start-menu-separator"></div>
 
             {!currentUser ? (
                 <>
-                <StartMenuItem 
-                    icon="/src/components/windows95icons/actions/key_20x20.png" 
-                    label="Login" 
-                    onClick={handleLoginClick} 
+                <StartMenuItem
+                    icon="/src/components/windows95icons/actions/key_20x20.png"
+                    label="Login"
+                    onClick={handleLoginClick}
                 />
-                <StartMenuItem 
-                    icon="/src/components/windows95icons/actions/add_user_20x20.png" 
-                    label="Register" 
+                <StartMenuItem
+                    icon="/src/components/windows95icons/actions/add_user_20x20.png"
+                    label="Register"
                     onClick={handleRegisterClick}
                 />
                 </>
             ) : (
                 <StartMenuItem icon="/src/components/windows95icons/actions/shut_down_20x20.png" label="Log Out..." onClick={handleLogoutClick} />
             )}
-            
+
             {/* Removed "Close Start Menu" as clicking outside closes it */}
         </div>
       </div>

@@ -28,7 +28,7 @@ export interface AppWindow {
   id: string;
   title: string;
   icon?: string; // Path to icon for taskbar tab
-  content: React.ReactNode;
+  content: React.ReactElement; // Updated from React.ReactNode
   isMinimized: boolean;
   zIndex: number;
   width?: string; // e.g., '80%', '600px'
@@ -137,7 +137,7 @@ const AppContentInternal: React.FC = React.memo(() => {
   }, [currentUser, fetchData, API_BASE_URL]);
 
 
-  const openWindow = useCallback((id: string, title: string, content: React.ReactNode, icon?: string, options?: Partial<Pick<AppWindow, 'width' | 'height' | 'isModal'>>) => {
+  const openWindow = useCallback((id: string, title: string, content: React.ReactElement, icon?: string, options?: Partial<Pick<AppWindow, 'width' | 'height' | 'isModal'>>) => {
     setOpenWindows(prev => {
       const existingWindowIndex = prev.findIndex(w => w.id === id);
       if (existingWindowIndex !== -1) {
@@ -189,8 +189,7 @@ const AppContentInternal: React.FC = React.memo(() => {
     setAuthView('login');
     // Close auth-related modal windows after successful login/registration
     setOpenWindows(prev => prev.filter(w => w.id !== 'login' && w.id !== 'register' && w.id !== 'introduction'));
-    // openWindow('dashboard', 'User Dashboard', <DashboardViewPage user={user} previousScans={previousScans} onDeleteScan={handleIndividualLogUpdate} onClearAllScans={refreshAllData} />, '/src/components/windows95icons/apps/my_computer_16x16.png');
-  }, [/* Removed closeWindow, openWindow from deps here as setOpenWindows is used directly */ refreshAllData, handleIndividualLogUpdate]);
+  }, []);
 
   const handleLogout = useCallback(async (closeOpenWindows = true) => {
     try { await authService.logout(); }
@@ -205,7 +204,7 @@ const AppContentInternal: React.FC = React.memo(() => {
         (document.activeElement as HTMLElement).blur();
       }
     }
-  }, [/* Removed setOpenWindows as it's directly called in the function body, other state setters are stable */]);
+  }, []);
 
 
   const desktopIcons = useMemo(() => {
@@ -243,7 +242,7 @@ const AppContentInternal: React.FC = React.memo(() => {
   }, []);
 
   useEffect(() => {
-    if (isLoading) return; // Don't do anything if still loading initial auth state
+    if (isLoading) return;
 
     if (!currentUser) {
       const introWindow = openWindows.find(w => w.id === 'introduction');
@@ -251,10 +250,8 @@ const AppContentInternal: React.FC = React.memo(() => {
       const registerWindow = openWindows.find(w => w.id === 'register');
 
       if (!introWindow && !loginWindow && !registerWindow) {
-        // If no auth-related windows are open, open introduction first.
-        // Subsequent runs of this effect (if openWindows changes) will handle login/register.
         openWindow('introduction', 'Welcome to SoundTrace 95', <AppIntroduction />, '/src/components/windows95icons/apps/sound_recorder_16x16.png', { width: '550px', height: 'auto', isModal: true });
-      } else if (!loginWindow && authView === 'login' && (!introWindow || introWindow.isMinimized === false /*Ensure intro is visible or logic allows opening login anyway*/) ) {
+      } else if (!loginWindow && authView === 'login' && (!introWindow || introWindow.isMinimized === false ) ) {
         openWindow('login', 'User Login', <LoginPage onLogin={handleLoginRegistrationSuccess} />, '/src/components/windows95icons/actions/key_16x16.png', { width: '380px', height: 'auto', isModal: true });
       } else if (!registerWindow && authView === 'register' && (!introWindow || introWindow.isMinimized === false)) {
         openWindow('register', 'Create Account', <RegistrationPage onRegister={handleLoginRegistrationSuccess} />, '/src/components/windows95icons/actions/add_user_16x16.png', { width: '380px', height: 'auto', isModal: true });

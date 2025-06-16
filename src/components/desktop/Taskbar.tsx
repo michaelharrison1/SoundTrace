@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppWindow, AuthView } from '../../App'; 
+import { AppWindow, AuthView } from '../../App';
 import StartMenu from './StartMenu';
 import { User } from '../../types';
 
@@ -9,17 +9,17 @@ interface TaskbarProps {
   openWindows: AppWindow[];
   activeWindowId?: string;
   onTabClick: (id: string) => void;
-  onCloseTab: (id: string) => void; 
+  onCloseTab: (id: string) => void;
   currentUser: User | null;
   onLogout: () => void;
   onSwitchAuthView: (view: AuthView) => void;
   currentAuthView: AuthView;
-  onOpenWindow: (id: string, title: string, content: React.ReactNode, icon?: string, options?: any) => void;
+  onOpenWindow: (id: string, title: string, content: React.ReactElement, icon?: string, options?: any) => void;
 }
 
-const Taskbar: React.FC<TaskbarProps> = ({ 
-    openWindows, activeWindowId, onTabClick, onCloseTab, 
-    currentUser, onLogout, onSwitchAuthView, currentAuthView, onOpenWindow 
+const Taskbar: React.FC<TaskbarProps> = ({
+    openWindows, activeWindowId, onTabClick, onCloseTab,
+    currentUser, onLogout, onSwitchAuthView, currentAuthView, onOpenWindow
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [startMenuOpen, setStartMenuOpen] = useState(false);
@@ -33,7 +33,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
     event.stopPropagation(); // Prevent click from bubbling to document
     setStartMenuOpen(prev => !prev);
   }, []);
-  
+
   const closeStartMenu = useCallback(() => {
     setStartMenuOpen(false);
   }, []);
@@ -43,11 +43,11 @@ const Taskbar: React.FC<TaskbarProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       const startMenuElement = document.querySelector('.start-menu');
       const startButtonElement = document.querySelector('.taskbar-start-button');
-      
-      if (startMenuOpen && 
-          startMenuElement && 
+
+      if (startMenuOpen &&
+          startMenuElement &&
           !startMenuElement.contains(event.target as Node) &&
-          startButtonElement && 
+          startButtonElement &&
           !startButtonElement.contains(event.target as Node)
          ) {
         closeStartMenu();
@@ -71,8 +71,8 @@ const Taskbar: React.FC<TaskbarProps> = ({
 
   return (
     <footer className="taskbar" role="toolbar" aria-label="Taskbar">
-      <button 
-        className={`taskbar-start-button ${startMenuOpen ? 'active' : ''}`} 
+      <button
+        className={`taskbar-start-button ${startMenuOpen ? 'active' : ''}`}
         onClick={toggleStartMenu}
         aria-haspopup="true"
         aria-expanded={startMenuOpen}
@@ -82,10 +82,10 @@ const Taskbar: React.FC<TaskbarProps> = ({
         Start
       </button>
       {startMenuOpen && (
-        <StartMenu 
-            onClose={closeStartMenu} 
-            onLogout={onLogout} 
-            currentUser={currentUser} 
+        <StartMenu
+            onClose={closeStartMenu}
+            onLogout={onLogout}
+            currentUser={currentUser}
             onSwitchAuthView={handleAuthViewChange} // This will now call App.tsx's setAuthView
             currentAuthView={currentAuthView}
             onOpenWindow={onOpenWindow}
@@ -103,13 +103,13 @@ const Taskbar: React.FC<TaskbarProps> = ({
           >
             {win.icon && <img src={win.icon} alt="" className="mr-1 w-4 h-4" style={{imageRendering: 'pixelated'}} />}
             <span className="truncate">{win.title}</span>
-            {/* 
+            {/*
             // Optional: Close button on tabs
-            <button 
-              onClick={(e) => { e.stopPropagation(); onCloseTab(win.id); }} 
+            <button
+              onClick={(e) => { e.stopPropagation(); onCloseTab(win.id); }}
               className="ml-auto text-black text-xs font-mono hover:bg-gray-400 px-0.5"
               aria-label={`Close ${win.title}`}
-            >x</button> 
+            >x</button>
             */}
           </button>
         ))}
