@@ -1,15 +1,14 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { AppWindow, AuthView } from '../../App';
 import StartMenu from './StartMenu';
 import { User } from '../../types';
 
 interface TaskbarProps {
-  openWindows: AppWindow[];
-  activeWindowId?: string;
-  onTabClick: (id: string) => void;
-  onCloseTab: (id: string) => void;
+  openWindows: AppWindow[]; // Should only contain non-modal windows
+  activeWindowId?: string; // ID of the currently visible non-modal window
+  onTabClick: (id: string) => void; // Makes the window visible and active
+  onCloseTab: (id: string) => void; // Hides/minimizes the window
   currentUser: User | null;
   onLogout: () => void;
   onSwitchAuthView: (view: AuthView) => void;
@@ -25,12 +24,12 @@ const Taskbar: React.FC<TaskbarProps> = ({
   const [startMenuOpen, setStartMenuOpen] = useState(false);
 
   useEffect(() => {
-    const timerId = setInterval(() => setCurrentTime(new Date()), 30000); // Update every 30 seconds for clock
+    const timerId = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(timerId);
   }, []);
 
   const toggleStartMenu = useCallback((event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent click from bubbling to document
+    event.stopPropagation();
     setStartMenuOpen(prev => !prev);
   }, []);
 
@@ -38,34 +37,20 @@ const Taskbar: React.FC<TaskbarProps> = ({
     setStartMenuOpen(false);
   }, []);
 
-  // Close Start Menu if clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const startMenuElement = document.querySelector('.start-menu');
       const startButtonElement = document.querySelector('.taskbar-start-button');
-
-      if (startMenuOpen &&
-          startMenuElement &&
-          !startMenuElement.contains(event.target as Node) &&
-          startButtonElement &&
-          !startButtonElement.contains(event.target as Node)
-         ) {
+      if (startMenuOpen && startMenuElement && !startMenuElement.contains(event.target as Node) && startButtonElement && !startButtonElement.contains(event.target as Node)) {
         closeStartMenu();
       }
     };
-
-    if (startMenuOpen) {
-      document.addEventListener('click', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
+    if (startMenuOpen) document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, [startMenuOpen, closeStartMenu]);
 
-
   const handleAuthViewChange = (view: AuthView) => {
-    onSwitchAuthView(view); // This is passed from App.tsx
-    // It should trigger App.tsx to open the correct login/register window
+    onSwitchAuthView(view);
     closeStartMenu();
   }
 
@@ -78,7 +63,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
         aria-expanded={startMenuOpen}
         id="start-button"
       >
-        <img src="/src/components/windows95icons/actions/start_16x16.png" alt="" /> {/* Decorative */}
+        <img src="/src/components/windows95icons/actions/start_20x20.png" alt="Start Menu" style={{imageRendering: 'pixelated'}}/> {/* Updated icon path if needed */}
         Start
       </button>
       {startMenuOpen && (
@@ -86,7 +71,7 @@ const Taskbar: React.FC<TaskbarProps> = ({
             onClose={closeStartMenu}
             onLogout={onLogout}
             currentUser={currentUser}
-            onSwitchAuthView={handleAuthViewChange} // This will now call App.tsx's setAuthView
+            onSwitchAuthView={handleAuthViewChange}
             currentAuthView={currentAuthView}
             onOpenWindow={onOpenWindow}
         />
@@ -100,17 +85,10 @@ const Taskbar: React.FC<TaskbarProps> = ({
             onClick={() => onTabClick(win.id)}
             title={win.title}
             aria-pressed={(activeWindowId === win.id && !win.isMinimized)}
+            aria-controls={`window-${win.id}`}
           >
-            {win.icon && <img src={win.icon} alt="" className="mr-1 w-4 h-4" style={{imageRendering: 'pixelated'}} />}
+            {win.icon && <img src={win.icon} alt="" className="taskbar-tab-icon" />} {/* Ensure class taskbar-tab-icon is styled in index.html */}
             <span className="truncate">{win.title}</span>
-            {/*
-            // Optional: Close button on tabs
-            <button
-              onClick={(e) => { e.stopPropagation(); onCloseTab(win.id); }}
-              className="ml-auto text-black text-xs font-mono hover:bg-gray-400 px-0.5"
-              aria-label={`Close ${win.title}`}
-            >x</button>
-            */}
           </button>
         ))}
       </div>

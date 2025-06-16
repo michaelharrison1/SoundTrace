@@ -122,15 +122,12 @@
       width: 90px; /* Slightly wider for 2 lines of text */
       padding: 8px 4px;
       margin: 8px;
-      cursor: default;
+      cursor: default; /* Changed from pointer to default as they are non-interactive */
       text-align: center;
       border: 1px solid transparent;
       user-select: none;
     }
-    .desktop-icon-container:focus, .desktop-icon-container.selected {
-      border: 1px dotted #000000;
-      background-color: rgba(0, 0, 128, 0.4); /* Win95 selection blue */
-    }
+    /* Removed :focus and .selected styles for desktop-icon-container as they are non-interactive */
     .desktop-icon-container img {
       width: 32px; height: 32px;
       margin-bottom: 6px;
@@ -147,9 +144,7 @@
       word-wrap: break-word; /* Allow text to wrap */
       overflow-wrap: break-word;
     }
-    .desktop-icon-container.selected span {
-       background-color: #000080; /* Win95 selected text background */
-    }
+     /* Removed .selected span styles */
 
     /* Window Styling (not draggable, but modal-like) */
     .app-window-frame { /* Using 98.css 'window' class */
@@ -181,16 +176,19 @@
         display: flex; /* If content itself needs to be a flex container */
         flex-direction: column; /* If content stacks items */
     }
+    .window-hidden {
+      display: none !important;
+    }
 
 
     /* Taskbar */
     .taskbar {
-      height: 30px; /* Standard taskbar height */
+      height: 38px; /* Increased taskbar height */
       background-color: #c0c0c0;
       border-top: 2px solid #FFFFFF;
       display: flex;
       align-items: center;
-      padding: 0 2px;
+      padding: 2px 3px; /* Adjusted padding */
       position: relative;
       z-index: 500; /* Above windows */
       flex-shrink: 0; /* Prevent taskbar from shrinking */
@@ -200,17 +198,19 @@
       margin-right: 4px;
       display: flex;
       align-items: center;
+      height: calc(100% - 4px); /* Adjust height to fit */
     }
     .taskbar-start-button img {
-      width: 16px; height: 16px;
-      margin-right: 4px;
+      width: 20px; /* Slightly larger start icon */
+      height: 20px;
+      margin-right: 5px;
     }
     .taskbar-divider {
       width: 2px;
-      height: 22px;
+      height: calc(100% - 6px); /* Adjust height */
       background-color: #808080;
       border-right: 1px solid #FFFFFF;
-      margin: 0 2px;
+      margin: 0 3px;
     }
     .taskbar-tabs {
       display: flex;
@@ -220,47 +220,52 @@
       overflow-x: auto; /* In case of many tabs */
     }
     .taskbar-tab {
-      padding: 2px 8px;
+      padding: 2px 6px; /* Adjust padding */
       margin: 2px 1px;
-      min-width: 100px;
-      max-width: 150px;
+      min-width: 120px; /* Increased min-width */
+      max-width: 180px; /* Increased max-width */
       text-overflow: ellipsis;
       white-space: nowrap;
       overflow: hidden;
       display: flex;
       align-items: center;
       font-size: 13px;
+      height: calc(100% - 4px); /* Fit within taskbar */
     }
     .taskbar-tab img {
         width: 16px; height: 16px;
-        margin-right: 4px;
+        margin-right: 5px; /* Increased margin for icon */
         object-fit: contain;
+        image-rendering: pixelated;
     }
     .taskbar-tab.active { /* 98.css handles active button state well */
       /* border-style: inset; */ /* 98.css handles this */
     }
     .taskbar-clock {
-      padding: 2px 6px;
-      height: 22px; /* Match button height */
-      min-width: 70px;
+      padding: 2px 8px; /* Adjust padding */
+      height: calc(100% - 6px); /* Match button height */
+      min-width: 75px; /* Slightly wider */
       text-align: center;
       border-style: solid; border-width: 1px;
       border-color: #808080 #FFFFFF #FFFFFF #808080; /* Sunken appearance */
       margin-left: auto; /* Pushes to the right */
-      font-size: 12px;
+      font-size: 13px; /* Increased font size */
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     /* Start Menu */
     .start-menu {
       position: absolute;
-      bottom: 30px; /* Above taskbar */
+      bottom: 38px; /* Above increased taskbar */
       left: 0;
       background-color: #c0c0c0;
       border: 2px solid;
       border-color: #FFFFFF #808080 #808080 #FFFFFF;
       box-shadow: 2px 2px 3px rgba(0,0,0,0.3);
       z-index: 1000;
-      width: 200px; /* Adjust as needed */
+      width: 220px; /* Slightly wider */
       padding: 2px;
       display: flex;
       flex-direction: column;
@@ -268,7 +273,7 @@
     .start-menu-item {
       display: flex;
       align-items: center;
-      padding: 6px 8px;
+      padding: 6px 10px; /* Increased padding */
       font-size: 13px;
       color: #000000;
       cursor: default;
@@ -281,14 +286,14 @@
     }
     .start-menu-item img {
       width: 20px; height: 20px;
-      margin-right: 8px;
+      margin-right: 10px; /* Increased margin */
       object-fit: contain;
     }
     .start-menu-separator {
       height: 1px;
       background-color: #808080;
       border-bottom: 1px solid #FFFFFF;
-      margin: 2px 0;
+      margin: 3px 0; /* Increased margin */
     }
     .start-menu-sidebar {
         background-color: #808080; /* Dark gray for sidebar */
@@ -296,9 +301,9 @@
         transform: rotate(180deg);
         color: white;
         font-weight: bold;
-        padding: 10px 4px;
+        padding: 12px 5px; /* Increased padding */
         text-align: center;
-        font-size: 18px; /* Larger font for sidebar */
+        font-size: 20px; /* Larger font for sidebar */
     }
 
 
@@ -378,11 +383,25 @@
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@19.1.0",
-    "react-dom": "https://esm.sh/react-dom@19.1.0",
-    "@react-oauth/google": "https://esm.sh/@react-oauth/google@0.12.1",
-    "recharts": "https://esm.sh/recharts@2.15.3",
-    "three": "https://esm.sh/three@0.167.0"
+    "react": "https://esm.sh/react@^19.1.0",
+    "@vercel/node": "https://esm.sh/@vercel/node@^5.2.2",
+    "formidable": "https://esm.sh/formidable@^3.5.4",
+    "crypto": "https://esm.sh/crypto@^1.0.1",
+    "fs": "https://esm.sh/fs@^0.0.1-security",
+    "path": "https://esm.sh/path@^0.12.7",
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "@eslint/js": "https://esm.sh/@eslint/js@^9.29.0",
+    "globals": "https://esm.sh/globals@^16.2.0",
+    "eslint-plugin-react-hooks": "https://esm.sh/eslint-plugin-react-hooks@^5.2.0",
+    "eslint-plugin-react-refresh": "https://esm.sh/eslint-plugin-react-refresh@^0.4.20",
+    "typescript-eslint": "https://esm.sh/typescript-eslint@^8.34.0",
+    "vite": "https://esm.sh/vite@^6.3.5",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.5.2",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "@react-oauth/google": "https://esm.sh/@react-oauth/google@^0.12.2",
+    "three": "https://esm.sh/three@^0.177.0",
+    "recharts": "https://esm.sh/recharts@^2.15.3"
   }
 }
 </script>
