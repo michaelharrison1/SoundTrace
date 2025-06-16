@@ -40,7 +40,7 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return [];
     const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
+    
     if (selectedTimeWindow === 'all') {
       return sortedData; // For "All Time" with Brush, show all data
     }
@@ -59,7 +59,7 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
         return sortedData;
     }
   }, [data, selectedTimeWindow]);
-
+  
   const dataToDisplay = filteredData;
 
   if (isLoading && dataToDisplay.length === 0 && data.length === 0) {
@@ -137,7 +137,7 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
         )}
       </div>
       <p className="text-xs text-gray-600 text-center mb-2">{description} (showing {selectedTimeWindow === '30d' ? 'last 30 days' : selectedTimeWindow === '1y' ? 'last year' : `up to ${dataToDisplay.length} records`}).</p>
-
+      
        {isLoading && dataToDisplay.length === 0 && data.length > 0 && (
          <div className="my-4"><ProgressBar text={`Processing ${valueLabel.toLowerCase()} data...`} /></div>
        )}
@@ -146,14 +146,14 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={dataToDisplay} margin={{ top: 5, right: 5, left: -25, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#555555" />
-            <XAxis
-                dataKey="date"
+            <XAxis 
+                dataKey="date" 
                 tickFormatter={(tick: string) => new Date(tick).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 tick={{ fontSize: 10, fill: '#000000' }}
                 interval="preserveStartEnd"
                 minTickGap={30}
             />
-            <YAxis
+            <YAxis 
                 tickFormatter={(tick: number) => formatFollowersDisplay(tick)}
                 tick={{ fontSize: 10, fill: '#000000' }}
                 domain={[0, 'dataMax + dataMax*0.1']} // Add some padding to max
@@ -162,10 +162,10 @@ const TimeBasedAnalyticsGraph: React.FC<TimeBasedAnalyticsGraphProps> = ({
             {/* <Legend wrapperStyle={{fontSize: "12px"}}/> */}
             <Bar dataKey={dataKey as string} name={valueLabel} barSize={20} fill={graphColor} shape={<Rectangle radius={[2, 2, 0, 0]}/>} />
             <Line type="monotone" dataKey={dataKey as string} stroke={graphColor} strokeWidth={1.5} dot={false} activeDot={{ r: 4, stroke: '#000000', strokeWidth: 1 }} name={valueLabel} />
-            <Brush
-                dataKey="date"
-                height={25}
-                stroke="#808080"
+            <Brush 
+                dataKey="date" 
+                height={25} 
+                stroke="#808080" 
                 fill="rgba(192,192,192,0.3)"
                 tickFormatter={(tick: string) => new Date(tick).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 travellerWidth={10}
@@ -183,7 +183,7 @@ const Rectangle = (props: any) => {
   if (height === 0) return null; // Don't render if height is 0
 
   const [r1, r2, r3, r4] = Array.isArray(radius) ? radius : [radius, radius, radius, radius];
-
+  
   return (
     <path
       d={`M${x},${y + r1} 

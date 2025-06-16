@@ -9,11 +9,11 @@
   <!-- Security Headers -->
   <meta http-equiv="Content-Security-Policy" 
         content="default-src 'self'; 
-                 script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://esm.sh; 
-                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
-                 font-src 'self' https://fonts.gstatic.com; 
+                 script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh; 
+                 style-src 'self' 'unsafe-inline' 'sha256-98CSS_INTEGRITY_PLACEHOLDER' https://fonts.googleapis.com https://unpkg.com; 
+                 font-src 'self' https://fonts.gstatic.com https://unpkg.com data:; 
                  img-src 'self' data: https:; 
-                 connect-src 'self' https://api.soundtrace.uk http://localhost:5001 ws://localhost:5001 https://esm.sh;
+                 connect-src 'self' https://api.soundtrace.uk http://localhost:5001 ws://localhost:5001 https://esm.sh http://localhost:48757;
                  object-src 'none'; 
                  frame-ancestors 'none';
                  base-uri 'self';
@@ -21,53 +21,77 @@
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta name="referrer" content="strict-origin-when-cross-origin">
 
-  <title>SoundTrace</title>
-  <script src="https://cdn.tailwindcss.com" integrity="OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb%"></script>
+  <title>SoundTrace 95</title>
+  <script src="https://cdn.tailwindcss.com" integrity="sha384-PLACEHOLDER-TAILWIND"></script>
+  <link rel="stylesheet" href="https://unpkg.com/98.css" integrity="sha384-PLACEHOLDER-98CSS" crossorigin="anonymous">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" integrity="AYycTynPXthvOxI5DIZCLXKCG3WyU9BiaWRGv2XIWrFlMCQGK5JV9vJQ2SMo6J1r%" crossorigin="anonymous">
-  <link rel="preload" as="image" href="/src/components/background.jpg">
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" integrity="sha384-PLACEHOLDER-GOOGLE-FONT-VT323" crossorigin="anonymous">
+  <!-- Preload actual icons if known, placeholder for now -->
+  <!-- <link rel="preload" as="image" href="/src/components/windows95icons/apps/my_computer_32x32.png"> -->
   <link rel="prerender" href="/privacy-policy">
   <link rel="prerender" href="/terms-of-service">
 
-
   <style>
     body {
-      background-color: #C0C0C0; /* Windows 95 gray */
-      font-family: 'VT323', monospace;
-      color: #000000; /* Default text black */
-      font-size: 16px; /* VT323 looks better a bit larger */
+      background-color: #008080; /* Windows 95 Teal */
+      font-family: "Pixelated MS Sans Serif", "VT323", monospace;
+      color: #222222; /* Darker gray for text for better readability on teal/gray */
+      font-size: 16px; 
       margin: 0;
-      -webkit-font-smoothing: antialiased;
+      -webkit-font-smoothing: none;
       -moz-osx-font-smoothing: grayscale;
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
-    }
-    body.logged-out-background {
-      background-image: url('/src/components/background.jpg');
-    }
-    body.logged-in-background {
-      background-image: none;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+      overflow: hidden; /* Prevent body scrollbars */
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
 
-    ::-webkit-scrollbar { all: unset; }
-    * { scrollbar-width: auto; }
+    #root {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* Important for desktop layout */
+    }
+
+    /* 98.css scrollbar styling (if not automatically applied by the library) */
+    ::-webkit-scrollbar { width: 16px; height: 16px; }
+    ::-webkit-scrollbar-track { background-color: #dfdfdf; }
+    ::-webkit-scrollbar-thumb {
+        background-color: #c0c0c0; border: 1px solid;
+        border-color: #f0f0f0 #808080 #808080 #f0f0f0;
+        box-shadow: 1px 1px 0px #000000 inset;
+    }
+    ::-webkit-scrollbar-button {
+        background-color: #c0c0c0; border: 1px solid;
+        border-color: #f0f0f0 #808080 #808080 #f0f0f0;
+        box-shadow: 1px 1px 0px #000000 inset;
+        display: block; height: 16px; width: 16px;
+    }
+    * { scrollbar-width: auto; scrollbar-color: #c0c0c0 #dfdfdf; }
     
+    /* Standard borders from 98.css are preferred. These are for custom elements if needed. */
     .win95-border-outset {
       border-style: solid; border-width: 2px;
       border-top-color: #FFFFFF; border-left-color: #FFFFFF;
       border-bottom-color: #808080; border-right-color: #808080;
-      box-shadow: 1px 1px 0px #000000;
+      box-shadow: 1px 1px 0px #000000; /* Adjusted shadow for consistency */
     }
     .win95-border-inset {
       border-style: solid; border-width: 2px;
       border-top-color: #808080; border-left-color: #808080;
       border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
+      box-shadow: none; /* Inset usually doesn't have outer shadow */
     }
-    svg { stroke: #000000 !important; }
 
+    svg { /* Keeping this, might need adjustments based on icon set */
+      stroke: currentColor; /* Default, but icons might have their own fill/stroke */
+    }
+
+    /* Progress bar styling (98.css might provide this) */
     @keyframes progressBarMarqueeAnim {
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); } 
@@ -77,90 +101,250 @@
       animation: progressBarMarqueeAnim 1.2s linear infinite;
       will-change: transform;
     }
-    .progress-bar-block {
-      height: 100%; background-color: #084B8A;
+    .progress-bar-block { /* Standard Win95 progress bar block color */
+      height: 100%; background-color: #000080; 
     }
 
-    /* CRT Scan Line Animation */
-    .crt-scan-bar-container {
-      width: 100%; height: 100%;
-      background-color: #1a1a1a; /* Dark CRT background */
-      overflow: hidden; position: relative;
-      box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
-    }
-    .crt-scan-line {
-      position: absolute; top: 0; bottom: 0;
-      width: 3px; /* Width of the scan line */
-      background-color: #33ff33; /* Bright green scan line */
-      box-shadow: 0 0 5px #33ff33, 0 0 10px #33ff33, 0 0 15px #33ff33;
-      animation: crt-scan-anim 1.5s linear infinite;
-      will-change: left;
-    }
-    @keyframes crt-scan-anim {
-      0% { left: -3px; /* Start off-screen left */ }
-      100% { left: 100%; /* End off-screen right */ }
-    }
-    
-    .win95-button-sm {
-      font-family: inherit; background-color: #c0c0c0; color: #000000;
-      border-style: solid; border-width: 1px;
-      border-top-color: #FFFFFF; border-left-color: #FFFFFF;
-      border-bottom-color: #808080; border-right-color: #808080;
-      box-shadow: 0.5px 0.5px 0px #000000; padding: 1px 3px; font-size: 1em;
-      line-height: 1; align-items: center; justify-content: center; display: inline-flex;
-      min-width: 20px; min-height: 20px;
-    }
-    .win95-button-sm:active:not(:disabled) {
-      border-top-color: #808080; border-left-color: #808080;
-      border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
-      box-shadow: none; transform: translate(0.5px, 0.5px);
-    }
-     .win95-button-sm:disabled {
-        color: #808080; text-shadow: 1px 1px 0 #ffffff; cursor: default;
-    }
-    .win95-button-sm:disabled:active {
-        transform: none; box-shadow: 0.5px 0.5px 0px #000000;
-        border-top-color: #FFFFFF; border-left-color: #FFFFFF;
-        border-bottom-color: #808080; border-right-color: #808080;
-    }
     .tooltip { position: relative; display: inline-block; }
     .tooltip .tooltiptext {
       visibility: hidden; width: max-content; background-color: #fefee0; color: #000000;
       text-align: center; border: 1px solid #000000; padding: 3px 5px; font-size: 0.8rem;
-      position: absolute; z-index: 100; bottom: 125%; left: 50%; transform: translateX(-50%);
+      position: absolute; z-index: 10000; bottom: 125%; left: 50%; transform: translateX(-50%);
       opacity: 0; transition: opacity 0.2s; white-space: nowrap; box-shadow: 1px 1px 0px #808080;
     }
     .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
-  </style>
 
-<script type="importmap" integrity="sha384-PLACEHOLDER-IMPORTMAP">
-{
-  "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.1.0",
-    "react": "https://esm.sh/react@^19.1.0",
-    "react/": "https://esm.sh/react@^19.1.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.5.2",
-    "vite": "https://esm.sh/vite@^6.3.5",
-    "path": "https://esm.sh/path@^0.12.7",
-    "fs": "https://esm.sh/fs@^0.0.1-security",
-    "crypto": "https://esm.sh/crypto@^1.0.1",
-    "typescript-eslint": "https://esm.sh/typescript-eslint@^8.34.0",
-    "eslint-plugin-react-refresh": "https://esm.sh/eslint-plugin-react-refresh@^0.4.20",
-    "@vercel/node": "https://esm.sh/@vercel/node@^5.2.2",
-    "formidable": "https://esm.sh/formidable@^3.5.4",
-    "eslint-plugin-react-hooks": "https://esm.sh/eslint-plugin-react-hooks@^5.2.0",
-    "buffer": "https://esm.sh/buffer@^6.0.3",
-    "globals": "https://esm.sh/globals@^16.2.0",
-    "@eslint/js": "https://esm.sh/@eslint/js@^9.29.0",
-    "@react-oauth/google": "https://esm.sh/@react-oauth/google@^0.12.2",
-    "recharts": "https://esm.sh/recharts@^2.15.3"
-  }
-}
-</script>
+    /* Desktop Icons */
+    .desktop-icon-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 90px; /* Slightly wider for 2 lines of text */
+      padding: 8px 4px;
+      margin: 8px;
+      cursor: default;
+      text-align: center;
+      border: 1px solid transparent;
+      user-select: none;
+    }
+    .desktop-icon-container:focus, .desktop-icon-container.selected {
+      border: 1px dotted #000000;
+      background-color: rgba(0, 0, 128, 0.4); /* Win95 selection blue */
+    }
+    .desktop-icon-container img {
+      width: 32px; height: 32px;
+      margin-bottom: 6px;
+      image-rendering: pixelated;
+    }
+    .desktop-icon-container span {
+      font-size: 12px;
+      color: white;
+      text-shadow: 1px 1px 0px #000000;
+      padding: 1px 3px;
+      line-height: 1.2;
+      display: block; /* Ensure span takes up block for centering */
+      max-width: 100%;
+      word-wrap: break-word; /* Allow text to wrap */
+      overflow-wrap: break-word;
+    }
+    .desktop-icon-container.selected span {
+       background-color: #000080; /* Win95 selected text background */
+    }
+
+    /* Window Styling (not draggable, but modal-like) */
+    .app-window-frame { /* Using 98.css 'window' class */
+      position: absolute;
+      /* Default position, App.tsx can override */
+      top: 5%; 
+      left: 10%;
+      width: 80%;
+      height: 80%;
+      max-width: 900px; /* Max size for larger screens */
+      max-height: 700px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+      z-index: 100; /* Base z-index */
+    }
+    .app-window-frame.active {
+      z-index: 200; /* Active window on top */
+    }
+     .app-window-frame .window-body {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        overflow: hidden; /* Important: child should manage its own scroll */
+    }
+    .app-window-frame .window-body > * {
+        flex-grow: 1; /* Make the content (e.g., DashboardViewPage) fill the window body */
+        overflow: auto; /* Allow content to scroll */
+        display: flex; /* If content itself needs to be a flex container */
+        flex-direction: column; /* If content stacks items */
+    }
+
+
+    /* Taskbar */
+    .taskbar {
+      height: 30px; /* Standard taskbar height */
+      background-color: #c0c0c0;
+      border-top: 2px solid #FFFFFF;
+      display: flex;
+      align-items: center;
+      padding: 0 2px;
+      position: relative;
+      z-index: 500; /* Above windows */
+      flex-shrink: 0; /* Prevent taskbar from shrinking */
+    }
+    .taskbar-start-button {
+      padding: 2px 8px;
+      margin-right: 4px;
+      display: flex;
+      align-items: center;
+    }
+    .taskbar-start-button img {
+      width: 16px; height: 16px;
+      margin-right: 4px;
+    }
+    .taskbar-divider {
+      width: 2px;
+      height: 22px;
+      background-color: #808080;
+      border-right: 1px solid #FFFFFF;
+      margin: 0 2px;
+    }
+    .taskbar-tabs {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      flex-grow: 1;
+      overflow-x: auto; /* In case of many tabs */
+    }
+    .taskbar-tab {
+      padding: 2px 8px;
+      margin: 2px 1px;
+      min-width: 100px;
+      max-width: 150px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+    }
+    .taskbar-tab img {
+        width: 16px; height: 16px;
+        margin-right: 4px;
+        object-fit: contain;
+    }
+    .taskbar-tab.active { /* 98.css handles active button state well */
+      /* border-style: inset; */ /* 98.css handles this */
+    }
+    .taskbar-clock {
+      padding: 2px 6px;
+      height: 22px; /* Match button height */
+      min-width: 70px;
+      text-align: center;
+      border-style: solid; border-width: 1px;
+      border-color: #808080 #FFFFFF #FFFFFF #808080; /* Sunken appearance */
+      margin-left: auto; /* Pushes to the right */
+      font-size: 12px;
+    }
+    
+    /* Start Menu */
+    .start-menu {
+      position: absolute;
+      bottom: 30px; /* Above taskbar */
+      left: 0;
+      background-color: #c0c0c0;
+      border: 2px solid;
+      border-color: #FFFFFF #808080 #808080 #FFFFFF;
+      box-shadow: 2px 2px 3px rgba(0,0,0,0.3);
+      z-index: 1000;
+      width: 200px; /* Adjust as needed */
+      padding: 2px;
+      display: flex;
+      flex-direction: column;
+    }
+    .start-menu-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      font-size: 13px;
+      color: #000000;
+      cursor: default;
+      text-decoration: none; /* For <a> tags */
+    }
+    .start-menu-item:hover, .start-menu-item:focus {
+      background-color: #000080; /* Windows selection blue */
+      color: #FFFFFF;
+      outline: none;
+    }
+    .start-menu-item img {
+      width: 20px; height: 20px;
+      margin-right: 8px;
+      object-fit: contain;
+    }
+    .start-menu-separator {
+      height: 1px;
+      background-color: #808080;
+      border-bottom: 1px solid #FFFFFF;
+      margin: 2px 0;
+    }
+    .start-menu-sidebar {
+        background-color: #808080; /* Dark gray for sidebar */
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        color: white;
+        font-weight: bold;
+        padding: 10px 4px;
+        text-align: center;
+        font-size: 18px; /* Larger font for sidebar */
+    }
+
+
+    /* Tailwind reset for 98.css compatibility */
+    /* Most of these resets are already handled by 98.css itself */
+    /* but ensuring font-family and basic box model are good. */
+    button, input, optgroup, select, textarea {
+      font-family: "Pixelated MS Sans Serif", "VT323", monospace;
+    }
+    /* Default focus style for 98.css. Ensure it's not overridden too harshly */
+    *:focus {
+        /* outline: 1px dotted #000000; /* 98.css standard focus */
+    }
+
+    /* Ensure Tailwind preflight doesn't interfere with 98.css button specific padding/border */
+    button {
+        padding: revert; /* Revert to 98.css padding if tailwind overrides */
+        border-width: revert;
+    }
+    input[type="text"], input[type="password"], input[type="url"], input[type="number"], textarea {
+        padding: 2px 3px; /* Typical 98.css padding */
+    }
+
+    /* Styles for tab content inside a window */
+    .window-tab-content {
+      flex-grow: 1;
+      padding: 10px; /* Standard padding for content within window tab */
+      overflow-y: auto; /* Scroll content if it overflows */
+      background-color: #c0c0c0; /* Match window background */
+      border: 1px solid;
+      border-color: #808080 #FFFFFF #FFFFFF #808080; /* Standard inset border for content areas */
+      margin: 2px; /* Space from tab controls */
+    }
+    .window-tab-content > div, .window-tab-content > form {
+        height: 100%; /* Ensure direct child takes full height for scroll */
+        display: flex;
+        flex-direction: column;
+    }
+    .window-tab-content .field-row, .window-tab-content .sunken-panel { /* 98.css classes */
+      margin-bottom: 8px;
+    }
+
+  </style>
 </head>
 <body>
-  <noscript>You need to enable JavaScript to run this app.</noscript>
   <div id="root"></div>
-  <script type="module" src="/src/index.tsx" integrity="sha384-PLACEHOLDER-INDEX-TSX"></script>
+  <script type="module" src="/src/index.tsx"></script>
 </body>
 </html>

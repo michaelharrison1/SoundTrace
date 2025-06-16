@@ -10,7 +10,7 @@ import TimeBasedAnalyticsGraph from './reachAnalyzer/TimeBasedAnalyticsGraph';
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils'; // Corrected path
-import DnaStrandVisualizer from './reachAnalyzer/DnaStrandVisualizer'; // Import new DNA visualizer
+import RetroDNAVisualizer from './reachAnalyzer/RetroDNAVisualizer'; // Import new 3D DNA visualizer
 import SongStreamDetail from './reachAnalyzer/SongStreamDetail';
 import EstimatedRevenueTab from './reachAnalyzer/EstimatedRevenueTab';
 
@@ -42,7 +42,7 @@ export interface ArtistLeaderboardEntry {
   mostRecentMatchDate: string | null;
   spotifyPopularity: number | null | undefined;
   genres: string[] | undefined;
-  totalArtistStreams?: number;
+  totalArtistStreams?: number; 
   key: string;
 }
 
@@ -81,22 +81,43 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   const [reachBarConfig, setReachBarConfig] = useState(calculateBarConfig(totalFollowers, currentLevel));
 
   const [selectedSongForDetail, setSelectedSongForDetail] = useState<AggregatedSongData | null>(null);
-  const visualizerContainerRef = useRef<HTMLDivElement>(null); // Renamed for clarity
+  const visualizerContainerRef = useRef<HTMLDivElement>(null); 
   const [visualizerDimensions, setVisualizerDimensions] = useState({ width: 0, height: 300 });
 
   useEffect(() => {
     const updateDimensions = () => {
-      if (visualizerContainerRef.current) {
+      if (visualizerContainerRef.current && activeMonitorTab === 'streamHistory') { // Only update if tab is active
         setVisualizerDimensions({
           width: visualizerContainerRef.current.offsetWidth,
-          height: Math.max(250, visualizerContainerRef.current.offsetHeight || 300)
+          // Ensure a minimum height for the visualizer
+          height: Math.max(250, visualizerContainerRef.current.offsetHeight || 300) 
         });
       }
     };
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, [activeMonitorTab]);
+  
+    // Debounce resize handler slightly for performance
+    let resizeTimeout: ReturnType<typeof setTimeout>;
+    const debouncedUpdateDimensions = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(updateDimensions, 100);
+    };
+  
+    if (activeMonitorTab === 'streamHistory') {
+        // Initial call to set dimensions. Use a small timeout to ensure layout is stable.
+        const initialTimeout = setTimeout(updateDimensions, 50); 
+        window.addEventListener('resize', debouncedUpdateDimensions);
+        
+        // Also listen for window visibility changes if relevant (not strictly necessary for resize)
+        // document.addEventListener('visibilitychange', updateDimensions);
+
+        return () => {
+          clearTimeout(initialTimeout);
+          clearTimeout(resizeTimeout);
+          window.removeEventListener('resize', debouncedUpdateDimensions);
+          // document.removeEventListener('visibilitychange', updateDimensions);
+        };
+    }
+  }, [activeMonitorTab]); // Rerun when tab changes
 
 
   useEffect(() => {
@@ -130,7 +151,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, [levelUpAvailable, currentLevel, totalFollowers]);
 
   const activeBarAndLineColor = useMemo(() => getActiveLevelHexColor(currentLevel), [currentLevel]);
-  const streamGraphColor = '#1D9BF0';
+  const streamGraphColor = '#1D9BF0'; 
 
   const animateLineCallback = useCallback((timestamp: number) => {
     if (animationStartTime.current === 0) animationStartTime.current = timestamp;
@@ -169,7 +190,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
     scanLogs.forEach(log => {
         if (log.status === 'completed_match_found' || log.status === 'scanned_match_found' || log.status === 'imported_spotify_track') {
             log.matches.forEach(match => {
-                if (match.spotifyTrackId) {
+                if (match.spotifyTrackId) { 
                     const existing = songMap.get(match.spotifyTrackId);
                     const currentTimestamp = match.streamCountTimestamp ? new Date(match.streamCountTimestamp).getTime() : 0;
                     const existingTimestamp = existing?.latestStreamCountTimestamp ? new Date(existing.latestStreamCountTimestamp).getTime() : 0;
@@ -183,7 +204,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                             coverArtUrl: match.coverArtUrl,
                             latestStreamCount: match.streamCount || 0,
                             latestStreamCountTimestamp: match.streamCountTimestamp,
-                            spotifyArtistIdForAggregation: match.spotifyArtistId,
+                            spotifyArtistIdForAggregation: match.spotifyArtistId, 
                         });
                     } else if (currentTimestamp === existingTimestamp && (match.streamCount || 0) > (existing.latestStreamCount || 0)) {
                         songMap.set(match.spotifyTrackId, {
@@ -212,7 +233,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
     const artistStreamTotals = new Map<string, number>();
     uniqueSongsWithStreamCounts.forEach(song => {
-        const artistKey = song.spotifyArtistIdForAggregation || song.artist;
+        const artistKey = song.spotifyArtistIdForAggregation || song.artist; 
         artistStreamTotals.set(artistKey, (artistStreamTotals.get(artistKey) || 0) + song.latestStreamCount);
     });
 
@@ -231,21 +252,21 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
           const validDates = data.matches.map(m => m.releaseDate ? new Date(m.releaseDate).getTime() : 0).filter(ts => ts > 0 && !isNaN(ts));
           if(validDates.length > 0) mostRecentMatchedReleaseDate = new Date(Math.max(...validDates)).toLocaleDateString();
       }
-
+      
       const artistKeyForStreamTotal = data.id || data.name;
       const artistTotalStreams = artistStreamTotals.get(artistKeyForStreamTotal) || 0;
 
-      processedData.push({
-        artistName: data.name,
-        spotifyArtistId: data.id,
-        matchedTracksCount: data.matches.length,
-        spotifyFollowers: followers,
-        isFollowersLoading: isLoadingFollowers,
-        followersError: errorFollowers,
-        mostRecentMatchDate: mostRecentMatchedReleaseDate,
-        spotifyPopularity: popularity,
+      processedData.push({ 
+        artistName: data.name, 
+        spotifyArtistId: data.id, 
+        matchedTracksCount: data.matches.length, 
+        spotifyFollowers: followers, 
+        isFollowersLoading: isLoadingFollowers, 
+        followersError: errorFollowers, 
+        mostRecentMatchDate: mostRecentMatchedReleaseDate, 
+        spotifyPopularity: popularity, 
         genres,
-        totalArtistStreams: artistTotalStreams
+        totalArtistStreams: artistTotalStreams 
       });
     });
 
@@ -266,7 +287,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
     return Array.from(beatMap.entries()).map(([beatName, data]) => ({ beatName, totalMatches: data.matchedSongs.length, matchedSongs: data.matchedSongs.sort((a,b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime()), key: beatName }));
   }, [scanLogs]);
 
-
+  
   const handleMatchSelect = useCallback((match: AcrCloudMatch, log: TrackScanLog) => {
     if (match.spotifyTrackId) {
         const songData: AggregatedSongData = {
@@ -352,7 +373,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               data={historicalAnalyticsData}
               dataKey="cumulativeStreams"
               isLoading={isLoadingOverall && historicalAnalyticsData.length === 0}
-              onDeleteHistory={onDeleteAnalyticsHistory}
+              onDeleteHistory={onDeleteAnalyticsHistory} 
               graphColor={streamGraphColor}
               valueLabel="Streams"
               title="Total Streams Over Time"
@@ -360,17 +381,16 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
             />
              <hr className="my-3 border-t-2 border-b-2 border-t-gray-400 border-b-white" />
              <h4 className="text-base font-semibold text-black text-center mt-3 mb-1">DNA Track Visualizer</h4>
-             <p className="text-xs text-gray-600 text-center mb-2">Each rung represents a matched song. Strand thickness correlates to total streams. Click for details.</p>
-
-            {visualizerDimensions.width > 0 && (
-              <DnaStrandVisualizer
-                scanLogs={scanLogs}
-                onSelectMatch={handleMatchSelect}
-                containerWidth={visualizerDimensions.width}
-                containerHeight={visualizerDimensions.height}
-                totalStreams={totalStreams}
-              />
+             <p className="text-xs text-gray-600 text-center mb-2">Retro 3D DNA visualization. For aesthetic purposes.</p>
+            
+            {visualizerDimensions.width > 0 ? (
+              <RetroDNAVisualizer />
+            ) : (
+              <div className="flex items-center justify-center flex-grow">
+                <ProgressBar text="Loading DNA Visualizer..." />
+              </div>
             )}
+
             {selectedSongForDetail && (
                 <SongStreamDetail
                     song={selectedSongForDetail}
@@ -409,7 +429,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         );
       case 'collaborationRadar':
         return <CollaborationRadarGraph scanLogs={scanLogs} />;
-      case 'estimatedRevenue':
+      case 'estimatedRevenue': 
         return (
           <EstimatedRevenueTab
             uniqueSongsWithStreamCounts={uniqueSongsWithStreamCounts}
@@ -424,8 +444,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
   const monitorTabs: {id: MonitorTab, label: string}[] = [
     { id: 'reach', label: 'Total Reach' },
-    { id: 'streamHistory', label: 'Stream Stats' },
-    { id: 'estimatedRevenue', label: 'Est. Revenue' },
+    { id: 'streamHistory', label: 'Stream Stats' }, 
+    { id: 'estimatedRevenue', label: 'Est. Revenue' }, 
     { id: 'artistStats', label: 'Artist Stats' },
     { id: 'beatStats', label: 'Beat Matches' },
     { id: 'collaborationRadar', label: 'Collab Radar'}

@@ -57,14 +57,14 @@ const formatPlatformSource = (source: PlatformSource): string => {
   }
 };
 
-const SourceIcon: React.FC<{ source: PlatformSource, url?: string, title?: string }> = React.memo(({ source, url, title: propTitle }) => {
+const SourceIcon: React.FC<{ source: PlatformSource, url?: string, title?: string, className?: string }> = React.memo(({ source, url, title: propTitle, className }) => {
     let icon = <MusicNoteIcon className="w-3.5 h-3.5 text-gray-600" />;
     let defaultTitle = formatPlatformSource(source);
 
     if (source === 'file_upload_batch_item') {
         icon = <UploadIcon className="w-3.5 h-3.5 text-blue-600" />;
     } else if (source === 'spotify_playlist_import_item') {
-        icon = <SpotifyIcon className="w-3.5 h-3.5 text-green-600" />;
+        icon = <SpotifyIcon className="w-3.5 h-3.5 text-green-700" />;
     } else if (source === 'electron_youtube_item') {
         icon = <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />;
     }
@@ -73,9 +73,9 @@ const SourceIcon: React.FC<{ source: PlatformSource, url?: string, title?: strin
 
 
     if (url) {
-        return <a href={url} target="_blank" rel="noopener noreferrer" title={finalTitle} className="inline-block hover:opacity-75">{icon}</a>;
+        return <a href={url} target="_blank" rel="noopener noreferrer" title={finalTitle} className={`inline-block hover:opacity-75 ${className || ''}`}>{icon}</a>;
     }
-    return <span title={finalTitle} className="inline-block">{icon}</span>;
+    return <span title={finalTitle} className={`inline-block ${className || ''}`}>{icon}</span>;
 });
 SourceIcon.displayName = 'SourceIcon';
 
@@ -352,21 +352,68 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                 const followerInfo = row.matchDetails?.spotifyArtistId ? followerResults.get(row.matchDetails.spotifyArtistId) : undefined;
                 const displayTitle = row.isMatchRow ? (row.matchDetails?.youtubeVideoTitle || row.matchDetails?.title) : (row.youtubeVideoTitle || row.originalFileName);
                 const displayArtist = row.isMatchRow ? row.matchDetails?.artist : "N/A";
+                
+                const iconsToRender: JSX.Element[] = [];
+                const shouldShowSourceIcon = !(
+                  row.platformSource === 'spotify_playlist_import_item' &&
+                  row.isMatchRow &&
+                  row.matchDetails?.platformLinks?.spotify
+                );
+
+                if (shouldShowSourceIcon) {
+                  iconsToRender.push(
+                    <SourceIcon
+                      key="source-icon"
+                      source={row.platformSource}
+                      url={row.sourceUrl}
+                      title={row.youtubeVideoTitle || row.originalFileName}
+                    />
+                  );
+                }
+
+                if (row.isMatchRow && row.matchDetails?.platformLinks?.spotify) {
+                  iconsToRender.push(
+                    <a
+                      key="spotify-track-link"
+                      href={row.matchDetails.platformLinks.spotify}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block hover:opacity-75"
+                      title={`Open ${row.matchDetails.title} on Spotify`}
+                    >
+                      <SpotifyIcon className="w-3.5 h-3.5 text-green-600" />
+                    </a>
+                  );
+                }
+                if (row.isMatchRow && row.matchDetails?.platformLinks?.youtube) {
+                  const isDuplicateYouTubeLink = shouldShowSourceIcon &&
+                                                row.platformSource === 'electron_youtube_item' &&
+                                                row.sourceUrl === row.matchDetails.platformLinks.youtube;
+                  if (!isDuplicateYouTubeLink) {
+                    iconsToRender.push(
+                      <a
+                        key="youtube-track-link"
+                        href={row.matchDetails.platformLinks.youtube}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block hover:opacity-75"
+                        title={`Search ${row.matchDetails.title} on YouTube`}
+                      >
+                        <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
+                      </a>
+                    );
+                  }
+                }
+
 
                 return (
                 <tr key={row.rowKey} className={`${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:bg-blue-100`}>
                   <DataCell className="text-center">
-                    <SourceIcon source={row.platformSource} url={row.sourceUrl} title={row.youtubeVideoTitle || row.originalFileName} />
-                    {row.isMatchRow && row.matchDetails?.platformLinks?.spotify && (
-                        <a href={row.matchDetails.platformLinks.spotify} target="_blank" rel="noopener noreferrer" className="inline-block ml-1 hover:opacity-75" title={`Open ${row.matchDetails.title} on Spotify`}>
-                            <SpotifyIcon className="w-3.5 h-3.5 text-green-600" />
-                        </a>
-                    )}
-                    {row.isMatchRow && row.matchDetails?.platformLinks?.youtube && (
-                        <a href={row.matchDetails.platformLinks.youtube} target="_blank" rel="noopener noreferrer" className="inline-block ml-1 hover:opacity-75" title={`Search ${row.matchDetails.title} on YouTube`}>
-                            <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
-                        </a>
-                    )}
+                     {iconsToRender.map((icon, index) => (
+                        <span key={index} className={index > 0 ? "ml-1" : ""}>
+                          {icon}
+                        </span>
+                      ))}
                   </DataCell>
                   {row.isMatchRow && row.matchDetails ? (
                     <>

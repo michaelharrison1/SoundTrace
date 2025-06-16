@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback } from 'react';
 import { ScanJob, JobStatus, JobFileState, JobType } from '../../types';
 import Button from '../common/Button';
@@ -171,7 +172,13 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
               Resume Job
             </Button>
           )}
-          <Button onClick={handleDelete} size="sm" variant="danger" isLoading={isDeleting} disabled={isGloballyLoading || isResuming}>
+          <Button
+            onClick={handleDelete}
+            size="sm"
+            isLoading={isDeleting}
+            disabled={isGloballyLoading || isResuming}
+            className="!bg-red-200 hover:!bg-red-300 !border-t-red-100 !border-l-red-100 !border-b-red-500 !border-r-red-500 active:!bg-red-400 active:!border-t-red-500 active:!border-l-red-500 active:!border-b-red-100 active:!border-r-red-100"
+          >
             Delete Job
           </Button>
         </div>
