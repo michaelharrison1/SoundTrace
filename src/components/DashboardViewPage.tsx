@@ -10,8 +10,8 @@ import { scanLogService } from '../services/scanLogService';
 interface DashboardViewPageProps {
   user: User;
   previousScans: TrackScanLog[];
-  onDeleteScan: (logId?: string) => void; 
-  onClearAllScans: () => void; 
+  onDeleteScan: (logId?: string) => void;
+  onClearAllScans: () => void;
 }
 
 const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousScans, onDeleteScan: refreshDataAfterSingleDelete, onClearAllScans: refreshDataAfterClearAll }) => {
@@ -75,43 +75,29 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   }, [user]);
 
   useEffect(() => {
-    if (uniqueArtistIds.length === 0 && typeof totalStreams === 'number') {
-      setTotalFollowers(0);
-      setFollowerResults(new Map());
-      setFollowerFetchError(null);
-      setIsFollowerLoading(false);
-      if (user) { 
-          analyticsService.saveAnalyticsSnapshot(0, totalStreams)
-            .then(savedSnapshot => {
-                 setHistoricalAnalyticsData(prevHistory => {
-                    const newHistory = [...prevHistory];
-                    const entryIndex = newHistory.findIndex(entry => entry.date === savedSnapshot.date);
-                    if (entryIndex > -1) { 
-                        if (newHistory[entryIndex].cumulativeFollowers !== savedSnapshot.cumulativeFollowers || newHistory[entryIndex].cumulativeStreams !== savedSnapshot.cumulativeStreams) {
-                           newHistory[entryIndex] = savedSnapshot;
-                        } else { return prevHistory; } 
-                    } else { 
-                        newHistory.push(savedSnapshot);
-                    }
-                    return newHistory.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                });
-            })
-            .catch(err => console.error("Failed to save zero follower/stream snapshot:", err));
-      }
-      return;
-    }
-    if (uniqueArtistIds.length === 0) return;
-
     let isMounted = true;
+
     const fetchAllFollowers = async () => {
-      if (!isMounted) return;
+      if (!isMounted || isFollowerLoading) return; // Prevent re-entrant calls
+
+      if (uniqueArtistIds.length === 0) {
+        if(isMounted) {
+          setTotalFollowers(0);
+          setFollowerResults(new Map());
+          setFollowerFetchError(null);
+          setIsFollowerLoading(false);
+        }
+        return;
+      }
+
       setIsFollowerLoading(true);
       setFollowerFetchError(null);
       const initialResults = new Map<string, SpotifyFollowerResult>();
       uniqueArtistIds.forEach(id => initialResults.set(id, {status: 'loading', artistId: id}));
       if(isMounted) setFollowerResults(initialResults);
+
       const followerPromises: Promise<SpotifyFollowerResult>[] = uniqueArtistIds.map(artistId =>
-        fetch(`/api/spotify-artist-details?artistId=${artistId}`) 
+        fetch(`/api/spotify-artist-details?artistId=${artistId}`)
           .then(async (response): Promise<SpotifyFollowerResult> => {
             if (!isMounted) return { status: 'cancelled', artistId };
             if (!response.ok) {
@@ -126,15 +112,17 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
             return { status: 'error', artistId, reason: err.message || 'Network error' };
           })
       );
+
       const settledResults = await Promise.allSettled(followerPromises);
       if (!isMounted) return;
+
       const newFollowerResults = new Map<string, SpotifyFollowerResult>();
       let sumFollowers = 0; let errorsEncountered = 0; let successfulFetches = 0;
       settledResults.forEach(result => {
         if (result.status === 'fulfilled' && result.value) {
             const resValue = result.value;
-            if (resValue.status === 'cancelled') return; 
-            newFollowerResults.set(resValue.artistId, resValue); 
+            if (resValue.status === 'cancelled') return;
+            newFollowerResults.set(resValue.artistId, resValue);
             if (resValue.status === 'success' && typeof resValue.followers === 'number') {
                 sumFollowers += resValue.followers; successfulFetches++;
             } else if (resValue.status === 'error') errorsEncountered++;
@@ -142,47 +130,65 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
             errorsEncountered++;
         }
       });
+
       if (isMounted) {
         setFollowerResults(newFollowerResults);
         setTotalFollowers(sumFollowers);
-        if (typeof sumFollowers === 'number' && !isNaN(sumFollowers) && typeof totalStreams === 'number' && !isNaN(totalStreams) && user) {
-          analyticsService.saveAnalyticsSnapshot(sumFollowers, totalStreams)
-            .then(savedSnapshot => {
-                setHistoricalAnalyticsData(prevHistory => {
-                    const newHistory = [...prevHistory];
-                    const entryIndex = newHistory.findIndex(entry => entry.date === savedSnapshot.date);
-                    if (entryIndex > -1) { 
-                         if (newHistory[entryIndex].cumulativeFollowers !== savedSnapshot.cumulativeFollowers || newHistory[entryIndex].cumulativeStreams !== savedSnapshot.cumulativeStreams) {
-                           newHistory[entryIndex] = savedSnapshot;
-                        } else { return prevHistory; }
-                    } else { 
-                        newHistory.push(savedSnapshot);
-                    }
-                    return newHistory.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                });
-            })
-            .catch(err => console.error("Failed to save analytics snapshot:", err));
-        }
         if (errorsEncountered > 0 && successfulFetches === 0 && uniqueArtistIds.length > 0) setFollowerFetchError("Could not load any artist data.");
         else if (errorsEncountered > 0) setFollowerFetchError("Could not load data for some artists. Total might be inaccurate.");
         else setFollowerFetchError(null);
         setIsFollowerLoading(false);
       }
     };
-    if (typeof totalStreams === 'number') {
+
+    if (user) { // Only fetch if user is present
         fetchAllFollowers();
+    } else { // Clear follower data if no user
+        setTotalFollowers(undefined);
+        setFollowerResults(new Map());
+        setFollowerFetchError(null);
+        setIsFollowerLoading(false);
+    }
+
+    return () => { isMounted = false; };
+  }, [uniqueArtistIds, user]); // Removed totalStreams dependency
+
+
+  // Separate useEffect for saving analytics snapshot
+  useEffect(() => {
+    let isMounted = true;
+    if (user && typeof totalFollowers === 'number' && typeof totalStreams === 'number' && !isFollowerLoading && !isHistoryLoading) {
+        analyticsService.saveAnalyticsSnapshot(totalFollowers, totalStreams)
+        .then(savedSnapshot => {
+            if (isMounted) {
+                setHistoricalAnalyticsData(prevHistory => {
+                    const newHistory = [...prevHistory];
+                    const entryIndex = newHistory.findIndex(entry => entry.date === savedSnapshot.date);
+                    if (entryIndex > -1) {
+                        if (newHistory[entryIndex].cumulativeFollowers !== savedSnapshot.cumulativeFollowers || newHistory[entryIndex].cumulativeStreams !== savedSnapshot.cumulativeStreams) {
+                           newHistory[entryIndex] = savedSnapshot;
+                        } else { return prevHistory; }
+                    } else {
+                        newHistory.push(savedSnapshot);
+                    }
+                    return newHistory.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                });
+            }
+        })
+        .catch(err => console.error("Failed to save analytics snapshot:", err));
     }
     return () => { isMounted = false; };
-  }, [uniqueArtistIds, user, totalStreams]); 
+  }, [user, totalFollowers, totalStreams, isFollowerLoading, isHistoryLoading]);
+
 
   const isLoadingOverall = isFollowerLoading || isHistoryLoading;
 
   const handleDeleteAnalyticsHistory = useCallback(async () => {
     if (window.confirm("Are you sure you want to delete all your analytics history (followers and streams)? This action cannot be undone.")) {
-        setIsHistoryLoading(true); 
+        setIsHistoryLoading(true);
         try {
             await analyticsService.deleteAnalyticsHistory();
-            setHistoricalAnalyticsData([]); 
+            setHistoricalAnalyticsData([]);
             alert("Analytics history deleted successfully.");
         } catch (error: any) {
             console.error("Failed to delete analytics history:", error);
@@ -197,7 +203,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     setIsDeleting(true);
     try {
       await scanLogService.deleteScanLog(logId);
-      refreshDataAfterSingleDelete(logId); 
+      refreshDataAfterSingleDelete(logId);
       alert('Scan log deleted successfully.');
     } catch (error: any) {
       console.error("Error deleting scan log:", error);
@@ -211,7 +217,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     setIsDeleting(true);
     try {
       await scanLogService.clearAllScanLogs();
-      refreshDataAfterClearAll(); 
+      refreshDataAfterClearAll();
       alert('All scan logs cleared successfully.');
     } catch (error: any) {
       console.error("Error clearing all scan logs:", error);
@@ -247,19 +253,19 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
       <ReachAnalyzer
         totalFollowers={totalFollowers}
         totalStreams={totalStreams}
-        isLoading={isLoadingOverall} 
-        error={followerFetchError} 
-        scanLogs={previousScans} 
-        followerResults={followerResults} 
+        isLoading={isLoadingOverall}
+        error={followerFetchError}
+        scanLogs={previousScans}
+        followerResults={followerResults}
         historicalAnalyticsData={historicalAnalyticsData}
         onDeleteAnalyticsHistory={handleDeleteAnalyticsHistory}
       />
       <PreviousScans
         scanLogs={previousScans}
         followerResults={followerResults}
-        onDeleteScan={handleActualDeleteScan} 
+        onDeleteScan={handleActualDeleteScan}
         onClearAllScans={handleActualClearAllScans}
-        isDeleting={isDeleting} 
+        isDeleting={isDeleting}
       />
     </div>
   );
