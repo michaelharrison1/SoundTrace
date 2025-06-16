@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, {useState, useMemo, JSX} from 'react';
 import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, PlatformSource, TrackScanLogStatus } from '../types';
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
@@ -8,7 +8,6 @@ import UploadIcon from './icons/UploadIcon';
 import MusicNoteIcon from './icons/MusicNoteIcon';
 import SpotifyIcon from './icons/SpotifyIcon';
 import { YoutubeIcon } from './icons/YoutubeIcon';
-import {JSX} from "react";
 
 
 type SortableColumn =
