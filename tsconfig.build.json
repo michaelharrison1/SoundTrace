@@ -6,7 +6,10 @@
     "declaration": true,
     "declarationMap": true,
     "emitDeclarationOnly": false,
-    "allowImportingTsExtensions": false
+    "allowImportingTsExtensions": false,
+    "jsx": "react-jsx",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "types": ["react", "react-dom", "node"]
   },
   "include": ["src"]
 }
