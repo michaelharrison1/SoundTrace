@@ -1,4 +1,3 @@
-
 {
   "compilerOptions": {
     "target": "ESNext",
@@ -14,12 +13,7 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "baseUrl": ".",
-    "paths": {
-      // If you plan to use absolute paths like "components/*"
-      // you can define them here, e.g.:
-      // "components/*": ["src/components/*"]
-    },
-    "types": ["react", "node"]
+    "types": ["react", "react-dom", "node"]
   },
   "include": ["src"],
   "exclude": ["node_modules"]
