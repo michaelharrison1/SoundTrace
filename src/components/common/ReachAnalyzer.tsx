@@ -1,15 +1,15 @@
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import ProgressBar from '../ProgressBar';
-import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, AggregatedSongData, TrackScanLogStatus } from '../../types';
-import ArtistFollowers from '../ArtistFollowers';
+import ProgressBar from './ProgressBar'; // Corrected path
+import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, AggregatedSongData, TrackScanLogStatus } from '../../types'; // Updated import
+import ArtistFollowers from './ArtistFollowers'; // Corrected path
 import CollaborationRadarGraph from './CollaborationRadarGraph';
 import Button from '../common/Button';
 import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
 import TimeBasedAnalyticsGraph from './reachAnalyzer/TimeBasedAnalyticsGraph';
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
-import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzerUtils';
+import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils'; // Corrected path
 // import SongStreamList from './reachAnalyzer/SongStreamList'; // Replaced by BubbleGalaxyVisualizer
 import BubbleGalaxyVisualizer from './reachAnalyzer/BubbleGalaxyVisualizer';
 import SongStreamDetail from './reachAnalyzer/SongStreamDetail';
