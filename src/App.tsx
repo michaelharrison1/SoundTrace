@@ -28,7 +28,7 @@ export interface AppWindow {
   id: string;
   title: string;
   icon?: string; // Path to icon for taskbar tab
-  content: React.ReactElement; // Updated from React.ReactNode
+  content: React.ReactElement; // Ensured this is React.ReactElement
   isMinimized: boolean;
   zIndex: number;
   width?: string; // e.g., '80%', '600px'
