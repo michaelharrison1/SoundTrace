@@ -5,7 +5,7 @@ const AppIntroduction: React.FC = () => {
   return (
     <div className="w-full md:w-2/3 p-0.5 win95-border-outset bg-[#C0C0C0] order-1 md:order-1 flex flex-col">
       <div className="bg-[#C0C0C0] p-6 h-full text-black flex-grow">
-        <h3 className="text-xl font-normal mb-4">Find out who's using your beats.</h3>
+        <h3 className="text-xl font-normal mb-4">Producers, find out who's using your beats!</h3>
         <p className="text-base mb-3">
           SoundTrace scans over 100 million tracks to discover where your instrumentals are used, so you never miss a placement.
         </p>
@@ -22,9 +22,6 @@ const AppIntroduction: React.FC = () => {
         </p>
          <p className="text-xs text-gray-700 mt-4">
           Note: Spotify features require account connection. Exporting playlists and accessing YouTube data requires granting SoundTrace permission.
-        </p>
-         <p className="text-xs text-gray-700 mt-2">
-          YouTube scanning now uses the <strong className="text-black">SoundTrace Downloader</strong> desktop app for enhanced reliability.
         </p>
       </div>
     </div>

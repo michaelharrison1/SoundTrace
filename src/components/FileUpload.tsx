@@ -147,8 +147,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <p className="text-sm text-black">
             Drag & drop audio files or <span className="font-semibold underline">click here</span>.
           </p>
-          <p className="text-xs text-gray-700 mt-0.5">Supports: MP3, WAV, AAC, etc. (Originals up to ${MAX_ORIGINAL_FILE_SIZE_MB}MB)</p>
-          <p className="text-xs text-black font-semibold mt-0.5">Note: Audio is processed in stereo at ${TARGET_SAMPLE_RATE / 1000}kHz sample rate.</p>
+          <p className="text-xs text-gray-700 mt-0.5">Supports: MP3, WAV, AAC, etc. (Originals up to {MAX_ORIGINAL_FILE_SIZE_MB}MB)</p>
+          <p className="text-xs text-black font-semibold mt-0.5">Note: Audio is processed in stereo at {TARGET_SAMPLE_RATE / 1000}kHz sample rate.</p>
         </div>
 
         
