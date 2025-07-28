@@ -59,7 +59,7 @@ const AppContentInternal: React.FC = React.memo(() => {
       }
     }
   }, []);
-  
+
   const handleAuthError = useCallback((err: any, operation?: string) => {
     const isAuthError = (err.status === 401 || err.status === 403) ||
                           (typeof err.message === 'string' &&
@@ -228,7 +228,7 @@ const AppContentInternal: React.FC = React.memo(() => {
                 isAppDataLoading={isAppDataLoading}
                 appDataError={appDataError}
                 onRefreshAllData={() => fetchData('manual')}
-                onJobUpdate={handleGenericUpdateTrigger} 
+                onJobUpdate={handleGenericUpdateTrigger}
                 onIndividualLogUpdate={handleGenericUpdateTrigger}
               />
             ) : (
@@ -247,7 +247,7 @@ const AppContentInternal: React.FC = React.memo(() => {
         <footer className="py-1 px-2 text-xs text-black border-t-2 border-t-white bg-[#C0C0C0] flex justify-between items-center">
           <div>
             <span>&copy; {new Date().getFullYear()} SoundTrace. </span>
-            <span>Powered by ACRCloud, Spotify & YouTube. </span>
+            <span>Powered by ACRCloud & Spotify. </span>
             <a href="/privacy-policy" className="text-blue-700 hover:underline">Privacy Policy</a>
             <span className="mx-1">|</span>
             <a href="/terms-of-service" className="text-blue-700 hover:underline">Terms of Service</a>

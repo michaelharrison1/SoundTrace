@@ -38,9 +38,6 @@ const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
       spotify: spotifyTrackId
         ? `https://open.spotify.com/track/${spotifyTrackId}`
         : undefined,
-      youtube: track.external_metadata?.youtube?.vid
-        ? `https://www.youtube.com/watch?v=${track.external_metadata.youtube.vid}`
-        : undefined,
     },
   };
 };
@@ -125,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (acrResult.status?.code === 0) { // Success
       const matches: AcrCloudMatch[] = acrResult.metadata?.music?.map(mapToAcrCloudMatch) || [];
-      const scanResult: SnippetScanResult = { 
+      const scanResult: SnippetScanResult = {
         scanId: `acrscan-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         instrumentalName: audioFile.originalFilename || 'Uploaded File',
         instrumentalSize: audioFile.size,
@@ -134,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
       return res.status(200).json(scanResult);
     } else if (acrResult.status?.code === 1001) { // No result
-        const scanResult: SnippetScanResult = { 
+        const scanResult: SnippetScanResult = {
             scanId: `acrscan-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             instrumentalName: audioFile.originalFilename || 'Uploaded File',
             instrumentalSize: audioFile.size,

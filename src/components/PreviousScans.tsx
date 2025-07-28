@@ -8,7 +8,6 @@ import { useSpotifyPlayer } from '../contexts/SpotifyContext';
 import UploadIcon from './icons/UploadIcon';
 import MusicNoteIcon from './icons/MusicNoteIcon';
 import SpotifyIcon from './icons/SpotifyIcon';
-import { YoutubeIcon } from './icons/YoutubeIcon';
 import Win95SpotifyIcon from './icons/Win95SpotifyIcon';
 
 
@@ -30,7 +29,7 @@ interface PreviousScansProps {
   followerResults: Map<string, SpotifyFollowerResult>;
   onDeleteScan: (logId: string) => void;
   onClearAllScans: () => void;
-  isDeleting?: boolean; 
+  isDeleting?: boolean;
 }
 
 interface DisplayableTableRow {
@@ -44,43 +43,17 @@ interface DisplayableTableRow {
   rowKey: string;
   platformSource: PlatformSource;
   sourceUrl?: string;
-  youtubeVideoTitle?: string;
 }
 
 const formatPlatformSource = (source: PlatformSource): string => {
   switch (source) {
     case 'file_upload_batch_item': return 'File Upload';
     case 'spotify_playlist_import_item': return 'Spotify Import';
-    case 'electron_youtube_item': return 'YouTube (Desktop App)';
     default:
       const _exhaustiveCheck: never = source;
       return "Unknown Source";
   }
 };
-
-// Keeping the SourceIcon component for reference but it's no longer used in the table
-const SourceIcon: React.FC<{ source: PlatformSource, url?: string, title?: string, className?: string }> = React.memo(({ source, url, title: propTitle, className }) => {
-    let icon = <MusicNoteIcon className="w-3.5 h-3.5 text-gray-600" />;
-    let defaultTitle = formatPlatformSource(source);
-
-    if (source === 'file_upload_batch_item') {
-        icon = <UploadIcon className="w-3.5 h-3.5 text-blue-600" />;
-    } else if (source === 'spotify_playlist_import_item') {
-        icon = <SpotifyIcon className="w-3.5 h-3.5 text-green-700" />;
-    } else if (source === 'electron_youtube_item') {
-        icon = <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />;
-    }
-
-    const finalTitle = propTitle || (url ? `${defaultTitle} - ${url}` : defaultTitle);
-
-
-    if (url) {
-        return <a href={url} target="_blank" rel="noopener noreferrer" title={finalTitle} className={`inline-block hover:opacity-75 ${className || ''}`}>{icon}</a>;
-    }
-    return <span title={finalTitle} className={`inline-block ${className || ''}`}>{icon}</span>;
-});
-SourceIcon.displayName = 'SourceIcon';
-
 
 const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults, onDeleteScan, onClearAllScans, isDeleting }) => {
   const {
@@ -95,7 +68,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [isLoadingExport, setIsLoadingExport] = useState(false);
   const [exportMessage, setExportMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-  
+
   const initialTableRows = useMemo((): DisplayableTableRow[] => {
     return scanLogs.reduce((acc, log: TrackScanLog, logIndex: number) => {
       const relevantMatchStatuses: TrackScanLogStatus[] = ['completed_match_found', 'scanned_match_found', 'imported_spotify_track'];
@@ -110,21 +83,18 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             originalFileName: log.originalFileName,
             originalScanDate: log.scanDate,
             matchDetails: match,
-            statusMessage: undefined, 
+            statusMessage: undefined,
             rowKey: `${log.logId}-match-${match.id || matchIndex}`,
             platformSource: log.platformSource,
             sourceUrl: match.platformLinks?.spotify, // Only use Spotify link
-            youtubeVideoTitle: match.youtubeVideoTitle || log.youtubeVideoTitle,
           });
         });
       } else {
         let message = "No Matches Found";
         if (log.status === 'error_processing_item') message = "Error Processing Track";
         else if (log.status === 'error_acr_scan') message = "ACR Scan Error";
-        else if (log.status === 'error_youtube_dl') message = "YouTube Download Error";
-        else if (log.status === 'error_ffmpeg') message = "Audio Processing Error (FFmpeg)";
         else if (log.status === 'skipped_previously_scanned') message = "Skipped (Previously Scanned)";
-        
+
         acc.push({
           isMatchRow: false,
           hasAnyMatchesInLog: false,
@@ -135,7 +105,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           rowKey: `${log.logId}-status-${logIndex}`,
           platformSource: log.platformSource,
           sourceUrl: undefined, // No Spotify link for error rows
-          youtubeVideoTitle: log.youtubeVideoTitle,
         });
       }
       return acc;
@@ -236,15 +205,15 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     const headers = [
       "Original File/Source Title", "Scan Date", "Platform Source", "Source URL", "Status",
       "Cover Art URL", "Matched Song Title", "Matched Artist", "Matched Album", "Release Date",
-      "Confidence (%)", "Spotify Link", "YouTube Link",
-      "Spotify Artist ID", "Spotify Track ID", "YouTube Video ID",
+      "Confidence (%)", "Spotify Link",
+      "Spotify Artist ID", "Spotify Track ID",
       "Fetched Artist Followers", "Fetched Artist Popularity",
       "StreamClout Stream Count", "StreamClout Timestamp"
     ];
     const csvRows = [headers.join(',')];
     sortedTableRows.forEach(row => {
       const rowData = [
-        escapeCsvCell(row.youtubeVideoTitle || row.originalFileName),
+        escapeCsvCell(row.originalFileName),
         escapeCsvCell(new Date(row.originalScanDate).toLocaleString()),
         escapeCsvCell(formatPlatformSource(row.platformSource)),
         escapeCsvCell(row.sourceUrl),
@@ -257,8 +226,8 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           escapeCsvCell(match.coverArtUrl),
           escapeCsvCell(match.title), escapeCsvCell(match.artist), escapeCsvCell(match.album),
           escapeCsvCell(match.releaseDate), escapeCsvCell(match.matchConfidence),
-          escapeCsvCell(match.platformLinks?.spotify), escapeCsvCell(match.platformLinks?.youtube),
-          escapeCsvCell(match.spotifyArtistId), escapeCsvCell(match.spotifyTrackId), escapeCsvCell(match.youtubeVideoId || row.youtubeVideoTitle),
+          escapeCsvCell(match.platformLinks?.spotify),
+          escapeCsvCell(match.spotifyArtistId), escapeCsvCell(match.spotifyTrackId),
           escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.followers : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
           escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.popularity : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
           escapeCsvCell(match.streamCount),
@@ -313,24 +282,24 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           </div>
         </div>
          {exportMessage && ( <div className={`mb-2 p-2 text-sm border ${exportMessage.type === 'success' ? 'bg-green-100 border-green-700 text-green-700' : 'bg-red-100 border-red-700 text-red-700'}`}>{exportMessage.text}</div> )}
-        
+
 
         {!hasAnyMatchesInAnyLog && scanLogs.length > 0 ? ( <p className="text-black text-center py-2 text-sm">No song matches found in your scan history. {scanLogs.length} record(s) processed without matches or with errors.</p> ) : (
         <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-320px)]">
           <table className="min-w-full text-sm" style={{tableLayout: 'fixed'}}>
              <colgroup>
-                <col style={{ width: '5%' }} /> 
-                <col style={{ width: '5%' }} /> 
-                <col style={{ width: '12%' }} /> 
-                <col style={{ width: '11%' }} /> 
-                <col style={{ width: '9%' }} /> 
-                <col style={{ width: '10%' }} /> 
-                <col style={{ width: '10%' }} /> 
-                <col style={{ width: '7%' }} /> 
-                <col style={{ width: '6%' }} /> 
-                <col style={{ width: '12%' }} /> 
-                <col style={{ width: '6%' }} /> 
-                <col style={{ width: '7%' }} /> 
+                <col style={{ width: '5%' }} />
+                <col style={{ width: '5%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '7%' }} />
             </colgroup>
             <thead className="bg-[#C0C0C0] border-b-2 border-b-[#808080] sticky top-0 z-10">
               <tr>
@@ -351,26 +320,10 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             <tbody className="bg-white">
               {sortedTableRows.map((row, rowIndex) => {
                 const followerInfo = row.matchDetails?.spotifyArtistId ? followerResults.get(row.matchDetails.spotifyArtistId) : undefined;
-                const displayTitle = row.isMatchRow ? (row.matchDetails?.youtubeVideoTitle || row.matchDetails?.title) : (row.youtubeVideoTitle || row.originalFileName);
+                const displayTitle = row.isMatchRow ? (row.matchDetails?.title) : (row.originalFileName);
                 const displayArtist = row.isMatchRow ? row.matchDetails?.artist : "N/A";
-                
-                const iconsToRender: JSX.Element[] = [];
-                const shouldShowSourceIcon = !(
-                  row.platformSource === 'spotify_playlist_import_item' &&
-                  row.isMatchRow &&
-                  row.matchDetails?.platformLinks?.spotify
-                );
 
-                // if (shouldShowSourceIcon) { // This logic was causing source icon to hide for spotify imports; revert to always show if distinct
-                //   iconsToRender.push(
-                //     <SourceIcon
-                //       key="source-icon"
-                //       source={row.platformSource}
-                //       url={row.sourceUrl}
-                //       title={row.youtubeVideoTitle || row.originalFileName}
-                //     />
-                //   );
-                // }
+                const iconsToRender: JSX.Element[] = [];
 
                 if (row.isMatchRow && row.matchDetails?.platformLinks?.spotify) {
                   iconsToRender.push(
@@ -385,20 +338,6 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                       <SpotifyIcon className="w-3.5 h-3.5 text-green-600" />
                     </a>
                   );
-                }
-                if (row.isMatchRow && row.matchDetails?.platformLinks?.youtube) {
-                    iconsToRender.push(
-                      <a
-                        key="youtube-track-link"
-                        href={row.matchDetails.platformLinks.youtube}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block hover:opacity-75"
-                        title={`Search ${row.matchDetails.title} on YouTube`}
-                      >
-                        <YoutubeIcon className="w-3.5 h-3.5 text-red-600" />
-                      </a>
-                    );
                 }
 
                 return (
@@ -445,7 +384,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                       <DataCell className="text-center"> <span className={`px-1 ${ row.matchDetails.matchConfidence > 80 ? 'text-green-700' : row.matchDetails.matchConfidence > 60 ? 'text-yellow-700' : 'text-red-700' }`}> {row.matchDetails.matchConfidence}% </span> </DataCell>
                     </>
                   ) : ( <td colSpan={8} className="px-2 py-1.5 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
-                   <DataCell title={row.youtubeVideoTitle || row.originalFileName}> {row.youtubeVideoTitle || row.originalFileName} {row.statusMessage && row.isMatchRow && <div className="text-[10px] text-yellow-600 italic leading-tight">{row.statusMessage}</div>} </DataCell>
+                   <DataCell title={row.originalFileName}> {row.originalFileName} {row.statusMessage && row.isMatchRow && <div className="text-[10px] text-yellow-600 italic leading-tight">{row.statusMessage}</div>} </DataCell>
                   <DataCell className="text-center"> <Button onClick={() => handleSingleDelete(row.logId, row.originalFileName)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300 win95-button-sm" title={`Delete scan record for ${row.originalFileName}`} disabled={isDeleting}> <TrashIcon className="h-3 w-3" /> </Button> </DataCell>
                   <DataCell className="text-center text-xs">{formatPlatformSource(row.platformSource)}</DataCell>
                 </tr>

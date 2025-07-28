@@ -32,13 +32,13 @@ const PrivacyPolicyPage: React.FC = () => {
           <p className="text-xs text-gray-700">Effective Date: {effectiveDate}</p>
 
           <p>
-            SoundTrace ("we", "our", "us", or "the Service") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website (soundtrace.uk) and use our services, including any interactions with our desktop application (SoundTrace Downloader). Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the site or use our services.
+            SoundTrace ("we", "our", "us", or "the Service") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website (soundtrace.uk) and use our services. Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the site or use our services.
           </p>
 
           <section aria-labelledby="info-collect-heading">
             <h2 id="info-collect-heading" className="text-base sm:text-lg font-normal mt-3 mb-1">1. Information We Collect</h2>
             <p>We may collect information about you in a variety of ways. The information we may collect on the Site includes:</p>
-            
+
             <section aria-labelledby="personal-info-heading">
               <h3 id="personal-info-heading" className="text-sm sm:text-base font-normal mt-2 mb-0.5">a. Personal Data</h3>
               <p>
@@ -56,7 +56,6 @@ const PrivacyPolicyPage: React.FC = () => {
                 <li><strong>Instrumentals:</strong> Audio files you upload for scanning. Snippets or fingerprints of these files are sent to third-party recognition services.</li>
                 <li><strong>Scan Results:</strong> Information returned from audio recognition services (e.g., ACRCloud), such as matched song titles, artists, albums, and platform-specific identifiers.</li>
                 <li><strong>Stream Data:</strong> We use services like StreamClout to fetch estimated stream counts and cover art for matched tracks, using identifiers obtained from scan results.</li>
-                <li><strong>YouTube Scan Data:</strong> If you use the SoundTrace Downloader desktop application to scan YouTube content (videos, playlists, channels), the application will process YouTube URLs, download relevant audio data locally on your machine, and then securely transmit this audio data (or snippets/fingerprints) to our backend for scanning via ACRCloud. We store metadata related to these scans, such as the original YouTube URL, video title, and the resulting matches. Your SoundTrace authentication token is used by the desktop app to associate these scans with your account.</li>
               </ul>
             </section>
 
@@ -66,7 +65,7 @@ const PrivacyPolicyPage: React.FC = () => {
                     Information our servers automatically collect when you access the Site, such as your IP address, browser type, operating system, access times, and the pages you have viewed directly before and after accessing the Site. We also collect data about your interactions with the Service, such as scan jobs initiated and features used.
                 </p>
             </section>
-            
+
             <section aria-labelledby="cookie-data-heading">
                 <h3 id="cookie-data-heading" className="text-sm sm:text-base font-normal mt-2 mb-0.5">d. Cookies and Tracking Technologies</h3>
                 <p>
@@ -84,7 +83,6 @@ const PrivacyPolicyPage: React.FC = () => {
               <li>Fetch and display estimated stream counts and related metadata from services like StreamClout for matched tracks.</li>
               <li>Enable Spotify integration features, such as displaying your Spotify profile information and creating playlists on your behalf, with your explicit consent and action.</li>
               <li>Enable Google integration for profile information.</li>
-              <li>Facilitate YouTube content scanning through the SoundTrace Downloader desktop application by coordinating with the local app and processing the audio data it sends.</li>
               <li>Display historical scan data and analytics related to your content's usage.</li>
               <li>Monitor and analyze usage and trends to improve your experience with the Site and our services.</li>
               <li>Notify you of updates to the Service.</li>
@@ -123,7 +121,7 @@ const PrivacyPolicyPage: React.FC = () => {
               Your information is stored on secure servers, which may be located outside of your country of residence. We retain your personal information for as long as your account is active or as needed to provide you services, comply with our legal obligations, resolve disputes, and enforce our agreements. Scan logs and associated data will be retained as long as they are relevant to the service, or until you request deletion.
             </p>
           </section>
-          
+
           <section aria-labelledby="your-choices-heading">
             <h2 id="your-choices-heading" className="text-base sm:text-lg font-normal mt-3 mb-1">5. Your Rights and Choices</h2>
             <ul className="list-disc list-inside pl-4 space-y-0.5 mt-1">

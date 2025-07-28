@@ -21,7 +21,7 @@ const AppIntroduction: React.FC = () => {
           Get Spotify links, estimate reach from artist followers, and discover where your music is being played.
         </p>
          <p className="text-xs text-gray-700 mt-4">
-          Note: Spotify features require account connection. Exporting playlists and accessing YouTube data requires granting SoundTrace permission.
+          Note: Spotify features require account connection.
         </p>
       </div>
     </div>

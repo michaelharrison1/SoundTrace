@@ -1,4 +1,5 @@
 
+
 export interface User {
   id: string;
   username: string;
@@ -12,14 +13,12 @@ export interface AcrCloudMatch {
   releaseDate: string;
   platformLinks?: {
     spotify?: string;
-    youtube?: string;
     appleMusic?: string;
+    youtube?: string;
   };
   matchConfidence: number;
   spotifyArtistId?: string;
   spotifyTrackId?: string;
-  youtubeVideoId?: string;
-  youtubeVideoTitle?: string;
   // StreamClout data
   streamCount?: number;
   streamCountTimestamp?: string; // ISO Date string from backend
@@ -39,8 +38,7 @@ export interface SnippetScanResult {
 
 export type PlatformSource =
   | 'file_upload_batch_item'
-  | 'spotify_playlist_import_item'
-  | 'electron_youtube_item';
+  | 'spotify_playlist_import_item';
 
 export type TrackScanLogStatus =
   | 'pending_processing'
@@ -53,8 +51,6 @@ export type TrackScanLogStatus =
   | 'processing_scan'
   | 'scanned_match_found'
   | 'scanned_no_match'
-  | 'error_youtube_dl'
-  | 'error_ffmpeg'
   | 'skipped_previously_scanned'
   | 'imported_spotify_track'
   | 'aborted_item'
@@ -69,8 +65,6 @@ export interface TrackScanLog {
   matches: AcrCloudMatch[];
   status: TrackScanLogStatus;
   platformSource: PlatformSource;
-  youtubeVideoId?: string;
-  youtubeVideoTitle?: string;
   sourceUrl?: string;
   acrResponseDetails?: string;
   lastAttemptedAt?: string;
@@ -102,7 +96,7 @@ export interface SpotifyPlaylist { id: string; name: string; external_urls: { sp
 export interface DailyAnalyticsSnapshot { // Represents aggregated (total) daily data
   date: string; // YYYY-MM-DD
   cumulativeFollowers: number;
-  cumulativeStreams?: number; 
+  cumulativeStreams?: number;
 }
 
 // New interface for individual song's historical stream data points
@@ -126,7 +120,7 @@ export interface AggregatedSongData {
   albumName?: string;
   coverArtUrl?: string;
   latestStreamCount: number;
-  latestStreamCountTimestamp?: string; 
+  latestStreamCountTimestamp?: string;
   spotifyArtistIdForAggregation?: string; // Added for accurate artist-level stream aggregation
 }
 
@@ -134,9 +128,9 @@ export interface AggregatedSongData {
 export type JobType =
   | 'file_upload_batch'
   | 'spotify_playlist_import'
-  | 'youtube_single_video_electron' 
-  | 'youtube_channel_electron_orchestrated' 
-  | 'youtube_playlist_electron_orchestrated'; 
+  | 'youtube_single_video_electron'
+  | 'youtube_channel_electron_orchestrated'
+  | 'youtube_playlist_electron_orchestrated';
 
 export type JobStatus =
   | 'pending_setup'
@@ -145,13 +139,13 @@ export type JobStatus =
   | 'queued_for_processing'
   | 'in_progress_fetching'
   | 'in_progress_processing'
-  | 'waiting_for_electron' 
-  | 'processing_by_electron' 
+  | 'waiting_for_electron'
+  | 'processing_by_electron'
   | 'completed'
   | 'completed_with_errors'
   | 'failed_acr_credits'
-  | 'failed_youtube_api' 
-  | 'failed_electron_communication' 
+  | 'failed_youtube_api'
+  | 'failed_electron_communication'
   | 'failed_setup'
   | 'failed_upload_incomplete'
   | 'failed_other'

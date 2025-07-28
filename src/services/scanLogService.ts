@@ -83,33 +83,6 @@ export const scanLogService = {
     return handleApiResponse<JobCreationResponse>(response);
   },
 
-  initiateSingleYouTubeVideoJob: async (videoUrl: string, videoTitle: string): Promise<JobCreationResponse> => {
-    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube-single-video`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ videoUrl, videoTitle }), credentials: 'include',
-    });
-    return handleApiResponse<JobCreationResponse>(response);
-  },
-
-  initiateYouTubeChannelJob: async (channelUrl: string): Promise<JobCreationResponse> => {
-    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube-channel`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ channelUrl }), credentials: 'include',
-    });
-    return handleApiResponse<JobCreationResponse>(response);
-  },
-
-  initiateYouTubePlaylistJob: async (playlistUrl: string): Promise<JobCreationResponse> => {
-    const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
-    const response = await fetch(`${JOBS_BASE_URL}/initiate/youtube-playlist`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ playlistUrl }), credentials: 'include',
-    });
-    return handleApiResponse<JobCreationResponse>(response);
-  },
-
   getAllJobs: async (): Promise<ScanJob[]> => {
     const token = getAuthToken(); if (!token) { const e = new Error("Not authenticated."); (e as any).status = 401; throw e; }
     const response = await fetch(JOBS_BASE_URL, { headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include' });

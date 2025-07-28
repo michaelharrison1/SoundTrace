@@ -32,7 +32,7 @@ const TermsOfServicePage: React.FC = () => {
           <p className="text-xs text-gray-700">Effective Date: {effectiveDate}</p>
 
           <p>
-            Welcome to SoundTrace ("SoundTrace", "we", "us", or "our"). These Terms of Service ("Terms") govern your access to and use of the soundtrace.uk website, including any content, functionality, and services offered on or through soundtrace.uk (the "Service"), and our associated desktop application, SoundTrace Downloader.
+            Welcome to SoundTrace ("SoundTrace", "we", "us", or "our"). These Terms of Service ("Terms") govern your access to and use of the soundtrace.uk website, including any content, functionality, and services offered on or through soundtrace.uk (the "Service").
           </p>
           <p>
             By accessing or using the Service, you agree to be bound by these Terms and our Privacy Policy. If you do not agree to these Terms or the Privacy Policy, you may not access or use the Service.
@@ -41,7 +41,7 @@ const TermsOfServicePage: React.FC = () => {
           <section aria-labelledby="use-of-service-heading">
             <h2 id="use-of-service-heading" className="text-base sm:text-lg font-normal mt-3 mb-1">1. Description of Service</h2>
             <p>
-              SoundTrace provides a platform for music producers and rights holders to upload their instrumentals (audio files) and scan for public uses across various platforms. The Service utilizes third-party audio recognition technology (e.g., ACRCloud) to identify matches. For matched tracks, the Service may retrieve additional metadata, such as estimated stream counts and cover art, from services like StreamClout. Users can also connect their Spotify and Google accounts for enhanced functionality, such as playlist creation and profile integration. Scanning certain YouTube content (videos, playlists, channels) requires the use of our SoundTrace Downloader desktop application, which processes YouTube URLs locally and coordinates with our backend for scanning.
+              SoundTrace provides a platform for music producers and rights holders to upload their instrumentals (audio files) and scan for public uses across various platforms. The Service utilizes third-party audio recognition technology (e.g., ACRCloud) to identify matches. For matched tracks, the Service may retrieve additional metadata, such as estimated stream counts and cover art, from services like StreamClout. Users can also connect their Spotify and Google accounts for enhanced functionality, such as playlist creation and profile integration.
             </p>
           </section>
 
@@ -63,11 +63,8 @@ const TermsOfServicePage: React.FC = () => {
             <p>
               You agree not to upload User Content that is unlawful, harmful, defamatory, obscene, infringing, or otherwise objectionable.
             </p>
-             <p>
-              When using the SoundTrace Downloader desktop application for YouTube scanning, you are responsible for ensuring your use complies with YouTube's Terms of Service and applicable laws. The desktop application interacts with YouTube on your behalf using local resources.
-            </p>
           </section>
-          
+
           <section aria-labelledby="third-party-services-heading">
             <h2 id="third-party-services-heading" className="text-base sm:text-lg font-normal mt-3 mb-1">4. Third-Party Services and Data</h2>
             <p>
@@ -104,7 +101,7 @@ const TermsOfServicePage: React.FC = () => {
               SOUNDTRACE DOES NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, SECURE, OR THAT DEFECTS WILL BE CORRECTED. WE DO NOT GUARANTEE THE ACCURACY OR COMPLETENESS OF ANY INFORMATION PROVIDED THROUGH THE SERVICE, INCLUDING MATCH RESULTS OR STREAM COUNT DATA FROM THIRD PARTIES.
             </p>
           </section>
-          
+
           <section aria-labelledby="limitation-liability-heading">
             <h2 id="limitation-liability-heading" className="text-base sm:text-lg font-normal mt-3 mb-1">8. Limitation of Liability</h2>
             <p>
