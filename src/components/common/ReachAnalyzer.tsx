@@ -6,6 +6,9 @@ import CollaborationRadarGraph from './CollaborationRadarGraph';
 import Button from '../common/Button';
 import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
 import StreamHistoryTab from './reachAnalyzer/StreamHistoryTab';
+// TimeBasedAnalyticsGraph removed
+import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
+import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
 import SongStreamDetail from './reachAnalyzer/SongStreamDetail';
 import EstimatedRevenueTab from './reachAnalyzer/EstimatedRevenueTab';
