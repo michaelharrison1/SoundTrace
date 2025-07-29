@@ -306,11 +306,16 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
             setStreamPhase('scan');
             setStreamLineProgress(0);
             streamAnimationStartTime.current = 0;
-            streamAnimationFrameId.current = requestAnimationFrame(animateStream);
+            // Restart the animation loop after pause
+            if (!streamAnimationFrameId.current) {
+              streamAnimationFrameId.current = requestAnimationFrame(animateStream);
+            }
           }, 1000); // 1s pause after fall
           return;
         }
         streamAnimationFrameId.current = requestAnimationFrame(animateStream);
+      } else if (streamPhase === 'pause') {
+        // Do nothing, wait for timeout to restart
       }
     }
     if (shouldAnimate) {
@@ -373,11 +378,16 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
             setReachPhase('scan');
             setReachLineProgress(0);
             reachAnimationStartTime.current = 0;
-            reachAnimationFrameId.current = requestAnimationFrame(animateReach);
+            // Restart the animation loop after pause
+            if (!reachAnimationFrameId.current) {
+              reachAnimationFrameId.current = requestAnimationFrame(animateReach);
+            }
           }, 1000); // 1s pause after fall
           return;
         }
         reachAnimationFrameId.current = requestAnimationFrame(animateReach);
+      } else if (reachPhase === 'pause') {
+        // Do nothing, wait for timeout to restart
       }
     }
     if (shouldAnimate) {
