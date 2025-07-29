@@ -199,14 +199,3 @@ export interface GoogleUserProfile {
   googleDisplayName?: string;
   googleAvatarUrl?: string;
 }
-
-export interface GoogleAuthContextType {
-  isGoogleConnected: boolean;
-  googleUser: GoogleUserProfile | null;
-  isLoadingGoogleAuth: boolean;
-  connectGoogle: () => void;
-  disconnectGoogle: () => Promise<void>;
-  checkGoogleStatus: () => Promise<void>;
-  googleAuthErrorMessage: string | null;
-  setGoogleAuthErrorMessage: (message: string | null) => void;
-}

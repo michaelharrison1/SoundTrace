@@ -8,7 +8,6 @@ import { AuthView, AppWindow } from '../../App'; // Added AppWindow for options 
 import PrivacyPolicyPage from '../PrivacyPolicyPage';
 import TermsOfServicePage from '../TermsOfServicePage';
 import { useSpotifyPlayer } from '../../contexts/SpotifyContext';
-import { useGoogleAuth } from '../../contexts/GoogleAuthContext';
 
 interface StartMenuProps {
   onClose: () => void;
@@ -37,7 +36,6 @@ const StartMenuItem: React.FC<{ icon: string; label: string; onClick: () => void
 
 const StartMenu: React.FC<StartMenuProps> = ({ onClose, onLogout, currentUser, onSwitchAuthView, onOpenWindow }) => {
   const { isSpotifyConnected, spotifyUser, initiateSpotifyLogin, disconnectSpotify: spotifyDisconnectHook } = useSpotifyPlayer();
-  const { isGoogleConnected, googleUser, connectGoogle, disconnectGoogle: googleDisconnectHook } = useGoogleAuth();
 
 
   const handlePrivacyClick = () => {
@@ -69,14 +67,6 @@ const StartMenu: React.FC<StartMenuProps> = ({ onClose, onLogout, currentUser, o
     await spotifyDisconnectHook();
     onClose();
   };
-  const handleGoogleConnect = () => {
-    connectGoogle();
-    onClose();
-  };
-  const handleGoogleDisconnect = async () => {
-    await googleDisconnectHook();
-    onClose();
-  };
 
   const connectStatusStyles = "text-xs ml-1";
 
@@ -95,11 +85,7 @@ const StartMenu: React.FC<StartMenuProps> = ({ onClose, onLogout, currentUser, o
                         label={isSpotifyConnected ? `Spotify: ${spotifyUser?.displayName?.substring(0,10) || 'Connected'}` : 'Connect Spotify'}
                         onClick={isSpotifyConnected ? handleSpotifyDisconnect : handleSpotifyConnect}
                     />
-                    <StartMenuItem
-                        icon={isGoogleConnected ? '/src/components/windows95icons/apps/google_icon_20x20.png' : '/src/components/windows95icons/actions/no_20x20.png'}
-                        label={isGoogleConnected ? `Google: ${googleUser?.googleDisplayName?.substring(0,10) || 'Connected'}` : 'Connect Google'}
-                        onClick={isGoogleConnected ? handleGoogleDisconnect : handleGoogleConnect}
-                    />
+                    {/* Google Auth removed */}
                     <div className="start-menu-separator"></div>
                 </>
             )}
