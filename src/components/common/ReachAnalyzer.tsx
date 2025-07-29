@@ -250,53 +250,86 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
 
 
-  // --- Move scan line animation hooks to top level (before renderTabContent) ---
-  // Stream scan line animation state
+  // Stream scan line animation state (same logic as reach)
   const [streamLineProgress, setStreamLineProgress] = React.useState(0);
-  const [streamBarRetract, setStreamBarRetract] = React.useState(false);
+  const [streamBarStates, setStreamBarStates] = React.useState<Array<'active' | 'falling' | 'inactive'>>(Array(30).fill('inactive'));
+  const [streamPhase, setStreamPhase] = React.useState<'scan' | 'fall' | 'pause'>('scan');
   const streamAnimationFrameId = React.useRef<number | null>(null);
   const streamAnimationStartTime = React.useRef<number>(0);
   const streamPauseTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  const [streamBarsToActivate, setStreamBarsToActivate] = React.useState(0);
+  useEffect(() => {
+    // Update number of bars to activate when totalStreams changes
+    const minBarUnit = 1000000;
+    const maxBars = 30;
+    const streamBarUnit = Math.max(minBarUnit, Math.ceil((totalStreams ?? 1) / (maxBars - 2)));
+    setStreamBarsToActivate(Math.min(maxBars - 1, Math.floor((totalStreams ?? 0) / streamBarUnit)));
+  }, [totalStreams]);
   React.useEffect(() => {
     const shouldAnimate = !isLoadingOverall && !overallError && (totalStreams ?? 0) > 0 && activeMonitorTab === 'reach';
-    function animateStreamLine(timestamp: number) {
-      if (streamAnimationStartTime.current === 0) streamAnimationStartTime.current = timestamp;
-      let elapsed = timestamp - streamAnimationStartTime.current;
-      let progress = elapsed / LINE_ANIMATION_DURATION_MS;
-      if (progress >= 1.0) {
-        setStreamLineProgress(1);
-        if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
-        // Pause for 4 seconds, then retract bars, then restart
-        streamPauseTimeout.current = setTimeout(() => {
-          setStreamBarRetract(true);
-          setTimeout(() => {
-            setStreamBarRetract(false);
+    function animateStream(timestamp: number) {
+      if (streamPhase === 'scan') {
+        if (streamAnimationStartTime.current === 0) streamAnimationStartTime.current = timestamp;
+        let elapsed = timestamp - streamAnimationStartTime.current;
+        let progress = Math.min(1, elapsed / LINE_ANIMATION_DURATION_MS);
+        setStreamLineProgress(progress);
+        setStreamBarStates(prev => prev.map((_, i) => (progress * 30 > i && streamBarsToActivate > i) ? 'active' : 'inactive'));
+        if (progress >= 1) {
+          setStreamLineProgress(1);
+          setStreamPhase('fall');
+          streamAnimationStartTime.current = performance.now();
+          streamAnimationFrameId.current = requestAnimationFrame(animateStream);
+          return;
+        }
+        streamAnimationFrameId.current = requestAnimationFrame(animateStream);
+      } else if (streamPhase === 'fall') {
+        if (streamAnimationStartTime.current === 0) streamAnimationStartTime.current = timestamp;
+        let elapsed = timestamp - streamAnimationStartTime.current;
+        const totalFallTime = 4000; // ms
+        let newStates = Array(30).fill('inactive');
+        for (let i = 0; i < streamBarsToActivate; i++) {
+          const barIndex = streamBarsToActivate - 1 - i;
+          const fallStep = totalFallTime / Math.max(1, streamBarsToActivate);
+          if (elapsed < i * fallStep) {
+            newStates[barIndex] = 'active';
+          } else if (elapsed < (i + 1) * fallStep) {
+            newStates[barIndex] = 'falling';
+          } else {
+            newStates[barIndex] = 'inactive';
+          }
+        }
+        setStreamBarStates(newStates);
+        if (elapsed >= totalFallTime) {
+          setStreamBarStates(Array(30).fill('inactive'));
+          setStreamPhase('pause');
+          streamPauseTimeout.current = setTimeout(() => {
+            setStreamPhase('scan');
             setStreamLineProgress(0);
-            streamAnimationStartTime.current = performance.now();
-            streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
-          }, 1000); // 1s retract
-        }, 4000); // 4s pause
-        return;
+            streamAnimationStartTime.current = 0;
+            streamAnimationFrameId.current = requestAnimationFrame(animateStream);
+          }, 1000); // 1s pause after fall
+          return;
+        }
+        streamAnimationFrameId.current = requestAnimationFrame(animateStream);
       }
-      setStreamLineProgress(progress);
-      streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
     }
     if (shouldAnimate) {
-      if (!streamAnimationFrameId.current && !streamBarRetract) {
-        streamAnimationStartTime.current = performance.now() - (streamLineProgress * LINE_ANIMATION_DURATION_MS);
-        streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
+      if (!streamAnimationFrameId.current && streamPhase !== 'pause') {
+        streamAnimationStartTime.current = performance.now() - (streamPhase === 'scan' ? streamLineProgress * LINE_ANIMATION_DURATION_MS : 0);
+        streamAnimationFrameId.current = requestAnimationFrame(animateStream);
       }
     } else {
       if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
       if (streamPauseTimeout.current) { clearTimeout(streamPauseTimeout.current); streamPauseTimeout.current = null; }
       setStreamLineProgress(0);
-      setStreamBarRetract(false);
+      setStreamBarStates(Array(30).fill('inactive'));
+      setStreamPhase('scan');
     }
     return () => {
       if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
       if (streamPauseTimeout.current) { clearTimeout(streamPauseTimeout.current); streamPauseTimeout.current = null; }
     };
-  }, [isLoadingOverall, overallError, totalStreams, streamBarRetract, activeMonitorTab]);
+  }, [isLoadingOverall, overallError, totalStreams, activeMonitorTab, streamPhase, streamBarsToActivate]);
 
   // Follower reach scan line animation state
   React.useEffect(() => {
@@ -410,18 +443,17 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                 >
                   <div className="flex w-full h-full items-end">
                     {[...Array(30)].map((_, i) => {
-                      // Bar is active if its index is less than the number of bars to activate and the scan line has passed it
-                      let barIsActive = !streamBarRetract && (streamLineProgress * 30 > i && streamBarConfig.numberOfBarsToActivate > i);
-                      let barIsRetracting = streamBarRetract && (streamBarConfig.numberOfBarsToActivate > i);
-                      let barHeight = barIsActive ? '100%' : (barIsRetracting ? '100%' : '0%');
-                      let barOpacity = barIsRetracting ? 0.3 : 1;
+                      let barIsActive = streamBarStates[i] === 'active';
+                      let barIsFalling = streamBarStates[i] === 'falling';
+                      let barHeight = barIsActive ? '100%' : (barIsFalling ? '100%' : '0%');
+                      let barOpacity = barIsFalling ? 0.3 : 1;
                       return (
                         <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
                           <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>
                           {((totalStreams ?? 0) > 0) && (
                             <div
                               className="active-bar-fill relative win95-border-outset"
-                              style={{ backgroundColor: barIsActive || barIsRetracting ? streamBarColor : 'transparent', height: barHeight, width: '80%', transition: barIsRetracting ? 'opacity 0.4s linear, height 0.4s linear' : 'height 0.5s ease-out', opacity: barOpacity, boxShadow: barIsActive || barIsRetracting ? `0 0 3px ${streamBarColor}, 0 0 6px ${streamBarColor}` : 'none' }}
+                              style={{ backgroundColor: barIsActive || barIsFalling ? streamBarColor : 'transparent', height: barHeight, width: '80%', transition: barIsFalling ? 'opacity 0.4s linear, height 0.4s linear' : 'height 0.5s ease-out', opacity: barOpacity, boxShadow: barIsActive || barIsFalling ? `0 0 3px ${streamBarColor}, 0 0 6px ${streamBarColor}` : 'none' }}
                             ></div>
                           )}
                         </div>
