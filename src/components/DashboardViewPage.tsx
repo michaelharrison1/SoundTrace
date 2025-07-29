@@ -6,6 +6,7 @@ import ReachAnalyzer from './common/ReachAnalyzer';
 import ProgressBar from './common/ProgressBar';
 import { analyticsService } from '../services/analyticsService';
 import { scanLogService } from '../services/scanLogService';
+import { spotifyService } from '../services/spotifyService';
 import fireIcon from './icons/fire.png';
 
 
@@ -107,14 +108,9 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
       if(isMounted) setFollowerResults(initialResults);
 
       const followerPromises: Promise<SpotifyFollowerResult>[] = uniqueArtistIds.map(artistId =>
-        fetch(`/api/spotify-artist-details?artistId=${artistId}`)
-          .then(async (response): Promise<SpotifyFollowerResult> => {
+        spotifyService.getArtistDetails(artistId)
+          .then((data): SpotifyFollowerResult => {
             if (!isMounted) return { status: 'cancelled', artistId };
-            if (!response.ok) {
-              const errorBody = await response.json().catch(() => ({ message: `Status ${response.status}` }));
-              return { status: 'error', artistId, reason: errorBody.message || `Failed to fetch artist details (${response.status})` };
-            }
-            const data = await response.json();
             return { status: 'success', artistId, followers: data.followers, popularity: data.popularity, genres: data.genres };
           })
           .catch((err): SpotifyFollowerResult => {

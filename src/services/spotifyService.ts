@@ -1,4 +1,3 @@
-
 // Service to interact with your backend's Spotify auth endpoints
 import { SpotifyPlaylist } from '../types';
 
@@ -72,5 +71,10 @@ export const spotifyService = {
         throw new Error(data.message || `Failed to create playlist (status: ${response.status})`);
     }
     return data; // Contains playlistUrl, playlistId, message
-  }
+  },
+
+  getArtistDetails: async (artistId: string): Promise<{ followers: number; popularity: number; genres: string[] }> => {
+    const response = await fetchWithAuth(`${API_BASE_URL_ROOT}/api/spotify-track-details/artist-details?artistId=${artistId}`);
+    return response.json();
+  },
 };
