@@ -5,9 +5,7 @@ import ArtistFollowers from './ArtistFollowers';
 import CollaborationRadarGraph from './CollaborationRadarGraph';
 import Button from '../common/Button';
 import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
-// TimeBasedAnalyticsGraph removed
-import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
-import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
+import StreamHistoryTab from './reachAnalyzer/StreamHistoryTab';
 import { MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
 import SongStreamDetail from './reachAnalyzer/SongStreamDetail';
 import EstimatedRevenueTab from './reachAnalyzer/EstimatedRevenueTab';
@@ -535,7 +533,13 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         );
       }
       case 'streamHistory':
-        return <div className="text-center text-gray-700 py-8">Stream history is not currently available.</div>;
+        return (
+          <StreamHistoryTab
+            scanLogs={scanLogs}
+            isLoading={isLoadingOverall}
+            error={overallError}
+          />
+        );
       case 'artistStats':
         return (
           <ArtistStatsTable
@@ -581,6 +585,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
   const monitorTabs: {id: MonitorTab, label: string}[] = [
     { id: 'reach', label: 'Total Reach' },
+    { id: 'streamHistory', label: 'Stream History' },
     { id: 'estimatedRevenue', label: 'Est. Revenue' },
     { id: 'artistStats', label: 'Artist Stats' },
     { id: 'beatStats', label: 'Beat Matches' },
