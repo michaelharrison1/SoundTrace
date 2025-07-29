@@ -72,31 +72,66 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
 
   const [activeMonitorTab, setActiveMonitorTab] = useState<MonitorTab>('reach');
-  // Reach bar config for TotalReachDisplay
-  const [reachBarConfig, setReachBarConfig] = useState(() => calculateBarConfig(totalFollowers, MAX_BAR_SLOTS));
+  // Classic colors: green for reach, blue for streams
+  const reachBarColor = '#00C800'; // classic green
+  const streamBarColor = '#1D9BF0'; // classic blue
+  const activeBarAndLineColor = reachBarColor;
+
+  // Use same bar config logic as streaming data for reach
+  const [reachBarConfig, setReachBarConfig] = useState(() => {
+    const minBarUnit = 1000000;
+    const maxBars = 30;
+    const barUnit = Math.max(minBarUnit, Math.ceil((totalFollowers ?? 1) / (maxBars - 2)));
+    return {
+      barUnit,
+      numberOfBarsToActivate: Math.min(maxBars - 1, Math.floor((totalFollowers ?? 0) / barUnit)),
+      unitLabel: barUnit >= 1000000 ? `${(barUnit / 1000000).toFixed(0)}M` : `${barUnit}`
+    };
+  });
+
+  // Reach bar animation state and refs (single source of truth)
+  const [reachLineProgress, setReachLineProgress] = React.useState(0);
+  const [reachBarStates, setReachBarStates] = React.useState<Array<'active' | 'falling' | 'inactive'>>(Array(30).fill('inactive'));
+  const [reachPhase, setReachPhase] = React.useState<'scan' | 'fall' | 'pause'>("scan");
+  const reachAnimationFrameId = React.useRef<number | null>(null);
+  const reachAnimationStartTime = React.useRef<number>(0);
+  const reachPauseTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  const reachBarsToActivate = reachBarConfig.numberOfBarsToActivate;
   useEffect(() => {
-    setReachBarConfig(calculateBarConfig(totalFollowers, MAX_BAR_SLOTS));
+    const minBarUnit = 1000000;
+    const maxBars = 30;
+    const barUnit = Math.max(minBarUnit, Math.ceil((totalFollowers ?? 1) / (maxBars - 2)));
+    setReachBarConfig({
+      barUnit,
+      numberOfBarsToActivate: Math.min(maxBars - 1, Math.floor((totalFollowers ?? 0) / barUnit)),
+      unitLabel: barUnit >= 1000000 ? `${(barUnit / 1000000).toFixed(0)}M` : `${barUnit}`
+    });
   }, [totalFollowers]);
 
-
-
-
-
-  // Bar color changes based on stream milestones (1K, 10K, 100K, 1M, 10M, 100M, 1B)
-  const getMilestoneColor = (streams: number | null | undefined) => {
-    if (!streams || streams < 1000) return '#1D9BF0'; // default blue
-    if (streams < 10000) return '#00BFFF'; // light blue
-    if (streams < 100000) return '#00FF99'; // greenish
-    if (streams < 1000000) return '#FFD700'; // gold
-    if (streams < 10000000) return '#FF8C00'; // orange
-    if (streams < 100000000) return '#FF1493'; // pink
-    return '#9400D3'; // purple for 100M+
-  };
-  const activeBarAndLineColor = getMilestoneColor(totalFollowers);
-  const streamGraphColor = getMilestoneColor(totalStreams);
-
-
-
+  // Follower reach scan line animation state with descending bar fall
+  React.useEffect(() => {
+    const shouldAnimate = !isLoadingOverall && !overallError && (totalFollowers ?? 0) > 0 && activeMonitorTab === 'reach';
+    function animateReach(timestamp: number) {
+      if (reachPhase === 'scan') {
+        if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
+        let elapsed = timestamp - reachAnimationStartTime.current;
+        let progress = Math.min(1, elapsed / LINE_ANIMATION_DURATION_MS);
+        setReachLineProgress(progress);
+        setReachBarStates(prev => prev.map((_, i) => (progress * 30 > i && reachBarsToActivate > i) ? 'active' : 'inactive'));
+        if (progress >= 1) {
+          setReachLineProgress(1);
+        }
+      }
+    }
+    // (Old reach bar animation logic removed; new logic is above)
+    // --- REMOVE DUPLICATE/OLD reach bar animation state/logic below this line (if present) ---
+    // Clean up on unmount
+    return () => {
+      if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
+      if (reachPauseTimeout.current) { clearTimeout(reachPauseTimeout.current); reachPauseTimeout.current = null; }
+    };
+    // eslint-disable-next-line
+  }, [isLoadingOverall, overallError, totalFollowers, activeMonitorTab, reachPhase, reachBarConfig]);
 
   const [artistSortColumn, setArtistSortColumn] = useState<ArtistSortableColumn>('matchedTracksCount');
   const [artistSortDirection, setArtistSortDirection] = useState<SortDirection>('desc');
@@ -264,53 +299,71 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, [isLoadingOverall, overallError, totalStreams, streamBarRetract, activeMonitorTab]);
 
   // Follower reach scan line animation state
-  const [reachLineProgress, setReachLineProgress] = React.useState(0);
-  const [reachBarRetract, setReachBarRetract] = React.useState(false);
-  const reachAnimationFrameId = React.useRef<number | null>(null);
-  const reachAnimationStartTime = React.useRef<number>(0);
-  const reachPauseTimeout = React.useRef<NodeJS.Timeout | null>(null);
   React.useEffect(() => {
     const shouldAnimate = !isLoadingOverall && !overallError && (totalFollowers ?? 0) > 0 && activeMonitorTab === 'reach';
-    function animateReachLine(timestamp: number) {
-      if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
-      let elapsed = timestamp - reachAnimationStartTime.current;
-      let progress = elapsed / LINE_ANIMATION_DURATION_MS;
-      if (progress >= 1.0) {
-        setReachLineProgress(1);
-        if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
-        // Pause for 4 seconds, then retract bars, then restart
-        reachPauseTimeout.current = setTimeout(() => {
-          setReachBarRetract(true);
-          setTimeout(() => {
-            setReachBarRetract(false);
+    function animateReach(timestamp: number) {
+      if (reachPhase === 'scan') {
+        if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
+        let elapsed = timestamp - reachAnimationStartTime.current;
+        let progress = Math.min(1, elapsed / LINE_ANIMATION_DURATION_MS);
+        setReachLineProgress(progress);
+        setReachBarStates(prev => prev.map((_, i) => (progress * 30 > i && reachBarsToActivate > i) ? 'active' : 'inactive'));
+        if (progress >= 1) {
+          setReachLineProgress(1);
+          setReachPhase('fall');
+          reachAnimationStartTime.current = performance.now();
+          reachAnimationFrameId.current = requestAnimationFrame(animateReach);
+          return;
+        }
+        reachAnimationFrameId.current = requestAnimationFrame(animateReach);
+      } else if (reachPhase === 'fall') {
+        if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
+        let elapsed = timestamp - reachAnimationStartTime.current;
+        const totalFallTime = 4000; // ms
+        let newStates = Array(30).fill('inactive');
+        for (let i = 0; i < reachBarsToActivate; i++) {
+          const barIndex = reachBarsToActivate - 1 - i;
+          const fallStep = totalFallTime / Math.max(1, reachBarsToActivate);
+          if (elapsed < i * fallStep) {
+            newStates[barIndex] = 'active';
+          } else if (elapsed < (i + 1) * fallStep) {
+            newStates[barIndex] = 'falling';
+          } else {
+            newStates[barIndex] = 'inactive';
+          }
+        }
+        setReachBarStates(newStates);
+        if (elapsed >= totalFallTime) {
+          setReachBarStates(Array(30).fill('inactive'));
+          setReachPhase('pause');
+          reachPauseTimeout.current = setTimeout(() => {
+            setReachPhase('scan');
             setReachLineProgress(0);
-            reachAnimationStartTime.current = performance.now();
-            reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
-          }, 1000); // 1s retract
-        }, 4000); // 4s pause
-        return;
+            reachAnimationStartTime.current = 0;
+            reachAnimationFrameId.current = requestAnimationFrame(animateReach);
+          }, 1000); // 1s pause after fall
+          return;
+        }
+        reachAnimationFrameId.current = requestAnimationFrame(animateReach);
       }
-      setReachLineProgress(progress);
-      reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
     }
     if (shouldAnimate) {
-      if (!reachAnimationFrameId.current && !reachBarRetract) {
-        reachAnimationStartTime.current = performance.now() - (reachLineProgress * LINE_ANIMATION_DURATION_MS);
-        reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
+      if (!reachAnimationFrameId.current && reachPhase !== 'pause') {
+        reachAnimationStartTime.current = performance.now() - (reachPhase === 'scan' ? reachLineProgress * LINE_ANIMATION_DURATION_MS : 0);
+        reachAnimationFrameId.current = requestAnimationFrame(animateReach);
       }
     } else {
       if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
       if (reachPauseTimeout.current) { clearTimeout(reachPauseTimeout.current); reachPauseTimeout.current = null; }
       setReachLineProgress(0);
-      setReachBarRetract(false);
+      setReachBarStates(Array(30).fill('inactive'));
+      setReachPhase('scan');
     }
     return () => {
       if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
       if (reachPauseTimeout.current) { clearTimeout(reachPauseTimeout.current); reachPauseTimeout.current = null; }
     };
-  }, [isLoadingOverall, overallError, totalFollowers, reachBarRetract, activeMonitorTab]);
-
-  // --- End scan line animation hooks ---
+  }, [isLoadingOverall, overallError, totalFollowers, activeMonitorTab, reachPhase, reachBarConfig]);
 
   const renderTabContent = () => {
     if (isLoadingOverall && activeMonitorTab !== 'collaborationRadar' && activeMonitorTab !== 'beatStats' && activeMonitorTab !== 'estimatedRevenue' && aggregatedArtistData.length === 0) {
@@ -339,19 +392,11 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         const streamBarColor = '#1D9BF0';
         return (
           <>
-            <TotalReachDisplay
-              totalFollowers={totalFollowers}
-              isLoading={isLoadingOverall}
-              error={overallError}
-              reachBarConfig={reachBarConfig}
-              activeBarAndLineColor={activeBarAndLineColor}
-              lineProgress={reachLineProgress}
-              barRetract={reachBarRetract}
-            />
-            <div className="mt-3">
-              <h4 className="text-base font-semibold text-black mb-0 text-center">Total Estimated Streams</h4>
-              <p className="text-xs text-gray-600 text-center mb-1">Sum of all stream counts from matched tracks via StreamClout.</p>
-              <p className="text-3xl text-black font-bold my-1 text-center">{formatFollowersDisplay(totalStreams, isLoadingOverall && typeof totalStreams === 'undefined')} streams</p>
+            {/* Custom follower reach bar visualizer, same logic as stream bar */}
+            <div className="mb-3">
+              <h4 className="text-base font-semibold text-black mb-0 text-center">Estimated Spotify Follower Reach</h4>
+              <p className="text-xs text-gray-600 text-center mb-1">Sum of all Spotify followers for matched artists.</p>
+              <p className="text-3xl text-black font-bold my-1 text-center">{formatFollowersDisplay(totalFollowers, isLoadingOverall && typeof totalFollowers === 'undefined')} followers</p>
               <div className="p-0.5">
                 <div
                   className="win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32"
@@ -361,40 +406,38 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                     backgroundSize: '10px 10px',
                   }}
                   role="img"
-                  aria-label={`Performance chart. Current total stream count: ${formatFollowersDisplay(totalStreams, isLoadingOverall && typeof totalStreams === 'undefined')}. Each bar segment represents ${streamBarConfig.unitLabel} streams.`}
+                  aria-label={`Performance chart. Current total follower count: ${formatFollowersDisplay(totalFollowers, isLoadingOverall && typeof totalFollowers === 'undefined')}. Each bar segment represents ${reachBarConfig.unitLabel} followers.`}
                 >
                   <div className="flex w-full h-full items-end">
                     {[...Array(30)].map((_, i) => {
-                      let barIsActive = streamLineProgress * 30 > i && streamBarConfig.numberOfBarsToActivate > i && (totalStreams ?? 0) > 0;
-                      let barHeight = barIsActive ? '100%' : '0%';
-                      if (streamBarRetract) {
-                        barIsActive = false;
-                        barHeight = '0%';
-                      }
+                      let barIsActive = reachBarStates[i] === 'active';
+                      let barIsFalling = reachBarStates[i] === 'falling';
+                      let barHeight = barIsActive ? '100%' : (barIsFalling ? '100%' : '0%');
+                      let barOpacity = barIsFalling ? 0.3 : 1;
                       return (
                         <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
                           <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>
-                          {((totalStreams ?? 0) > 0) && (
+                          {((totalFollowers ?? 0) > 0) && (
                             <div
                               className="active-bar-fill relative win95-border-outset"
-                              style={{ backgroundColor: barIsActive ? streamBarColor : 'transparent', height: barHeight, width: '80%', transition: `height 0.5s ease-out`, boxShadow: barIsActive ? `0 0 3px ${streamBarColor}, 0 0 6px ${streamBarColor}` : 'none' }}
+                              style={{ backgroundColor: barIsActive || barIsFalling ? reachBarColor : 'transparent', height: barHeight, width: '80%', transition: barIsFalling ? 'opacity 0.4s linear, height 0.4s linear' : 'height 0.5s ease-out', opacity: barOpacity, boxShadow: barIsActive || barIsFalling ? `0 0 3px ${reachBarColor}, 0 0 6px ${reachBarColor}` : 'none' }}
                             ></div>
                           )}
                         </div>
                       );
                     })}
                   </div>
-                  {((totalStreams ?? 0) > 0 && !isLoadingOverall && !overallError) && (
+                  {((totalFollowers ?? 0) > 0 && !isLoadingOverall && !overallError) && (
                     <div
                       className="progress-line absolute top-0 bottom-0"
-                      style={{ left: `${streamLineProgress * 100}%`, width: '3px', boxShadow: `0 0 5px 1px ${streamBarColor}, 0 0 10px 2px ${streamBarColor}`, transform: 'translateX(-1.5px)', backgroundColor: streamBarColor }}
+                      style={{ left: `${reachLineProgress * 100}%`, width: '3px', boxShadow: `0 0 5px 1px ${reachBarColor}, 0 0 10px 2px ${reachBarColor}`, transform: 'translateX(-1.5px)', backgroundColor: reachBarColor }}
                       aria-hidden="true"
                     ></div>
                   )}
                 </div>
               </div>
               <p className="text-xs text-gray-700 mt-2 text-center">
-                {streamBarConfig.unitLabel ? `Bars represent: ${streamBarConfig.unitLabel} streams each.` : ""}
+                {reachBarConfig.unitLabel ? `Bars represent: ${reachBarConfig.unitLabel} followers each.` : ""}
               </p>
             </div>
           </>
