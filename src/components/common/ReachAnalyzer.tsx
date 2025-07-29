@@ -5,7 +5,7 @@ import ArtistFollowers from './ArtistFollowers';
 import CollaborationRadarGraph from './CollaborationRadarGraph';
 import Button from '../common/Button';
 import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
-import TimeBasedAnalyticsGraph from './reachAnalyzer/TimeBasedAnalyticsGraph';
+// TimeBasedAnalyticsGraph removed
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
@@ -320,6 +320,9 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
     switch (activeMonitorTab) {
       case 'reach':
+        // Calculate stream bar config and color
+        const streamBarConfig = calculateBarConfig(totalStreams, 1);
+        const streamBarColor = '#1D9BF0'; // Use a blue distinct from follower reach
         return (
           <>
             <TotalReachDisplay
@@ -334,52 +337,48 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               activeBarAndLineColor={activeBarAndLineColor}
               lineProgress={lineProgress}
             />
-            {/* No time-based bar chart for reach tab, only CRT scan line remains */}
+            <div className="mt-8">
+              <h4 className="text-base font-semibold text-black mb-0 text-center">Total Estimated StreamClout Streams</h4>
+              <p className="text-xs text-gray-600 text-center mb-1">Sum of all stream counts from matched tracks via StreamClout.</p>
+              <p className="text-3xl text-black font-bold my-1 text-center">{formatFollowersDisplay(totalStreams, isLoadingOverall && typeof totalStreams === 'undefined')} streams</p>
+              <div className="p-0.5">
+                <div
+                  className="win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32"
+                  style={{
+                    backgroundColor: '#262626',
+                    backgroundImage: `linear-gradient(to right, rgba(128,128,128,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(128,128,128,0.2) 1px, transparent 1px)`,
+                    backgroundSize: '10px 10px',
+                  }}
+                  role="img"
+                  aria-label={`Performance chart. Current total stream count: ${formatFollowersDisplay(totalStreams, isLoadingOverall && typeof totalStreams === 'undefined')}. Each bar segment represents ${streamBarConfig.unitLabel} streams.`}
+                >
+                  <div className="flex w-full h-full items-end">
+                    {[...Array(30)].map((_, i) => {
+                      const barIsActive = streamBarConfig.numberOfBarsToActivate > i && (totalStreams ?? 0) > 0;
+                      const barHeight = barIsActive ? '100%' : '0%';
+                      return (
+                        <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
+                          <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>
+                          {((totalStreams ?? 0) > 0) && (
+                            <div
+                              className="active-bar-fill relative win95-border-outset"
+                              style={{ backgroundColor: barIsActive ? streamBarColor : 'transparent', height: barHeight, width: '80%', transition: `height 0.5s ease-out`, boxShadow: barIsActive ? `0 0 3px ${streamBarColor}, 0 0 6px ${streamBarColor}` : 'none' }}
+                            ></div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-700 mt-2 text-center">
+                {streamBarConfig.unitLabel ? `Bars represent: ${streamBarConfig.unitLabel} streams each.` : ""}
+              </p>
+            </div>
           </>
         );
-       case 'streamHistory':
-        return (
-          <div ref={visualizerContainerRef} className="flex flex-col h-full">
-            <div className="text-center mb-3">
-              <h4 className="text-base font-semibold text-black mb-0">Total Estimated StreamClout Streams</h4>
-              <p className="text-xs text-gray-600">Sum of all stream counts from matched tracks via StreamClout.</p>
-              {isLoadingOverall && typeof totalStreams === 'undefined' ? (
-                <ProgressBar text="Calculating total streams..." />
-              ) : overallError ? (
-                 <p className="text-2xl text-red-700 font-bold my-2">Error loading stream data</p>
-              ) : (
-                <p className="text-3xl text-black font-bold my-2">
-                  {formatFollowersDisplay(totalStreams, isLoadingOverall && typeof totalStreams === 'undefined')} streams
-                </p>
-              )}
-            </div>
-
-            <div className="w-full h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={historicalAnalyticsData.map(d => ({
-                    date: new Date(d.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-                    streams: Math.round(d.cumulativeStreams || 0)
-                  }))}
-                  margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-                  <Tooltip formatter={v => v.toLocaleString()} />
-                  <Bar dataKey="streams" fill={streamGraphColor} isAnimationActive={true} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {selectedSongForDetail && (
-                <SongStreamDetail
-                    song={selectedSongForDetail}
-                    onClose={handleCloseSongDetail}
-                />
-            )}
-          </div>
-        );
+      case 'streamHistory':
+        return null;
       case 'artistStats':
         return (
           <ArtistStatsTable
