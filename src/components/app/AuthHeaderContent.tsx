@@ -2,9 +2,12 @@
 import React from 'react';
 import Button from '../common/Button';
 import LogoutIcon from '../icons/LogoutIcon';
+import keyIcon from '../icons/key_32x32.png';
 import { User } from '../../types';
 import { useSpotifyPlayer } from '../../contexts/SpotifyContext';
 import SpotifyIcon from '../icons/SpotifyIcon';
+import connectSpotifyIcon from '../icons/ConnectSpotify.png';
+
 
 type AuthView = 'login' | 'register';
 
@@ -28,17 +31,17 @@ const SpotifyConnectButton: React.FC = React.memo(() => {
     );
   }
   return (
-    <Button 
-      onClick={initiateSpotifyLogin} 
-      size="sm" 
-      className="!px-2 !py-0.5 !text-xs !h-6 hover:bg-gray-300 win95-button-sm flex items-center"
-    >
-      <span>Connect Spotify</span>
-    </Button>
+      <Button
+          onClick={initiateSpotifyLogin}
+          size="sm"
+          className="!px-2 !py-0.5 !text-xs !h-6 hover:bg-gray-300 win95-button-sm flex items-center"
+      >
+          <img src={connectSpotifyIcon} alt="Connect Spotify" className="w-4 h-4 mr-1"/>
+          <span>Connect Spotify</span>
+      </Button>
   );
 });
 SpotifyConnectButton.displayName = 'SpotifyConnectButton';
-
 
 
 const AuthHeaderContent: React.FC<AuthHeaderContentProps> = ({ currentUser, authView, onSetAuthView, onLogout }) => {
@@ -70,7 +73,7 @@ const AuthHeaderContent: React.FC<AuthHeaderContentProps> = ({ currentUser, auth
           onClick={handleFullLogout}
           size="sm"
           className={`${getNavButtonClass('logout', true)} ml-2`}
-          icon={<LogoutIcon className="w-3 h-3" />}
+          icon={<img src={keyIcon} alt="Logout" className="w-3 h-3" />}
         >
           Logout
         </Button>
