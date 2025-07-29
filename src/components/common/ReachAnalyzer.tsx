@@ -323,6 +323,31 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         // Calculate stream bar config and color
         const streamBarConfig = calculateBarConfig(totalStreams, 1);
         const streamBarColor = '#1D9BF0'; // Use a blue distinct from follower reach
+        // Animation for stream scan line
+        const [streamLineProgress, setStreamLineProgress] = React.useState(0);
+        const streamAnimationFrameId = React.useRef<number | null>(null);
+        const streamAnimationStartTime = React.useRef<number>(0);
+        React.useEffect(() => {
+          const shouldAnimate = !isLoadingOverall && !overallError && (totalStreams ?? 0) > 0;
+          function animateStreamLine(timestamp: number) {
+            if (streamAnimationStartTime.current === 0) streamAnimationStartTime.current = timestamp;
+            let elapsed = timestamp - streamAnimationStartTime.current;
+            let progress = elapsed / LINE_ANIMATION_DURATION_MS;
+            if (progress >= 1.0) { progress = 0; streamAnimationStartTime.current = timestamp; }
+            setStreamLineProgress(progress);
+            streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
+          }
+          if (shouldAnimate) {
+            if (!streamAnimationFrameId.current) {
+              streamAnimationStartTime.current = performance.now() - (streamLineProgress * LINE_ANIMATION_DURATION_MS);
+              streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
+            }
+          } else {
+            if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
+            setStreamLineProgress(0);
+          }
+          return () => { if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; } };
+        }, [isLoadingOverall, overallError, totalStreams]);
         return (
           <>
             <TotalReachDisplay
@@ -337,8 +362,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               activeBarAndLineColor={activeBarAndLineColor}
               lineProgress={lineProgress}
             />
-            <div className="mt-8">
-              <h4 className="text-base font-semibold text-black mb-0 text-center">Total Estimated StreamClout Streams</h4>
+            <div className="mt-3">
+              <h4 className="text-base font-semibold text-black mb-0 text-center">Total Estimated Streams</h4>
               <p className="text-xs text-gray-600 text-center mb-1">Sum of all stream counts from matched tracks via StreamClout.</p>
               <p className="text-3xl text-black font-bold my-1 text-center">{formatFollowersDisplay(totalStreams, isLoadingOverall && typeof totalStreams === 'undefined')} streams</p>
               <div className="p-0.5">
@@ -354,7 +379,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                 >
                   <div className="flex w-full h-full items-end">
                     {[...Array(30)].map((_, i) => {
-                      const barIsActive = streamBarConfig.numberOfBarsToActivate > i && (totalStreams ?? 0) > 0;
+                      const barIsActive = streamLineProgress * 30 > i && streamBarConfig.numberOfBarsToActivate > i && (totalStreams ?? 0) > 0;
                       const barHeight = barIsActive ? '100%' : '0%';
                       return (
                         <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
@@ -369,6 +394,13 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                       );
                     })}
                   </div>
+                  {((totalStreams ?? 0) > 0 && !isLoadingOverall && !overallError) && (
+                    <div
+                      className="progress-line absolute top-0 bottom-0"
+                      style={{ left: `${streamLineProgress * 100}%`, width: '3px', boxShadow: `0 0 5px 1px ${streamBarColor}, 0 0 10px 2px ${streamBarColor}`, transform: 'translateX(-1.5px)', backgroundColor: streamBarColor }}
+                      aria-hidden="true"
+                    ></div>
+                  )}
                 </div>
               </div>
               <p className="text-xs text-gray-700 mt-2 text-center">
@@ -424,7 +456,6 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
   const monitorTabs: {id: MonitorTab, label: string}[] = [
     { id: 'reach', label: 'Total Reach' },
-    { id: 'streamHistory', label: 'Stream Stats' },
     { id: 'estimatedRevenue', label: 'Est. Revenue' },
     { id: 'artistStats', label: 'Artist Stats' },
     { id: 'beatStats', label: 'Beat Matches' },
