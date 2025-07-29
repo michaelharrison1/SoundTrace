@@ -323,31 +323,52 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         // Calculate stream bar config and color
         const streamBarConfig = calculateBarConfig(totalStreams, 1);
         const streamBarColor = '#1D9BF0'; // Use a blue distinct from follower reach
-        // Animation for stream scan line
+        // Animation for stream scan line with pause and retract
         const [streamLineProgress, setStreamLineProgress] = React.useState(0);
+        const [streamBarRetract, setStreamBarRetract] = React.useState(false);
         const streamAnimationFrameId = React.useRef<number | null>(null);
         const streamAnimationStartTime = React.useRef<number>(0);
+        const streamPauseTimeout = React.useRef<NodeJS.Timeout | null>(null);
         React.useEffect(() => {
           const shouldAnimate = !isLoadingOverall && !overallError && (totalStreams ?? 0) > 0;
           function animateStreamLine(timestamp: number) {
             if (streamAnimationStartTime.current === 0) streamAnimationStartTime.current = timestamp;
             let elapsed = timestamp - streamAnimationStartTime.current;
             let progress = elapsed / LINE_ANIMATION_DURATION_MS;
-            if (progress >= 1.0) { progress = 0; streamAnimationStartTime.current = timestamp; }
+            if (progress >= 1.0) {
+              setStreamLineProgress(1);
+              if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
+              // Pause for 8 seconds, then retract bars, then restart
+              streamPauseTimeout.current = setTimeout(() => {
+                setStreamBarRetract(true);
+                setTimeout(() => {
+                  setStreamBarRetract(false);
+                  setStreamLineProgress(0);
+                  streamAnimationStartTime.current = performance.now();
+                  streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
+                }, 1000); // 1s retract
+              }, 8000); // 8s pause
+              return;
+            }
             setStreamLineProgress(progress);
             streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
           }
           if (shouldAnimate) {
-            if (!streamAnimationFrameId.current) {
+            if (!streamAnimationFrameId.current && !streamBarRetract) {
               streamAnimationStartTime.current = performance.now() - (streamLineProgress * LINE_ANIMATION_DURATION_MS);
               streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
             }
           } else {
             if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
+            if (streamPauseTimeout.current) { clearTimeout(streamPauseTimeout.current); streamPauseTimeout.current = null; }
             setStreamLineProgress(0);
+            setStreamBarRetract(false);
           }
-          return () => { if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; } };
-        }, [isLoadingOverall, overallError, totalStreams]);
+          return () => {
+            if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
+            if (streamPauseTimeout.current) { clearTimeout(streamPauseTimeout.current); streamPauseTimeout.current = null; }
+          };
+        }, [isLoadingOverall, overallError, totalStreams, streamBarRetract]);
         return (
           <>
             <TotalReachDisplay
@@ -379,8 +400,13 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                 >
                   <div className="flex w-full h-full items-end">
                     {[...Array(30)].map((_, i) => {
-                      const barIsActive = streamLineProgress * 30 > i && streamBarConfig.numberOfBarsToActivate > i && (totalStreams ?? 0) > 0;
-                      const barHeight = barIsActive ? '100%' : '0%';
+                      let barIsActive = streamLineProgress * 30 > i && streamBarConfig.numberOfBarsToActivate > i && (totalStreams ?? 0) > 0;
+                      let barHeight = barIsActive ? '100%' : '0%';
+                      if (streamBarRetract) {
+                        // Smoothly retract bars
+                        barIsActive = false;
+                        barHeight = '0%';
+                      }
                       return (
                         <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
                           <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>
