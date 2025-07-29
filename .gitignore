@@ -1,0 +1,47 @@
+# Node and build artifacts
+node_modules/
+dist/
+build/
+.cache/
+.vite/
+*.log
+*.tmp
+*.tsbuildinfo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+
+# Test and coverage
+coverage/
+.nyc_output/
+
+# Misc
+.env
+.env.*
+
+# Ignore media and large files (customize as needed)
+*.mp3
+*.wav
+*.ogg
+*.flac
+*.zip
+*.tar.gz
+*.7z
+*.rar
+*.iso
+
+# Ignore output from three.js/react-three-fiber if any
+*.glb
+*.gltf
+*.fbx
+*.obj
+*.blend
+
+# Ignore local dev data
+local-data/

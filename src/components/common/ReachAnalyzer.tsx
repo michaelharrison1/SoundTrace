@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import ProgressBar from './ProgressBar';
 import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, AggregatedSongData, TrackScanLogStatus } from '../../types';
@@ -12,6 +11,7 @@ import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
 import SongStreamDetail from './reachAnalyzer/SongStreamDetail';
 import EstimatedRevenueTab from './reachAnalyzer/EstimatedRevenueTab';
+import Retro3DBarChart, { Retro3DBarChartDatum } from './reachAnalyzer/Retro3DBarChart';
 
 
 interface ReachAnalyzerProps {
@@ -302,6 +302,15 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, []);
 
 
+  const followerBarChartData: Retro3DBarChartDatum[] = useMemo(() => {
+    return historicalAnalyticsData.map((d) => ({
+      label: new Date(d.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      value: d.cumulativeFollowers,
+      color: '#3b82f6', // consistent blue, can be changed
+    }));
+  }, [historicalAnalyticsData]);
+
+
   const renderTabContent = () => {
     if (isLoadingOverall && activeMonitorTab !== 'collaborationRadar' && activeMonitorTab !== 'beatStats' && activeMonitorTab !== 'estimatedRevenue' && aggregatedArtistData.length === 0) {
         return (
@@ -331,16 +340,14 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               activeBarAndLineColor={activeBarAndLineColor}
               lineProgress={lineProgress}
             />
-            <TimeBasedAnalyticsGraph
-              data={historicalAnalyticsData}
-              dataKey="cumulativeFollowers"
-              isLoading={isLoadingOverall && historicalAnalyticsData.length === 0}
-              onDeleteHistory={onDeleteAnalyticsHistory}
-              graphColor={activeBarAndLineColor}
-              valueLabel="Followers"
-              title="Time-Based Follower Reach"
-              description="Track follower growth over time."
-            />
+            <div className="my-6">
+              <Retro3DBarChart
+                data={followerBarChartData}
+                yLabel="Followers"
+                xLabel="Date"
+                animate={true}
+              />
+            </div>
           </>
         );
        case 'streamHistory':

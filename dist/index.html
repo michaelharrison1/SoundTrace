@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/vite.svg">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Security Headers (from current version) -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com https://esm.sh https://accounts.google.com https://apis.google.com;
+                 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://accounts.google.com;
+                 font-src 'self' https://fonts.gstatic.com https://unpkg.com data:;
+                 img-src 'self' data: https:;
+                 connect-src 'self' https://api.soundtrace.uk http://localhost:5001 ws://localhost:5001 https://esm.sh https://accounts.google.com https://www.google.com https://apis.google.com https://fonts.gstatic.com;
+                 object-src 'none';
+                 base-uri 'self';
+                 form-action 'self';
+                 frame-src 'self' https://accounts.google.com;">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  <title>SoundTrace</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <link rel="preload" as="image" href="/src/assets/background.jpg">
+  <link rel="prerender" href="/privacy-policy">
+  <link rel="prerender" href="/terms-of-service">
+
+  <style>
+    body {
+      background-color: #C0C0C0; /* Windows 95 gray */
+      font-family: 'VT323', monospace;
+      color: #000000; /* Default text black */
+      font-size: 16px; /* VT323 looks better a bit larger */
+      margin: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
+    body.logged-out-background {
+      background-image: url('/src/assets/background.jpg');
+    }
+    body.logged-in-background {
+      background-image: none;
+      background-color: #C0C0C0; /* Ensure gray background for logged-in state */
+    }
+
+    /* Minimal scrollbar styling for consistency */
+    ::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #DFDFDF; /* Lighter gray track */
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #808080; /* Darker gray thumb */
+      border: 1px solid #C0C0C0;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555555;
+    }
+    * { scrollbar-width: thin; scrollbar-color: #808080 #DFDFDF; }
+
+
+    /* Win95 style borders */
+    .win95-border-outset {
+      border-style: solid; border-width: 2px;
+      border-top-color: #FFFFFF; border-left-color: #FFFFFF;
+      border-bottom-color: #808080; border-right-color: #808080;
+      box-shadow: 1px 1px 0px #000000;
+    }
+    .win95-border-inset {
+      border-style: solid; border-width: 2px;
+      border-top-color: #808080; border-left-color: #808080;
+      border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
+    }
+    svg {
+       stroke: #000000 !important; /* Ensure icons are black for VT323 theme */
+    }
+
+    /* Progress bar styling from oldfrontend */
+    @keyframes progressBarMarqueeAnim {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .progress-bar-blocks-container {
+      width: 200%; /* Effectively makes it look like infinite blocks */
+      animation: progressBarMarqueeAnim 1.2s linear infinite;
+      will-change: transform;
+    }
+    .progress-bar-block {
+      height: 100%; background-color: #084B8A; /* Dark blue, consistent with old style */
+    }
+
+    /* CRT Scan Line Animation from oldfrontend */
+    .crt-scan-bar-container {
+      width: 100%; height: 100%;
+      background-color: #1a1a1a; /* Dark CRT background */
+      overflow: hidden; position: relative;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+    }
+    .crt-scan-line {
+      position: absolute; top: 0; bottom: 0;
+      width: 3px; /* Width of the scan line */
+      background-color: #33ff33; /* Bright green scan line */
+      box-shadow: 0 0 5px #33ff33, 0 0 10px #33ff33, 0 0 15px #33ff33;
+      animation: crt-scan-anim 1.5s linear infinite;
+      will-change: left;
+    }
+    @keyframes crt-scan-anim {
+      0% { left: -3px; /* Start off-screen left */ }
+      100% { left: 100%; /* End off-screen right */ }
+    }
+
+    /* General purpose button styling from oldfrontend (Button.tsx will also reflect this) */
+    .win95-button-sm {
+      font-family: inherit; background-color: #c0c0c0; color: #000000;
+      border-style: solid; border-width: 1px;
+      border-top-color: #FFFFFF; border-left-color: #FFFFFF;
+      border-bottom-color: #808080; border-right-color: #808080;
+      box-shadow: 0.5px 0.5px 0px #000000; padding: 1px 3px; font-size: 1em; /* VT323 may need adjusted font size here */
+      line-height: 1; align-items: center; justify-content: center; display: inline-flex;
+      min-width: 20px; min-height: 20px;
+    }
+    .win95-button-sm:active:not(:disabled) {
+      border-top-color: #808080; border-left-color: #808080;
+      border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
+      box-shadow: none; transform: translate(0.5px, 0.5px);
+    }
+     .win95-button-sm:disabled {
+        color: #808080; text-shadow: 1px 1px 0 #ffffff; cursor: default;
+    }
+    .win95-button-sm:disabled:active {
+        transform: none; box-shadow: 0.5px 0.5px 0px #000000;
+        border-top-color: #FFFFFF; border-left-color: #FFFFFF;
+        border-bottom-color: #808080; border-right-color: #808080;
+    }
+
+    /* Tooltip styles from oldfrontend */
+    .tooltip { position: relative; display: inline-block; }
+    .tooltip .tooltiptext {
+      visibility: hidden; width: max-content; background-color: #fefee0; color: #000000;
+      text-align: center; border: 1px solid #000000; padding: 3px 5px; font-size: 0.8rem;
+      position: absolute; z-index: 10000; bottom: 125%; left: 50%; transform: translateX(-50%);
+      opacity: 0; transition: opacity 0.2s; white-space: nowrap; box-shadow: 1px 1px 0px #808080;
+    }
+    .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+
+  </style>
+
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.0",
+    "@vercel/node": "https://esm.sh/@vercel/node@^5.2.2",
+    "formidable": "https://esm.sh/formidable@^3.5.4",
+    "crypto": "https://esm.sh/crypto@^1.0.1",
+    "fs": "https://esm.sh/fs@^0.0.1-security",
+    "path": "https://esm.sh/path@^0.12.7",
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "@eslint/js": "https://esm.sh/@eslint/js@^9.29.0",
+    "globals": "https://esm.sh/globals@^16.2.0",
+    "eslint-plugin-react-hooks": "https://esm.sh/eslint-plugin-react-hooks@^5.2.0",
+    "eslint-plugin-react-refresh": "https://esm.sh/eslint-plugin-react-refresh@^0.4.20",
+    "typescript-eslint": "https://esm.sh/typescript-eslint@^8.34.0",
+    "vite": "https://esm.sh/vite@^6.3.5",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.5.2",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "@react-oauth/google": "https://esm.sh/@react-oauth/google@^0.12.2",
+    "three": "https://esm.sh/three@^0.177.0",
+    "recharts": "https://esm.sh/recharts@^2.15.3"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-BfhdzDHk.js"></script>
+</head>
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="root"></div>
+</body>
+</html>
