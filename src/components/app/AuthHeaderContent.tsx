@@ -33,7 +33,6 @@ const SpotifyConnectButton: React.FC = React.memo(() => {
       size="sm" 
       className="!px-2 !py-0.5 !text-xs !h-6 hover:bg-gray-300 win95-button-sm flex items-center"
     >
-      <SpotifyIcon className="w-4 h-4 mr-1"/> 
       <span>Connect Spotify</span>
     </Button>
   );
