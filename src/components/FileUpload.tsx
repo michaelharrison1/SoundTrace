@@ -4,7 +4,7 @@ import Button from './common/Button';
 import UploadIcon from './icons/UploadIcon';
 import { TARGET_SAMPLE_RATE } from '../utils/audioProcessing';
 import { JobFileState } from '../types';
-import uploadDiscIcon from '../src/UploadDisc.png';
+import uploadDiscIcon from '/icons/UploadDisc.png';
 
 
 interface FileUploadProps {
