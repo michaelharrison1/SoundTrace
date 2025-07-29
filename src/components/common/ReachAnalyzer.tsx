@@ -392,7 +392,56 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         const streamBarColor = '#1D9BF0';
         return (
           <>
-            {/* Custom follower reach bar visualizer, same logic as stream bar */}
+            {/* Estimated Stream Count (blue) */}
+            <div className="mb-3">
+              <h4 className="text-base font-semibold text-black mb-0 text-center">Estimated Spotify Streams</h4>
+              <p className="text-xs text-gray-600 text-center mb-1">Sum of all Spotify streams for matched tracks.</p>
+              <p className="text-3xl text-black font-bold my-1 text-center">{formatFollowersDisplay(totalStreams, isLoadingOverall && typeof totalStreams === 'undefined')} streams</p>
+              <div className="p-0.5">
+                <div
+                  className="win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32"
+                  style={{
+                    backgroundColor: '#262626',
+                    backgroundImage: `linear-gradient(to right, rgba(128,128,128,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(128,128,128,0.2) 1px, transparent 1px)`,
+                    backgroundSize: '10px 10px',
+                  }}
+                  role="img"
+                  aria-label={`Performance chart. Current total stream count: ${formatFollowersDisplay(totalStreams, isLoadingOverall && typeof totalStreams === 'undefined')}. Each bar segment represents ${streamBarConfig.unitLabel} streams.`}
+                >
+                  <div className="flex w-full h-full items-end">
+                    {[...Array(30)].map((_, i) => {
+                      // Bar is active if its index is less than the number of bars to activate and the scan line has passed it
+                      let barIsActive = !streamBarRetract && (streamLineProgress * 30 > i && streamBarConfig.numberOfBarsToActivate > i);
+                      let barIsRetracting = streamBarRetract && (streamBarConfig.numberOfBarsToActivate > i);
+                      let barHeight = barIsActive ? '100%' : (barIsRetracting ? '100%' : '0%');
+                      let barOpacity = barIsRetracting ? 0.3 : 1;
+                      return (
+                        <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
+                          <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>
+                          {((totalStreams ?? 0) > 0) && (
+                            <div
+                              className="active-bar-fill relative win95-border-outset"
+                              style={{ backgroundColor: barIsActive || barIsRetracting ? streamBarColor : 'transparent', height: barHeight, width: '80%', transition: barIsRetracting ? 'opacity 0.4s linear, height 0.4s linear' : 'height 0.5s ease-out', opacity: barOpacity, boxShadow: barIsActive || barIsRetracting ? `0 0 3px ${streamBarColor}, 0 0 6px ${streamBarColor}` : 'none' }}
+                            ></div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {((totalStreams ?? 0) > 0 && !isLoadingOverall && !overallError) && (
+                    <div
+                      className="progress-line absolute top-0 bottom-0"
+                      style={{ left: `${streamLineProgress * 100}%`, width: '3px', boxShadow: `0 0 5px 1px ${streamBarColor}, 0 0 10px 2px ${streamBarColor}`, transform: 'translateX(-1.5px)', backgroundColor: streamBarColor }}
+                      aria-hidden="true"
+                    ></div>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-gray-700 mt-2 text-center">
+                {streamBarConfig.unitLabel ? `Bars represent: ${streamBarConfig.unitLabel} streams each.` : ""}
+              </p>
+            </div>
+            {/* Custom follower reach bar visualizer (green) */}
             <div className="mb-3">
               <h4 className="text-base font-semibold text-black mb-0 text-center">Estimated Spotify Follower Reach</h4>
               <p className="text-xs text-gray-600 text-center mb-1">Sum of all Spotify followers for matched artists.</p>
