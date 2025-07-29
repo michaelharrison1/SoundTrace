@@ -6,7 +6,7 @@ import ReachAnalyzer from './common/ReachAnalyzer';
 import ProgressBar from './common/ProgressBar';
 import { analyticsService } from '../services/analyticsService';
 import { scanLogService } from '../services/scanLogService';
-import fireIcon from '../icons/fire.png';
+import fireIcon from './icons/fire.png';
 
 
 interface DashboardViewPageProps {
