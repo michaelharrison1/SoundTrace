@@ -34,9 +34,9 @@ const SpotifyConnectButton: React.FC = React.memo(() => {
       <Button
           onClick={initiateSpotifyLogin}
           size="sm"
-          className="!px-2 !py-0.5 !text-xs !h-6 hover:bg-gray-300 win95-button-sm flex items-center"
+          className="!px-3 !py-0.5 !text-xs !h-6 hover:bg-gray-300 win95-button-sm flex items-center space-x-1 min-w-[130px]"
       >
-          <img src={connectSpotifyIcon} alt="Connect Spotify" className="w-4 h-4 mr-1"/>
+          <img src={connectSpotifyIcon} alt="Connect Spotify" className="w-4 h-4"/>
           <span>Connect Spotify</span>
       </Button>
   );
