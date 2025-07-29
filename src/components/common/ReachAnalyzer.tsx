@@ -11,7 +11,7 @@ import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
 import SongStreamDetail from './reachAnalyzer/SongStreamDetail';
 import EstimatedRevenueTab from './reachAnalyzer/EstimatedRevenueTab';
-import Retro3DBarChart, { Retro3DBarChartDatum } from './reachAnalyzer/Retro3DBarChart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 
 interface ReachAnalyzerProps {
@@ -302,13 +302,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, []);
 
 
-  const followerBarChartData: Retro3DBarChartDatum[] = useMemo(() => {
-    return historicalAnalyticsData.map((d) => ({
-      label: new Date(d.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      value: d.cumulativeFollowers,
-      color: '#3b82f6', // consistent blue, can be changed
-    }));
-  }, [historicalAnalyticsData]);
+
 
 
   const renderTabContent = () => {
@@ -340,14 +334,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               activeBarAndLineColor={activeBarAndLineColor}
               lineProgress={lineProgress}
             />
-            <div className="my-6">
-              <Retro3DBarChart
-                data={followerBarChartData}
-                yLabel="Followers"
-                xLabel="Date"
-                animate={true}
-              />
-            </div>
+            {/* No time-based bar chart for reach tab, only CRT scan line remains */}
           </>
         );
        case 'streamHistory':
@@ -366,16 +353,24 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                 </p>
               )}
             </div>
-            <TimeBasedAnalyticsGraph
-              data={historicalAnalyticsData}
-              dataKey="cumulativeStreams"
-              isLoading={isLoadingOverall && historicalAnalyticsData.length === 0}
-              onDeleteHistory={onDeleteAnalyticsHistory}
-              graphColor={streamGraphColor}
-              valueLabel="Streams"
-              title="Total Streams Over Time"
-              description="Track total stream volume growth over time from StreamClout data."
-            />
+
+            <div className="w-full h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={historicalAnalyticsData.map(d => ({
+                    date: new Date(d.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+                    streams: Math.round(d.cumulativeStreams || 0)
+                  }))}
+                  margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                  <Tooltip formatter={v => v.toLocaleString()} />
+                  <Bar dataKey="streams" fill={streamGraphColor} isAnimationActive={true} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
             {selectedSongForDetail && (
                 <SongStreamDetail
