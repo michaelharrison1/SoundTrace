@@ -72,8 +72,8 @@ const AuthHeaderContent: React.FC<AuthHeaderContentProps> = ({ currentUser, auth
         <Button
           onClick={handleFullLogout}
           size="sm"
-          className={`${getNavButtonClass('logout', true)} ml-2`}
-          icon={<img src={keyIcon} alt="Logout" className="w-3 h-3" />}
+          className={`${getNavButtonClass('logout', true)} ml-2 !px-2 !py-0.5 !text-xs !h-6 flex items-center`}
+          icon={<img src={keyIcon} alt="Logout" className="w-4 h-4 mr-1" />}
         >
           Logout
         </Button>
