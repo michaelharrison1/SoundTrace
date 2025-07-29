@@ -277,11 +277,9 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         if (progress >= 1) {
           setStreamLineProgress(1);
           setStreamPhase('fall');
-          streamAnimationStartTime.current = performance.now();
+        } else {
           streamAnimationFrameId.current = requestAnimationFrame(animateStream);
-          return;
         }
-        streamAnimationFrameId.current = requestAnimationFrame(animateStream);
       } else if (streamPhase === 'fall') {
         if (streamAnimationStartTime.current === 0) streamAnimationStartTime.current = timestamp;
         let elapsed = timestamp - streamAnimationStartTime.current;
@@ -302,25 +300,28 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         if (elapsed >= totalFallTime) {
           setStreamBarStates(Array(30).fill('inactive'));
           setStreamPhase('pause');
-          streamPauseTimeout.current = setTimeout(() => {
-            // Clear animation frame ref before restarting
-            streamAnimationFrameId.current = null;
-            setStreamPhase('scan');
-            setStreamLineProgress(0);
-            streamAnimationStartTime.current = 0;
-            streamAnimationFrameId.current = requestAnimationFrame(animateStream);
-          }, 1000); // 1s pause after fall
-          return;
+        } else {
+          streamAnimationFrameId.current = requestAnimationFrame(animateStream);
         }
-        streamAnimationFrameId.current = requestAnimationFrame(animateStream);
-      } else if (streamPhase === 'pause') {
-        // Do nothing, wait for timeout to restart
       }
+      // pause phase handled by timeout below
     }
     if (shouldAnimate) {
-      if (!streamAnimationFrameId.current && streamPhase !== 'pause') {
-        streamAnimationStartTime.current = performance.now() - (streamPhase === 'scan' ? streamLineProgress * LINE_ANIMATION_DURATION_MS : 0);
+      if (streamPhase === 'scan' && !streamAnimationFrameId.current) {
+        streamAnimationStartTime.current = 0;
         streamAnimationFrameId.current = requestAnimationFrame(animateStream);
+      } else if (streamPhase === 'fall' && !streamAnimationFrameId.current) {
+        streamAnimationStartTime.current = 0;
+        streamAnimationFrameId.current = requestAnimationFrame(animateStream);
+      } else if (streamPhase === 'pause') {
+        if (!streamPauseTimeout.current) {
+          streamPauseTimeout.current = setTimeout(() => {
+            streamPauseTimeout.current = null;
+            setStreamPhase('scan');
+            setStreamLineProgress(0);
+            setStreamBarStates(Array(30).fill('inactive'));
+          }, 1000);
+        }
       }
     } else {
       if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
@@ -348,11 +349,9 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         if (progress >= 1) {
           setReachLineProgress(1);
           setReachPhase('fall');
-          reachAnimationStartTime.current = performance.now();
+        } else {
           reachAnimationFrameId.current = requestAnimationFrame(animateReach);
-          return;
         }
-        reachAnimationFrameId.current = requestAnimationFrame(animateReach);
       } else if (reachPhase === 'fall') {
         if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
         let elapsed = timestamp - reachAnimationStartTime.current;
@@ -373,25 +372,28 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         if (elapsed >= totalFallTime) {
           setReachBarStates(Array(30).fill('inactive'));
           setReachPhase('pause');
-          reachPauseTimeout.current = setTimeout(() => {
-            // Clear animation frame ref before restarting
-            reachAnimationFrameId.current = null;
-            setReachPhase('scan');
-            setReachLineProgress(0);
-            reachAnimationStartTime.current = 0;
-            reachAnimationFrameId.current = requestAnimationFrame(animateReach);
-          }, 1000); // 1s pause after fall
-          return;
+        } else {
+          reachAnimationFrameId.current = requestAnimationFrame(animateReach);
         }
-        reachAnimationFrameId.current = requestAnimationFrame(animateReach);
-      } else if (reachPhase === 'pause') {
-        // Do nothing, wait for timeout to restart
       }
+      // pause phase handled by timeout below
     }
     if (shouldAnimate) {
-      if (!reachAnimationFrameId.current && reachPhase !== 'pause') {
-        reachAnimationStartTime.current = performance.now() - (reachPhase === 'scan' ? reachLineProgress * LINE_ANIMATION_DURATION_MS : 0);
+      if (reachPhase === 'scan' && !reachAnimationFrameId.current) {
+        reachAnimationStartTime.current = 0;
         reachAnimationFrameId.current = requestAnimationFrame(animateReach);
+      } else if (reachPhase === 'fall' && !reachAnimationFrameId.current) {
+        reachAnimationStartTime.current = 0;
+        reachAnimationFrameId.current = requestAnimationFrame(animateReach);
+      } else if (reachPhase === 'pause') {
+        if (!reachPauseTimeout.current) {
+          reachPauseTimeout.current = setTimeout(() => {
+            reachPauseTimeout.current = null;
+            setReachPhase('scan');
+            setReachLineProgress(0);
+            setReachBarStates(Array(30).fill('inactive'));
+          }, 1000);
+        }
       }
     } else {
       if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
@@ -404,7 +406,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
       if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
       if (reachPauseTimeout.current) { clearTimeout(reachPauseTimeout.current); reachPauseTimeout.current = null; }
     };
-  }, [isLoadingOverall, overallError, totalFollowers, activeMonitorTab, reachPhase, reachBarConfig]);
+  }, [isLoadingOverall, overallError, totalFollowers, activeMonitorTab, reachPhase, reachBarConfig, reachBarsToActivate]);
 
   const renderTabContent = () => {
     if (isLoadingOverall && activeMonitorTab !== 'collaborationRadar' && activeMonitorTab !== 'beatStats' && activeMonitorTab !== 'estimatedRevenue' && aggregatedArtistData.length === 0) {
