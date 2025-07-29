@@ -8,7 +8,7 @@ import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
 // TimeBasedAnalyticsGraph removed
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
-import { calculateArtistLevel, ARTIST_LEVEL_THRESHOLDS, getActiveLevelHexColor, MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
+import { MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
 import SongStreamDetail from './reachAnalyzer/SongStreamDetail';
 import EstimatedRevenueTab from './reachAnalyzer/EstimatedRevenueTab';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -69,104 +69,33 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   historicalAnalyticsData,
   onDeleteAnalyticsHistory
 }) => {
+
+
   const [activeMonitorTab, setActiveMonitorTab] = useState<MonitorTab>('reach');
-  const [lineProgress, setLineProgress] = useState(0);
-  const animationFrameId = useRef<number | null>(null);
-  const animationStartTime = useRef<number>(0);
-
-  const [currentLevel, setCurrentLevel] = useState(1);
-  const [levelUpAvailable, setLevelUpAvailable] = useState(false);
-  const [isLevelingUp, setIsLevelingUp] = useState(false);
-  const [reachBarConfig, setReachBarConfig] = useState(calculateBarConfig(totalFollowers, currentLevel));
-
-  const [selectedSongForDetail, setSelectedSongForDetail] = useState<AggregatedSongData | null>(null);
-  const visualizerContainerRef = useRef<HTMLDivElement>(null);
-  const [visualizerDimensions, setVisualizerDimensions] = useState({ width: 0, height: 300 });
-
+  // Reach bar config for TotalReachDisplay
+  const [reachBarConfig, setReachBarConfig] = useState(() => calculateBarConfig(totalFollowers, MAX_BAR_SLOTS));
   useEffect(() => {
-    const updateDimensions = () => {
-      if (visualizerContainerRef.current && activeMonitorTab === 'streamHistory') {
-        setVisualizerDimensions({
-          width: visualizerContainerRef.current.offsetWidth,
-          height: Math.max(250, visualizerContainerRef.current.offsetHeight || 300)
-        });
-      }
-    };
-    let resizeTimeout: ReturnType<typeof setTimeout>;
-    const debouncedUpdateDimensions = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(updateDimensions, 100);
-    };
-
-    if (activeMonitorTab === 'streamHistory') {
-        const initialTimeout = setTimeout(updateDimensions, 50);
-        window.addEventListener('resize', debouncedUpdateDimensions);
-        return () => {
-          clearTimeout(initialTimeout);
-          clearTimeout(resizeTimeout);
-          window.removeEventListener('resize', debouncedUpdateDimensions);
-        };
-    }
-  }, [activeMonitorTab]);
+    setReachBarConfig(calculateBarConfig(totalFollowers, MAX_BAR_SLOTS));
+  }, [totalFollowers]);
 
 
-  useEffect(() => {
-    setReachBarConfig(calculateBarConfig(totalFollowers, currentLevel));
-  }, [totalFollowers, currentLevel]);
 
-  useEffect(() => {
-    if (reachBarConfig.numberOfBarsToActivate >= MAX_BAR_SLOTS && (totalFollowers ?? 0) > 0 && !isLevelingUp) {
-        setLevelUpAvailable(true);
-    } else {
-        setLevelUpAvailable(false);
-    }
-  }, [reachBarConfig.numberOfBarsToActivate, totalFollowers, isLevelingUp]);
 
-  const handleLevelUp = useCallback(() => {
-    if (!levelUpAvailable) return;
-    setIsLevelingUp(true);
-    setLevelUpAvailable(false);
-    let flashes = 0;
-    const flashInterval = setInterval(() => {
-        flashes++;
-        if (flashes >= 6) {
-            clearInterval(flashInterval);
-            const newLevel = currentLevel + 1;
-            setCurrentLevel(newLevel);
-            setIsLevelingUp(false);
-            setLineProgress(0);
-            setReachBarConfig(calculateBarConfig(totalFollowers, newLevel));
-        }
-    }, 200);
-  }, [levelUpAvailable, currentLevel, totalFollowers]);
 
-  const activeBarAndLineColor = useMemo(() => getActiveLevelHexColor(currentLevel), [currentLevel]);
-  const streamGraphColor = '#1D9BF0';
+  // Bar color changes based on stream milestones (1K, 10K, 100K, 1M, 10M, 100M, 1B)
+  const getMilestoneColor = (streams: number | null | undefined) => {
+    if (!streams || streams < 1000) return '#1D9BF0'; // default blue
+    if (streams < 10000) return '#00BFFF'; // light blue
+    if (streams < 100000) return '#00FF99'; // greenish
+    if (streams < 1000000) return '#FFD700'; // gold
+    if (streams < 10000000) return '#FF8C00'; // orange
+    if (streams < 100000000) return '#FF1493'; // pink
+    return '#9400D3'; // purple for 100M+
+  };
+  const activeBarAndLineColor = getMilestoneColor(totalFollowers);
+  const streamGraphColor = getMilestoneColor(totalStreams);
 
-  const animateLineCallback = useCallback((timestamp: number) => {
-    if (animationStartTime.current === 0) animationStartTime.current = timestamp;
-    const elapsedTime = timestamp - animationStartTime.current;
-    let newProgress = elapsedTime / LINE_ANIMATION_DURATION_MS;
-    if (newProgress >= 1.0) { newProgress = 0; animationStartTime.current = timestamp; }
-    setLineProgress(newProgress);
-    animationFrameId.current = requestAnimationFrame(animateLineCallback);
-  }, []);
 
-  useEffect(() => {
-    const shouldAnimate = activeMonitorTab === 'reach' && !isLoadingOverall && !overallError && (totalFollowers ?? 0) > 0 && !levelUpAvailable && !isLevelingUp;
-    if (shouldAnimate) {
-      if (!animationFrameId.current) {
-        animationStartTime.current = performance.now() - (lineProgress * LINE_ANIMATION_DURATION_MS);
-        animationFrameId.current = requestAnimationFrame(animateLineCallback);
-      }
-    } else {
-      if (animationFrameId.current) { cancelAnimationFrame(animationFrameId.current); animationFrameId.current = null; }
-      if (activeMonitorTab === 'reach' && (isLoadingOverall || overallError || (totalFollowers ?? 0) <= 0 || levelUpAvailable || isLevelingUp)) {
-         setLineProgress(0);
-      }
-    }
-    return () => { if (animationFrameId.current) { cancelAnimationFrame(animationFrameId.current); animationFrameId.current = null; }};
-  }, [activeMonitorTab, isLoadingOverall, overallError, totalFollowers, animateLineCallback, lineProgress, levelUpAvailable, isLevelingUp]);
 
 
   const [artistSortColumn, setArtistSortColumn] = useState<ArtistSortableColumn>('matchedTracksCount');
@@ -265,11 +194,13 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, [scanLogs, followerResults, uniqueSongsWithStreamCounts]);
 
 
-  const currentArtistLevel = useMemo(() => calculateArtistLevel(aggregatedArtistData.length), [aggregatedArtistData.length]);
 
+
+  // Only include user-uploaded files (exclude imported_spotify_track)
   const aggregatedBeatData: BeatStatsEntry[] = useMemo(() => {
     const beatMap = new Map<string, { matchedSongs: AcrCloudMatch[] }>();
-    scanLogs.forEach(log => { // scanLogs is now the filtered list
+    scanLogs.forEach(log => {
+      if (log.status === 'imported_spotify_track') return; // skip Spotify imports
       if (!beatMap.has(log.originalFileName)) beatMap.set(log.originalFileName, { matchedSongs: [] });
       const existingMatches = beatMap.get(log.originalFileName)!.matchedSongs;
       log.matches.forEach(newMatch => { if (!existingMatches.find(m => m.id === newMatch.id)) existingMatches.push(newMatch); });
@@ -278,48 +209,124 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, [scanLogs]);
 
 
-  const handleMatchSelect = useCallback((match: AcrCloudMatch, log: TrackScanLog) => {
-    if (match.spotifyTrackId) {
-        const songData: AggregatedSongData = {
-            spotifyTrackId: match.spotifyTrackId,
-            title: match.title,
-            artist: match.artist,
-            albumName: match.album,
-            coverArtUrl: match.coverArtUrl,
-            latestStreamCount: match.streamCount ?? 0,
-            latestStreamCountTimestamp: match.streamCountTimestamp,
-            spotifyArtistIdForAggregation: match.spotifyArtistId,
-        };
-        setSelectedSongForDetail(songData);
-    } else {
-        console.log("Selected non-Spotify track:", match.title);
-        setSelectedSongForDetail(null);
+  // Song detail logic removed (not used in UI)
+
+
+
+
+
+  // --- Move scan line animation hooks to top level (before renderTabContent) ---
+  // Stream scan line animation state
+  const [streamLineProgress, setStreamLineProgress] = React.useState(0);
+  const [streamBarRetract, setStreamBarRetract] = React.useState(false);
+  const streamAnimationFrameId = React.useRef<number | null>(null);
+  const streamAnimationStartTime = React.useRef<number>(0);
+  const streamPauseTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  React.useEffect(() => {
+    const shouldAnimate = !isLoadingOverall && !overallError && (totalStreams ?? 0) > 0 && activeMonitorTab === 'reach';
+    function animateStreamLine(timestamp: number) {
+      if (streamAnimationStartTime.current === 0) streamAnimationStartTime.current = timestamp;
+      let elapsed = timestamp - streamAnimationStartTime.current;
+      let progress = elapsed / LINE_ANIMATION_DURATION_MS;
+      if (progress >= 1.0) {
+        setStreamLineProgress(1);
+        if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
+        // Pause for 4 seconds, then retract bars, then restart
+        streamPauseTimeout.current = setTimeout(() => {
+          setStreamBarRetract(true);
+          setTimeout(() => {
+            setStreamBarRetract(false);
+            setStreamLineProgress(0);
+            streamAnimationStartTime.current = performance.now();
+            streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
+          }, 1000); // 1s retract
+        }, 4000); // 4s pause
+        return;
+      }
+      setStreamLineProgress(progress);
+      streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
     }
-  }, []);
+    if (shouldAnimate) {
+      if (!streamAnimationFrameId.current && !streamBarRetract) {
+        streamAnimationStartTime.current = performance.now() - (streamLineProgress * LINE_ANIMATION_DURATION_MS);
+        streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
+      }
+    } else {
+      if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
+      if (streamPauseTimeout.current) { clearTimeout(streamPauseTimeout.current); streamPauseTimeout.current = null; }
+      setStreamLineProgress(0);
+      setStreamBarRetract(false);
+    }
+    return () => {
+      if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
+      if (streamPauseTimeout.current) { clearTimeout(streamPauseTimeout.current); streamPauseTimeout.current = null; }
+    };
+  }, [isLoadingOverall, overallError, totalStreams, streamBarRetract, activeMonitorTab]);
 
-  const handleCloseSongDetail = useCallback(() => {
-    setSelectedSongForDetail(null);
-  }, []);
+  // Follower reach scan line animation state
+  const [reachLineProgress, setReachLineProgress] = React.useState(0);
+  const [reachBarRetract, setReachBarRetract] = React.useState(false);
+  const reachAnimationFrameId = React.useRef<number | null>(null);
+  const reachAnimationStartTime = React.useRef<number>(0);
+  const reachPauseTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  React.useEffect(() => {
+    const shouldAnimate = !isLoadingOverall && !overallError && (totalFollowers ?? 0) > 0 && activeMonitorTab === 'reach';
+    function animateReachLine(timestamp: number) {
+      if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
+      let elapsed = timestamp - reachAnimationStartTime.current;
+      let progress = elapsed / LINE_ANIMATION_DURATION_MS;
+      if (progress >= 1.0) {
+        setReachLineProgress(1);
+        if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
+        // Pause for 4 seconds, then retract bars, then restart
+        reachPauseTimeout.current = setTimeout(() => {
+          setReachBarRetract(true);
+          setTimeout(() => {
+            setReachBarRetract(false);
+            setReachLineProgress(0);
+            reachAnimationStartTime.current = performance.now();
+            reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
+          }, 1000); // 1s retract
+        }, 4000); // 4s pause
+        return;
+      }
+      setReachLineProgress(progress);
+      reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
+    }
+    if (shouldAnimate) {
+      if (!reachAnimationFrameId.current && !reachBarRetract) {
+        reachAnimationStartTime.current = performance.now() - (reachLineProgress * LINE_ANIMATION_DURATION_MS);
+        reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
+      }
+    } else {
+      if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
+      if (reachPauseTimeout.current) { clearTimeout(reachPauseTimeout.current); reachPauseTimeout.current = null; }
+      setReachLineProgress(0);
+      setReachBarRetract(false);
+    }
+    return () => {
+      if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
+      if (reachPauseTimeout.current) { clearTimeout(reachPauseTimeout.current); reachPauseTimeout.current = null; }
+    };
+  }, [isLoadingOverall, overallError, totalFollowers, reachBarRetract, activeMonitorTab]);
 
-
-
-
+  // --- End scan line animation hooks ---
 
   const renderTabContent = () => {
     if (isLoadingOverall && activeMonitorTab !== 'collaborationRadar' && activeMonitorTab !== 'beatStats' && activeMonitorTab !== 'estimatedRevenue' && aggregatedArtistData.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center flex-grow py-4">
-                <ProgressBar text={`Loading ${activeMonitorTab === 'reach' ? 'reach data' : (activeMonitorTab === 'streamHistory' ? 'stream history' : 'artist statistics')}...`} />
-                <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
-            </div>
-        );
+      return (
+        <div className="flex flex-col items-center justify-center flex-grow py-4">
+          <ProgressBar text={`Loading ${activeMonitorTab === 'reach' ? 'reach data' : (activeMonitorTab === 'streamHistory' ? 'stream history' : 'artist statistics')}...`} />
+          <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
+        </div>
+      );
     }
-     if (overallError && (activeMonitorTab === 'reach' || activeMonitorTab === 'streamHistory' || activeMonitorTab === 'artistStats' || activeMonitorTab === 'estimatedRevenue')) {
-        return <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center flex-grow"><p>Error loading data: {overallError}</p></div>;
+    if (overallError && (activeMonitorTab === 'reach' || activeMonitorTab === 'streamHistory' || activeMonitorTab === 'artistStats' || activeMonitorTab === 'estimatedRevenue')) {
+      return <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center flex-grow"><p>Error loading data: {overallError}</p></div>;
     }
 
     switch (activeMonitorTab) {
-      case 'reach':
+      case 'reach': {
         // Calculate stream bar config and color, force 1M per bar and never fill all bars
         const minBarUnit = 1000000;
         const maxBars = 30;
@@ -330,109 +337,12 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
           unitLabel: streamBarUnit >= 1000000 ? `${(streamBarUnit / 1000000).toFixed(0)}M` : `${streamBarUnit}`
         };
         const streamBarColor = '#1D9BF0';
-        // Animation for stream scan line with pause and retract (4s pause)
-        const [streamLineProgress, setStreamLineProgress] = React.useState(0);
-        const [streamBarRetract, setStreamBarRetract] = React.useState(false);
-        const streamAnimationFrameId = React.useRef<number | null>(null);
-        const streamAnimationStartTime = React.useRef<number>(0);
-        const streamPauseTimeout = React.useRef<NodeJS.Timeout | null>(null);
-        React.useEffect(() => {
-          const shouldAnimate = !isLoadingOverall && !overallError && (totalStreams ?? 0) > 0;
-          function animateStreamLine(timestamp: number) {
-            if (streamAnimationStartTime.current === 0) streamAnimationStartTime.current = timestamp;
-            let elapsed = timestamp - streamAnimationStartTime.current;
-            let progress = elapsed / LINE_ANIMATION_DURATION_MS;
-            if (progress >= 1.0) {
-              setStreamLineProgress(1);
-              if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
-              // Pause for 4 seconds, then retract bars, then restart
-              streamPauseTimeout.current = setTimeout(() => {
-                setStreamBarRetract(true);
-                setTimeout(() => {
-                  setStreamBarRetract(false);
-                  setStreamLineProgress(0);
-                  streamAnimationStartTime.current = performance.now();
-                  streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
-                }, 1000); // 1s retract
-              }, 4000); // 4s pause
-              return;
-            }
-            setStreamLineProgress(progress);
-            streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
-          }
-          if (shouldAnimate) {
-            if (!streamAnimationFrameId.current && !streamBarRetract) {
-              streamAnimationStartTime.current = performance.now() - (streamLineProgress * LINE_ANIMATION_DURATION_MS);
-              streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
-            }
-          } else {
-            if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
-            if (streamPauseTimeout.current) { clearTimeout(streamPauseTimeout.current); streamPauseTimeout.current = null; }
-            setStreamLineProgress(0);
-            setStreamBarRetract(false);
-          }
-          return () => {
-            if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
-            if (streamPauseTimeout.current) { clearTimeout(streamPauseTimeout.current); streamPauseTimeout.current = null; }
-          };
-        }, [isLoadingOverall, overallError, totalStreams, streamBarRetract]);
-
-        // Animation for follower reach scan line with pause and retract (4s pause)
-        const [reachLineProgress, setReachLineProgress] = React.useState(0);
-        const [reachBarRetract, setReachBarRetract] = React.useState(false);
-        const reachAnimationFrameId = React.useRef<number | null>(null);
-        const reachAnimationStartTime = React.useRef<number>(0);
-        const reachPauseTimeout = React.useRef<NodeJS.Timeout | null>(null);
-        React.useEffect(() => {
-          const shouldAnimate = !isLoadingOverall && !overallError && (totalFollowers ?? 0) > 0 && !levelUpAvailable && !isLevelingUp;
-          function animateReachLine(timestamp: number) {
-            if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
-            let elapsed = timestamp - reachAnimationStartTime.current;
-            let progress = elapsed / LINE_ANIMATION_DURATION_MS;
-            if (progress >= 1.0) {
-              setReachLineProgress(1);
-              if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
-              // Pause for 4 seconds, then retract bars, then restart
-              reachPauseTimeout.current = setTimeout(() => {
-                setReachBarRetract(true);
-                setTimeout(() => {
-                  setReachBarRetract(false);
-                  setReachLineProgress(0);
-                  reachAnimationStartTime.current = performance.now();
-                  reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
-                }, 1000); // 1s retract
-              }, 4000); // 4s pause
-              return;
-            }
-            setReachLineProgress(progress);
-            reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
-          }
-          if (shouldAnimate) {
-            if (!reachAnimationFrameId.current && !reachBarRetract) {
-              reachAnimationStartTime.current = performance.now() - (reachLineProgress * LINE_ANIMATION_DURATION_MS);
-              reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
-            }
-          } else {
-            if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
-            if (reachPauseTimeout.current) { clearTimeout(reachPauseTimeout.current); reachPauseTimeout.current = null; }
-            setReachLineProgress(0);
-            setReachBarRetract(false);
-          }
-          return () => {
-            if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
-            if (reachPauseTimeout.current) { clearTimeout(reachPauseTimeout.current); reachPauseTimeout.current = null; }
-          };
-        }, [isLoadingOverall, overallError, totalFollowers, levelUpAvailable, isLevelingUp, reachBarRetract]);
         return (
           <>
             <TotalReachDisplay
               totalFollowers={totalFollowers}
               isLoading={isLoadingOverall}
               error={overallError}
-              currentLevel={currentLevel}
-              levelUpAvailable={levelUpAvailable}
-              isLevelingUp={isLevelingUp}
-              onLevelUp={handleLevelUp}
               reachBarConfig={reachBarConfig}
               activeBarAndLineColor={activeBarAndLineColor}
               lineProgress={reachLineProgress}
@@ -489,26 +399,27 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
             </div>
           </>
         );
+      }
       case 'streamHistory':
-        return null;
+        return <div className="text-center text-gray-700 py-8">Stream history is not currently available.</div>;
       case 'artistStats':
         return (
           <ArtistStatsTable
             aggregatedArtistData={aggregatedArtistData}
             isLoading={isLoadingOverall && aggregatedArtistData.length === 0}
-            currentArtistLevel={currentArtistLevel}
             sortColumn={artistSortColumn}
             sortDirection={artistSortDirection}
             onSort={setArtistSortColumn}
             onSortDirection={setArtistSortDirection}
+            currentArtistLevel={0}
           />
         );
       case 'beatStats':
         if (aggregatedBeatData.length === 0 && scanLogs.length > 0 && !isLoadingOverall) {
-            return <p className="text-center text-gray-700 py-8">No beat data available from current scans.</p>;
+          return <p className="text-center text-gray-700 py-8">No beat data available from current scans.</p>;
         }
-         if (isLoadingOverall && aggregatedBeatData.length === 0) {
-            return <div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Loading beat statistics..." /></div>;
+        if (isLoadingOverall && aggregatedBeatData.length === 0) {
+          return <div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Loading beat statistics..." /></div>;
         }
         return (
           <BeatStatsTable
@@ -554,12 +465,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
           <button className="win95-button-sm bg-[#C0C0C0] text-black font-bold font-mono w-4 h-4 leading-none text-xs" aria-label="Close" disabled>X</button>
         </div>
       </div>
-      <div className="menu-bar flex space-x-0 select-none">
-        {['File', 'Edit', 'View', 'Help'].map(item => (
-            <span key={item} className="text-sm hover:bg-black hover:text-white px-2 py-0.5 cursor-default"><u>{item[0]}</u>{item.substring(1)}</span>
-        ))}
-      </div>
-      <div className="tabs-container flex pl-1 pt-1 bg-[#C0C0C0] select-none">
+      {/* Top menu removed as per TODO. Adjusted layout below. */}
+      <div className="tabs-container flex pl-1 pt-2 bg-[#C0C0C0] select-none">
         {monitorTabs.map(tab => (
             <div
               key={tab.id}
@@ -579,8 +486,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
           {renderTabContent()}
         </div>
       </div>
-      <div className="status-bar flex justify-between items-center px-1 py-0 border-t-2 border-t-[#808080] bg-[#C0C0C0] h-5 text-xs select-none">
-        <span className="win95-border-inset px-2 py-0 h-[18px] flex items-center">Level {currentLevel}</span>
+      <div className="status-bar flex justify-end items-center px-1 py-0 border-t-2 border-t-[#808080] bg-[#C0C0C0] h-5 text-xs select-none">
         <div className="flex space-x-0.5 h-[18px]">
            <div className="win95-border-inset w-16 px-1 flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 1 H9 V9 H1Z" fill="#008000" stroke="#000000" strokeWidth="0.5"/></svg></div>
            <div className="win95-border-inset w-12 px-1 flex items-center justify-center">{new Date().toLocaleTimeString('en-US', {hour12: false, hour: '2-digit', minute:'2-digit'})}</div>

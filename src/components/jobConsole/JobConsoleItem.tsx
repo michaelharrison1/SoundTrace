@@ -2,7 +2,8 @@
 import React, { useState, useCallback } from 'react';
 import { ScanJob, JobStatus, JobFileState, JobType } from '../../types';
 import Button from '../common/Button';
-import ProgressBar from '../common/ProgressBar'; // Changed from CRTProgressBar
+import Win95ProgressBar from '../common/Win95ProgressBar';
+import Win95AlertBox from '../common/Win95AlertBox';
 import { scanLogService } from '../../services/scanLogService';
 
 interface JobConsoleItemProps {
@@ -140,19 +141,27 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
           </div>
         </div>
 
-        {(isProcessing || job.totalItems > 0) && (
+        {/* Job Failure UI: Remove loading bar, show Win95 alert */}
+        {job.status.startsWith('failed_') || job.status === 'aborted' ? (
+          <div className="my-2">
+            <Win95AlertBox message={
+              job.lastErrorMessage
+                ? `Job failed: ${job.lastErrorMessage}`
+                : 'Job failed: check file or connection'
+            } />
+          </div>
+        ) : (isProcessing || job.totalItems > 0) && (
           <div>
-            <ProgressBar 
+            <Win95ProgressBar
+              percent={progressPercent}
               text={isProcessing ? `${job.itemsProcessed} / ${job.totalItems > 0 ? job.totalItems : '?'} items. ${job.lastProcessedItemInfo?.itemName ? `Last: ${job.lastProcessedItemInfo.itemName.substring(0,30)}${job.lastProcessedItemInfo.itemName.length > 30 ? '...' : ''}`:'' }` : undefined}
             />
             {job.itemsWithMatches > 0 && <p className="text-xs text-green-700 mt-0.5">{job.itemsWithMatches} item(s) with matches found.</p>}
             {job.itemsFailed > 0 && <p className="text-xs text-red-700 mt-0.5">{job.itemsFailed} item(s) failed processing.</p>}
           </div>
         )}
-
-        {job.lastErrorMessage && <p className="text-xs text-red-600 italic mt-0.5">Error: {job.lastErrorMessage}</p>}
         {reuploadMessage && <p className="text-xs text-yellow-700 italic mt-0.5">{reuploadMessage}</p>}
-        {error && <p className="text-xs text-red-600 mt-0.5">Action Error: {error}</p>}
+        {error && <Win95AlertBox message={`Action Error: ${error}`} className="my-2" />}
 
         <div className="flex items-center space-x-1 pt-1">
           {isResumable && (

@@ -77,6 +77,23 @@ const EstimatedRevenueTab: React.FC<EstimatedRevenueTabProps> = ({
         </p>
       </div>
 
+      {/* Move Estimated Revenue box above payout rate input */}
+      {isLoading && typeof totalStreams === 'undefined' ? (
+        <ProgressBar text="Loading total stream data..." />
+      ) : (
+        <div className="p-2 win95-border-outset bg-green-100">
+          <h4 className="font-semibold text-green-800">Total Estimated Revenue:</h4>
+          <p className="text-2xl font-bold text-green-700">
+            {formatCurrency(calculatedTotalRevenue)}
+          </p>
+          {typeof totalStreams === 'number' && (
+            <p className="text-xs text-green-600">
+              (from {formatFollowersDisplay(totalStreams)} total streams at ${payoutRate.toFixed(4)}/stream)
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="p-2 win95-border-outset bg-gray-100 text-sm">
         <label htmlFor="payoutRate" className="block font-normal mb-1">
           Payout Rate per Stream (USD):
@@ -97,22 +114,6 @@ const EstimatedRevenueTab: React.FC<EstimatedRevenueTabProps> = ({
           (e.g., Spotify average is often cited around $0.003 - $0.005)
         </p>
       </div>
-
-      {isLoading && typeof totalStreams === 'undefined' ? (
-        <ProgressBar text="Loading total stream data..." />
-      ) : (
-        <div className="p-2 win95-border-outset bg-green-100">
-          <h4 className="font-semibold text-green-800">Total Estimated Revenue:</h4>
-          <p className="text-2xl font-bold text-green-700">
-            {formatCurrency(calculatedTotalRevenue)}
-          </p>
-          {typeof totalStreams === 'number' && (
-            <p className="text-xs text-green-600">
-              (from {formatFollowersDisplay(totalStreams)} total streams at ${payoutRate.toFixed(4)}/stream)
-            </p>
-          )}
-        </div>
-      )}
 
       {isLoading && songsWithRevenue.length === 0 ? (
          <ProgressBar text="Loading song revenue data..." />
