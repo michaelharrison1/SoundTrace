@@ -14,6 +14,7 @@ interface TotalReachDisplayProps {
   reachBarConfig: BarConfig;
   activeBarAndLineColor: string;
   lineProgress: number;
+  barRetract?: boolean;
 }
 
 const TotalReachDisplay: React.FC<TotalReachDisplayProps> = ({
@@ -27,6 +28,7 @@ const TotalReachDisplay: React.FC<TotalReachDisplayProps> = ({
   reachBarConfig,
   activeBarAndLineColor,
   lineProgress,
+  barRetract = false,
 }) => {
   const displayTotalReachValue = formatFollowersDisplay(totalFollowers, isLoading);
   const crtElementBaseClass = "win95-border-inset p-1 flex items-end space-x-px overflow-hidden relative h-32";
@@ -71,8 +73,12 @@ const TotalReachDisplay: React.FC<TotalReachDisplayProps> = ({
         >
           <div className="flex w-full h-full items-end">
             {[...Array(MAX_BAR_SLOTS)].map((_, i) => {
-              const barIsActive = levelUpAvailable || (lineProgress * MAX_BAR_SLOTS > i && i < reachBarConfig.numberOfBarsToActivate && (totalFollowers ?? 0) > 0);
-              const barHeight = barIsActive ? '100%' : '0%';
+              let barIsActive = levelUpAvailable || (lineProgress * MAX_BAR_SLOTS > i && i < reachBarConfig.numberOfBarsToActivate && (totalFollowers ?? 0) > 0);
+              let barHeight = barIsActive ? '100%' : '0%';
+              if (barRetract) {
+                barIsActive = false;
+                barHeight = '0%';
+              }
               return (
                 <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
                   <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>

@@ -320,10 +320,17 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
     switch (activeMonitorTab) {
       case 'reach':
-        // Calculate stream bar config and color
-        const streamBarConfig = calculateBarConfig(totalStreams, 1);
-        const streamBarColor = '#1D9BF0'; // Use a blue distinct from follower reach
-        // Animation for stream scan line with pause and retract
+        // Calculate stream bar config and color, force 1M per bar and never fill all bars
+        const minBarUnit = 1000000;
+        const maxBars = 30;
+        const streamBarUnit = Math.max(minBarUnit, Math.ceil((totalStreams ?? 1) / (maxBars - 2)));
+        const streamBarConfig = {
+          barUnit: streamBarUnit,
+          numberOfBarsToActivate: Math.min(maxBars - 1, Math.floor((totalStreams ?? 0) / streamBarUnit)),
+          unitLabel: streamBarUnit >= 1000000 ? `${(streamBarUnit / 1000000).toFixed(0)}M` : `${streamBarUnit}`
+        };
+        const streamBarColor = '#1D9BF0';
+        // Animation for stream scan line with pause and retract (4s pause)
         const [streamLineProgress, setStreamLineProgress] = React.useState(0);
         const [streamBarRetract, setStreamBarRetract] = React.useState(false);
         const streamAnimationFrameId = React.useRef<number | null>(null);
@@ -338,7 +345,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
             if (progress >= 1.0) {
               setStreamLineProgress(1);
               if (streamAnimationFrameId.current) { cancelAnimationFrame(streamAnimationFrameId.current); streamAnimationFrameId.current = null; }
-              // Pause for 8 seconds, then retract bars, then restart
+              // Pause for 4 seconds, then retract bars, then restart
               streamPauseTimeout.current = setTimeout(() => {
                 setStreamBarRetract(true);
                 setTimeout(() => {
@@ -347,7 +354,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                   streamAnimationStartTime.current = performance.now();
                   streamAnimationFrameId.current = requestAnimationFrame(animateStreamLine);
                 }, 1000); // 1s retract
-              }, 8000); // 8s pause
+              }, 4000); // 4s pause
               return;
             }
             setStreamLineProgress(progress);
@@ -369,6 +376,53 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
             if (streamPauseTimeout.current) { clearTimeout(streamPauseTimeout.current); streamPauseTimeout.current = null; }
           };
         }, [isLoadingOverall, overallError, totalStreams, streamBarRetract]);
+
+        // Animation for follower reach scan line with pause and retract (4s pause)
+        const [reachLineProgress, setReachLineProgress] = React.useState(0);
+        const [reachBarRetract, setReachBarRetract] = React.useState(false);
+        const reachAnimationFrameId = React.useRef<number | null>(null);
+        const reachAnimationStartTime = React.useRef<number>(0);
+        const reachPauseTimeout = React.useRef<NodeJS.Timeout | null>(null);
+        React.useEffect(() => {
+          const shouldAnimate = !isLoadingOverall && !overallError && (totalFollowers ?? 0) > 0 && !levelUpAvailable && !isLevelingUp;
+          function animateReachLine(timestamp: number) {
+            if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
+            let elapsed = timestamp - reachAnimationStartTime.current;
+            let progress = elapsed / LINE_ANIMATION_DURATION_MS;
+            if (progress >= 1.0) {
+              setReachLineProgress(1);
+              if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
+              // Pause for 4 seconds, then retract bars, then restart
+              reachPauseTimeout.current = setTimeout(() => {
+                setReachBarRetract(true);
+                setTimeout(() => {
+                  setReachBarRetract(false);
+                  setReachLineProgress(0);
+                  reachAnimationStartTime.current = performance.now();
+                  reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
+                }, 1000); // 1s retract
+              }, 4000); // 4s pause
+              return;
+            }
+            setReachLineProgress(progress);
+            reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
+          }
+          if (shouldAnimate) {
+            if (!reachAnimationFrameId.current && !reachBarRetract) {
+              reachAnimationStartTime.current = performance.now() - (reachLineProgress * LINE_ANIMATION_DURATION_MS);
+              reachAnimationFrameId.current = requestAnimationFrame(animateReachLine);
+            }
+          } else {
+            if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
+            if (reachPauseTimeout.current) { clearTimeout(reachPauseTimeout.current); reachPauseTimeout.current = null; }
+            setReachLineProgress(0);
+            setReachBarRetract(false);
+          }
+          return () => {
+            if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
+            if (reachPauseTimeout.current) { clearTimeout(reachPauseTimeout.current); reachPauseTimeout.current = null; }
+          };
+        }, [isLoadingOverall, overallError, totalFollowers, levelUpAvailable, isLevelingUp, reachBarRetract]);
         return (
           <>
             <TotalReachDisplay
@@ -381,7 +435,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
               onLevelUp={handleLevelUp}
               reachBarConfig={reachBarConfig}
               activeBarAndLineColor={activeBarAndLineColor}
-              lineProgress={lineProgress}
+              lineProgress={reachLineProgress}
+              barRetract={reachBarRetract}
             />
             <div className="mt-3">
               <h4 className="text-base font-semibold text-black mb-0 text-center">Total Estimated Streams</h4>
@@ -403,7 +458,6 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
                       let barIsActive = streamLineProgress * 30 > i && streamBarConfig.numberOfBarsToActivate > i && (totalStreams ?? 0) > 0;
                       let barHeight = barIsActive ? '100%' : '0%';
                       if (streamBarRetract) {
-                        // Smoothly retract bars
                         barIsActive = false;
                         barHeight = '0%';
                       }
