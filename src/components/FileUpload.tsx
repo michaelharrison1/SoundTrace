@@ -4,6 +4,8 @@ import Button from './common/Button';
 import UploadIcon from './icons/UploadIcon';
 import { TARGET_SAMPLE_RATE } from '../utils/audioProcessing';
 import { JobFileState } from '../types';
+import uploadDiscIcon from '../src/UploadDisc.png';
+
 
 interface FileUploadProps {
   onFilesSelectedForJob: (files: File[], numberOfSegments: number) => void;
@@ -143,7 +145,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
             multiple
             disabled={isLoading}
           />
-          <UploadIcon className={`mx-auto h-10 w-10 ${dragOver ? 'text-black' : 'text-gray-700'} mb-1`} />
+          <img
+              src={uploadDiscIcon}
+              alt="Upload Disc"
+              className={`mx-auto h-10 w-10 mb-1 ${dragOver ? 'filter brightness-100' : 'filter brightness-50'}`}
+          />
           <p className="text-sm text-black">
             Drag & drop audio files or <span className="font-semibold underline">click here</span>.
           </p>

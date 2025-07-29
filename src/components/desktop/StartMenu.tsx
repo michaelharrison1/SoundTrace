@@ -4,7 +4,7 @@ import React from 'react';
 import { User } from '../../types';
 import { AuthView, AppWindow } from '../../App'; // Added AppWindow for options type clarity
 
-// Example imports for window content (adjust paths as needed)
+// Example imports for window content
 import PrivacyPolicyPage from '../PrivacyPolicyPage';
 import TermsOfServicePage from '../TermsOfServicePage';
 import { useSpotifyPlayer } from '../../contexts/SpotifyContext';

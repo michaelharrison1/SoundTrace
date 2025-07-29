@@ -6,6 +6,8 @@ import ReachAnalyzer from './common/ReachAnalyzer';
 import ProgressBar from './common/ProgressBar';
 import { analyticsService } from '../services/analyticsService';
 import { scanLogService } from '../services/scanLogService';
+import fireIcon from '../src/FIRE.png';  // adjust the path as needed
+
 
 interface DashboardViewPageProps {
   user: User;
@@ -238,16 +240,18 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
   if (completedScans.length === 0 && !isLoadingOverall) { // Use completedScans
     return (
-      <div className={containerStyles}>
-        <span className="text-4xl text-gray-500" aria-hidden="true">♫</span>
-        <h2 className="text-lg font-normal text-black mt-1">No Completed Scan Data Yet</h2>
-        <p className="text-gray-700 mt-0.5 text-sm">Processed tracks from completed jobs and their matches will appear here.</p>
-        <p className="text-gray-700 mt-0.5 text-sm">Go to "New Scan Job" to start, then check "Job Console" for progress.</p>
-      </div>
+        <div className={containerStyles}>
+            <img src={fireIcon} alt="Fire Icon" className="w-12 h-12 mx-auto" aria-hidden="true"/>
+            <h2 className="text-lg font-normal text-black mt-1">No Completed Scan Data Yet</h2>
+            <p className="text-gray-700 mt-0.5 text-sm">Processed tracks from completed jobs and their matches will
+                appear here.</p>
+            <p className="text-gray-700 mt-0.5 text-sm">Go to "New Scan Job" to start, then check "Job Console" for
+                progress.</p>
+        </div>
     );
   }
 
-  if (isLoadingOverall && historicalAnalyticsData.length === 0 && completedScans.length > 0) { // Use completedScans
+    if (isLoadingOverall && historicalAnalyticsData.length === 0 && completedScans.length > 0) { // Use completedScans
      return (
       <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
         <ProgressBar text="Loading dashboard data..." />
