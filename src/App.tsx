@@ -20,6 +20,7 @@ import MainAppLayout from './components/MainAppLayout';
 import { User, TrackScanLog, ScanJob } from './types';
 import ProgressBar from './components/common/ProgressBar';
 import { SpotifyProvider, SpotifyCallbackReceiver } from './contexts/SpotifyContext';
+import { Win95ModalProvider } from './components/common/Win95ModalProvider';
 import { authService } from './services/authService';
 import MainAppMenu from './components/MainAppMenu';
 import AppIntroduction from './components/app/AppIntroduction';
@@ -290,8 +291,10 @@ const AppContentInternal: React.FC = React.memo(() => {
 AppContentInternal.displayName = 'AppContentInternal';
 
 const App: React.FC = () => (
-  <SpotifyProvider>
-    <AppContentInternal />
-  </SpotifyProvider>
+  <Win95ModalProvider>
+    <SpotifyProvider>
+      <AppContentInternal />
+    </SpotifyProvider>
+  </Win95ModalProvider>
 );
 export default App;
