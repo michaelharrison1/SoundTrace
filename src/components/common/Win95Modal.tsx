@@ -1,54 +1,73 @@
 import React from 'react';
 
-interface Win95ModalProps {
-  isOpen: boolean;
+export type Win95ModalType = 'confirm' | 'alert' | 'prompt';
+
+export interface Win95ModalProps {
+  open: boolean;
+  type: Win95ModalType;
   title?: string;
-  message: string | React.ReactNode;
-  onConfirm?: () => void;
-  onCancel?: () => void;
+  message: string;
+  defaultValue?: string;
   confirmText?: string;
   cancelText?: string;
-  showCancel?: boolean;
-  children?: React.ReactNode;
+  allowOutsideClick?: boolean;
+  onConfirm: (value?: string) => void;
+  onCancel: () => void;
 }
 
 const Win95Modal: React.FC<Win95ModalProps> = ({
-  isOpen,
+  open,
+  type,
   title,
   message,
-  onConfirm,
-  onCancel,
+  defaultValue = '',
   confirmText = 'OK',
   cancelText = 'Cancel',
-  showCancel = true,
-  children,
+  allowOutsideClick = true,
+  onConfirm,
+  onCancel,
 }) => {
-  if (!isOpen) return null;
+  const [inputValue, setInputValue] = React.useState(defaultValue);
+  React.useEffect(() => { setInputValue(defaultValue); }, [defaultValue, open]);
+  if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-      <div className="win95-border-outset bg-[#F8F8F8] p-0.5 min-w-[320px] max-w-[90vw] shadow-lg animate-flicker" style={{ boxShadow: '2px 2px 0 #000, 4px 4px 0 #888' }}>
-        <div className="win95-border-inset bg-[#C0C0C0] p-0.5">
-          {title && (
-            <div className="flex items-center bg-[#000080] text-white px-2 py-1 win95-border-outset mb-2">
-              <span className="font-bold text-sm">{title}</span>
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30" onClick={allowOutsideClick ? onCancel : undefined}>
+      <div
+        className="win95-border-outset bg-[#C0C0C0] min-w-[320px] max-w-[90vw] p-0.5 shadow-xl relative"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex items-center justify-between bg-[#000080] text-white px-2 py-1 h-7 win95-border-inset">
+          <span className="font-bold text-sm">{title || 'Message'}</span>
+        </div>
+        <div className="p-4 text-black text-base min-h-[48px]">{message}</div>
+        {type === 'prompt' && (
+          <div className="px-4 pb-2">
+            <input
+              className="w-full win95-border-inset bg-white px-2 py-1 text-black"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              autoFocus
+            />
+          </div>
+        )}
+        <div className="flex justify-end gap-2 px-4 pb-3">
+          {type === 'confirm' && (
+            <>
+              <button className="win95-button-sm px-4 py-1" onClick={() => onConfirm()}>{confirmText}</button>
+              <button className="win95-button-sm px-4 py-1" onClick={onCancel}>{cancelText}</button>
+            </>
           )}
-          <div className="flex items-start space-x-2 p-2">
-            <div className="flex-shrink-0 mt-1">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <rect x="2" y="2" width="20" height="20" rx="2" fill="#FFF" stroke="#000" strokeWidth="2" />
-                <rect x="7" y="7" width="10" height="10" rx="2" fill="#1D9BF0" stroke="#000" strokeWidth="1" />
-                <text x="12" y="16" textAnchor="middle" fontSize="12" fill="#FFF" fontFamily="monospace">!</text>
-              </svg>
-            </div>
-            <div className="font-mono text-base flex-1">{message}{children}</div>
-          </div>
-          <div className="flex justify-end space-x-2 px-2 pb-2 mt-2">
-            {showCancel && (
-              <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono px-3 py-1 win95-border-outset" onClick={onCancel}>{cancelText}</button>
-            )}
-            <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono px-3 py-1 win95-border-outset" onClick={onConfirm}>{confirmText}</button>
-          </div>
+          {type === 'alert' && (
+            <button className="win95-button-sm px-4 py-1" onClick={() => onConfirm()}>{confirmText}</button>
+          )}
+          {type === 'prompt' && (
+            <>
+              <button className="win95-button-sm px-4 py-1" onClick={() => onConfirm(inputValue)}>{confirmText}</button>
+              <button className="win95-button-sm px-4 py-1" onClick={onCancel}>{cancelText}</button>
+            </>
+          )}
         </div>
       </div>
     </div>

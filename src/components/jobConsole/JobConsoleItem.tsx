@@ -1,5 +1,6 @@
 
 import React, { useState, useCallback } from 'react';
+import { useWin95Modal } from '../common/Win95ModalProvider';
 import { ScanJob, JobStatus, JobFileState, JobType } from '../../types';
 import Button from '../common/Button';
 import Win95ProgressBar from '../common/Win95ProgressBar';
@@ -73,8 +74,15 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
     return false;
   }, [onLogout]);
 
+  const { confirm } = useWin95Modal();
   const handleDelete = useCallback(async () => {
-    if (!window.confirm(`Are you sure you want to delete job "${job.jobName}" and all its associated scan logs? This cannot be undone.`)) return;
+    const shouldDelete = await confirm({
+      title: 'Delete Job',
+      message: `Are you sure you want to delete job "${job.jobName}" and all its associated scan logs? This cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+    });
+    if (!shouldDelete) return;
     setError(null);
     setIsDeleting(true);
     onInteractionStart();
@@ -89,7 +97,7 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
       setIsDeleting(false);
       onInteractionEnd();
     }
-  }, [job.id, job.jobName, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError]);
+  }, [job.id, job.jobName, onJobAction, onInteractionStart, onInteractionEnd, handleAuthError, confirm]);
 
   const handleResume = useCallback(async () => {
     setError(null);

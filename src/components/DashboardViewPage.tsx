@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useWin95Modal } from './common/Win95ModalProvider';
 import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, TrackScanLogStatus, ScanJob } from '../types';
 import PreviousScans from './PreviousScans';
 import ReachAnalyzer from './common/ReachAnalyzer';
@@ -29,7 +30,6 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   const [historicalAnalyticsData, setHistoricalAnalyticsData] = useState<DailyAnalyticsSnapshot[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [isRetryingFollowers, setIsRetryingFollowers] = useState<boolean>(false);
 
   const completedScans = useMemo(() => {
     const completedJobIds = new Set(
@@ -86,10 +86,8 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     return () => { isMounted = false; };
   }, [user]);
 
-
   useEffect(() => {
     let isMounted = true;
-    let retryTimeout: NodeJS.Timeout | null = null;
 
     const fetchAllFollowers = async () => {
       if (!isMounted || isFollowerLoading) return; // Prevent re-entrant calls
@@ -106,7 +104,6 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
       setIsFollowerLoading(true);
       setFollowerFetchError(null);
-      setIsRetryingFollowers(false);
       const initialResults = new Map<string, SpotifyFollowerResult>();
       uniqueArtistIds.forEach(id => initialResults.set(id, {status: 'loading', artistId: id}));
       if(isMounted) setFollowerResults(initialResults);
@@ -145,16 +142,8 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         setFollowerResults(newFollowerResults);
         setTotalFollowers(sumFollowers);
         if (errorsEncountered > 0 && successfulFetches === 0 && uniqueArtistIds.length > 0) setFollowerFetchError("Could not load any artist data.");
-        else if (errorsEncountered > 0) {
-          setFollowerFetchError("Could not load data for some artists. Total might be inaccurate.");
-          setIsRetryingFollowers(true);
-          retryTimeout = setTimeout(() => {
-            if (isMounted) {
-              setIsRetryingFollowers(false);
-              fetchAllFollowers();
-            }
-          }, 10000);
-        } else setFollowerFetchError(null);
+        else if (errorsEncountered > 0) setFollowerFetchError("Could not load data for some artists. Total might be inaccurate.");
+        else setFollowerFetchError(null);
         setIsFollowerLoading(false);
       }
     };
@@ -166,11 +155,10 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         setFollowerResults(new Map());
         setFollowerFetchError(null);
         setIsFollowerLoading(false);
-        setIsRetryingFollowers(false);
     }
 
-    return () => { isMounted = false; if (retryTimeout) clearTimeout(retryTimeout); };
-  }, [uniqueArtistIds, user]);
+    return () => { isMounted = false; };
+  }, [uniqueArtistIds, user]); // Removed totalStreams dependency
 
 
   // Separate useEffect for saving analytics snapshot
@@ -202,49 +190,79 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
   const isLoadingOverall = isFollowerLoading || isHistoryLoading;
 
+  const { confirm, alert } = useWin95Modal();
   const handleDeleteAnalyticsHistory = useCallback(async () => {
-    if (window.confirm("Are you sure you want to delete all your analytics history (followers and streams)? This action cannot be undone.")) {
-        setIsHistoryLoading(true);
-        try {
-            await analyticsService.deleteAnalyticsHistory();
-            setHistoricalAnalyticsData([]);
-            alert("Analytics history deleted successfully.");
-        } catch (error: any) {
-            console.error("Failed to delete analytics history:", error);
-            alert(`Error deleting history: ${error.message}`);
-        } finally {
-            setIsHistoryLoading(false);
-        }
+    const shouldDelete = await confirm({
+      title: 'Delete Analytics History',
+      message: 'Are you sure you want to delete all your analytics history (followers and streams)? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+    });
+    if (!shouldDelete) return;
+    setIsHistoryLoading(true);
+    try {
+      await analyticsService.deleteAnalyticsHistory();
+      setHistoricalAnalyticsData([]);
+      await alert({
+        title: 'Analytics History Deleted',
+        message: 'Analytics history deleted successfully.',
+        confirmText: 'OK',
+      });
+    } catch (error: any) {
+      console.error("Failed to delete analytics history:", error);
+      await alert({
+        title: 'Error',
+        message: `Error deleting history: ${error.message}`,
+        confirmText: 'OK',
+      });
+    } finally {
+      setIsHistoryLoading(false);
     }
-  }, []);
+  }, [confirm, alert]);
 
   const handleActualDeleteScan = useCallback(async (logId: string) => {
     setIsDeleting(true);
     try {
       await scanLogService.deleteScanLog(logId);
       refreshDataAfterSingleDelete(logId);
-      alert('Scan log deleted successfully.');
+      await alert({
+        title: 'Scan Log Deleted',
+        message: 'Scan log deleted successfully.',
+        confirmText: 'OK',
+      });
     } catch (error: any) {
       console.error("Error deleting scan log:", error);
-      alert(`Failed to delete scan log: ${error.message}`);
+      await alert({
+        title: 'Error',
+        message: `Failed to delete scan log: ${error.message}`,
+        confirmText: 'OK',
+      });
     } finally {
       setIsDeleting(false);
     }
-  }, [refreshDataAfterSingleDelete]);
+  }, [refreshDataAfterSingleDelete, alert]);
 
   const handleActualClearAllScans = useCallback(async () => {
     setIsDeleting(true);
     try {
       await scanLogService.clearAllScanLogs();
       refreshDataAfterClearAll();
-      alert('All scan logs cleared successfully.');
+      await alert({
+        title: 'Scan Logs Cleared',
+        message: 'All scan logs cleared successfully.',
+        confirmText: 'OK',
+      });
     } catch (error: any) {
       console.error("Error clearing all scan logs:", error);
-      alert(`Failed to clear all scan logs: ${error.message}`);
+      await alert({
+        title: 'Error',
+        message: `Failed to clear all scan logs: ${error.message}`,
+        confirmText: 'OK',
+      });
     } finally {
       setIsDeleting(false);
     }
-  }, [refreshDataAfterClearAll]);
+  }, [refreshDataAfterClearAll, alert]);
 
 
   if (completedScans.length === 0 && !isLoadingOverall) { // Use completedScans
@@ -271,12 +289,6 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
   return (
     <div className="bg-[#C0C0C0] p-1"> {/* Main container with gray background */}
-      {isRetryingFollowers && (
-        <div className="win95-border-outset bg-[#C0C0C0] text-center p-2 mb-2 mx-auto" style={{ maxWidth: 400 }}>
-          <span className="inline-block align-middle mr-2 w-4 h-4 border-2 border-[#808080] border-t-white border-l-white border-b-[#C0C0C0] border-r-[#C0C0C0] animate-spin" style={{ borderRadius: 2, borderTopColor: '#000', borderRightColor: '#000', borderBottomColor: '#C0C0C0', borderLeftColor: '#C0C0C0', borderWidth: 2, borderStyle: 'solid', display: 'inline-block' }}></span>
-          <span className="font-mono text-sm align-middle">Reloading artist data...</span>
-        </div>
-      )}
       <ReachAnalyzer
         totalFollowers={totalFollowers}
         totalStreams={totalStreams}

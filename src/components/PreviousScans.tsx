@@ -1,5 +1,6 @@
 
 import React, {useState, useMemo, JSX} from 'react';
+import { useWin95Modal } from './common/Win95ModalProvider';
 import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, PlatformSource, TrackScanLogStatus } from '../types';
 import Button from './common/Button';
 import TrashIcon from './icons/TrashIcon';
@@ -163,10 +164,17 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
 
   const renderSortArrow = (column: SortableColumn) => (sortColumn === column ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : '');
 
+  const { confirm, prompt } = useWin95Modal();
+
   const handleExportPlaylist = async () => {
     setExportMessage(null);
     if (!isSpotifyConnected || !spotifyUser) {
-      const shouldLogin = window.confirm("You need to be connected to Spotify to export a playlist. Connect now?");
+      const shouldLogin = await confirm({
+        title: 'Spotify Connection Required',
+        message: 'You need to be connected to Spotify to export a playlist. Connect now?',
+        confirmText: 'Connect',
+        cancelText: 'Cancel',
+      });
       if (shouldLogin) initiateSpotifyLogin();
       else setExportMessage({type: 'error', text: "Spotify connection required to export."});
       return;
@@ -181,7 +189,13 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
       return;
     }
     const defaultPlaylistName = `SoundTrace Export ${new Date().toLocaleDateString()}`;
-    const playlistName = window.prompt("Enter a name for your new Spotify playlist:", defaultPlaylistName);
+    const playlistName = await prompt({
+      title: 'Export Playlist',
+      message: 'Enter a name for your new Spotify playlist:',
+      defaultValue: defaultPlaylistName,
+      confirmText: 'Export',
+      cancelText: 'Cancel',
+    });
     if (playlistName === null) { setExportMessage({type: 'error', text: "Playlist export cancelled."}); return; }
     const finalPlaylistName = playlistName.trim() === '' ? defaultPlaylistName : playlistName.trim();
     setIsLoadingExport(true);
@@ -201,7 +215,15 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     if (stringData.includes(',') || stringData.includes('"') || stringData.includes('\n')) return `"${stringData.replace(/"/g, '""')}"`;
     return stringData;
   };
-  const handleExportToCSV = () => {
+  const handleExportToCSV = async () => {
+    const { confirm } = useWin95Modal();
+    const proceed = await confirm({
+      title: 'Export Table to CSV',
+      message: 'Export the current table view to a CSV file?',
+      confirmText: 'Export',
+      cancelText: 'Cancel',
+    });
+    if (!proceed) return;
     const headers = [
       "Original File/Source Title", "Scan Date", "Platform Source", "Source URL", "Status",
       "Cover Art URL", "Matched Song Title", "Matched Artist", "Matched Album", "Release Date",
@@ -255,14 +277,28 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   )); DataCell.displayName = 'DataCell';
 
 
-  const handleSingleDelete = (logId: string, fileName: string) => {
-    if (window.confirm(`Are you sure you want to delete the scan log for "${fileName}"? This action cannot be undone.`)) {
+  const handleSingleDelete = async (logId: string, fileName: string) => {
+    const { confirm } = useWin95Modal();
+    const shouldDelete = await confirm({
+      title: 'Delete Scan Log',
+      message: `Are you sure you want to delete the scan log for "${fileName}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+    });
+    if (shouldDelete) {
       onDeleteScan(logId);
     }
   };
 
-  const handleClearAllConfirm = () => {
-    if (window.confirm("Are you sure you want to delete ALL scan logs? This action cannot be undone.")) {
+  const handleClearAllConfirm = async () => {
+    const { confirm } = useWin95Modal();
+    const shouldDelete = await confirm({
+      title: 'Delete All Scan Logs',
+      message: 'Are you sure you want to delete ALL scan logs? This action cannot be undone.',
+      confirmText: 'Delete All',
+      cancelText: 'Cancel',
+    });
+    if (shouldDelete) {
       onClearAllScans();
     }
   };

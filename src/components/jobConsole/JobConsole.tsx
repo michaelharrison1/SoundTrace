@@ -1,5 +1,6 @@
 
 import React, { useState, useCallback } from 'react';
+import { useWin95Modal } from '../common/Win95ModalProvider';
 import { ScanJob, User } from '../../types';
 import JobConsoleItem from './JobConsoleItem';
 import Button from '../common/Button';
@@ -23,10 +24,15 @@ const JobConsole: React.FC<JobConsoleProps> = ({ jobs, onJobAction, isLoading, o
   const handleInteractionStart = useCallback(() => setIsInteracting(true), []);
   const handleInteractionEnd = useCallback(() => setIsInteracting(false), []);
 
+  const { confirm } = useWin95Modal();
   const handleDeleteAllJobs = useCallback(async () => {
-    if (!window.confirm("Are you sure you want to delete ALL job logs? This action cannot be undone and only removes the job entries, not the scan data itself.")) {
-      return;
-    }
+    const shouldDelete = await confirm({
+      title: 'Delete All Job Logs',
+      message: 'Are you sure you want to delete ALL job logs? This action cannot be undone and only removes the job entries, not the scan data itself.',
+      confirmText: 'Delete All',
+      cancelText: 'Cancel',
+    });
+    if (!shouldDelete) return;
     setDeleteAllError(null);
     setIsDeletingAll(true);
     handleInteractionStart();
@@ -45,7 +51,7 @@ const JobConsole: React.FC<JobConsoleProps> = ({ jobs, onJobAction, isLoading, o
       setIsDeletingAll(false);
       handleInteractionEnd();
     }
-  }, [onRefreshJobs, handleInteractionStart, handleInteractionEnd, onLogout]);
+  }, [onRefreshJobs, handleInteractionStart, handleInteractionEnd, onLogout, confirm]);
 
 
   return (
