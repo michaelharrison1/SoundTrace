@@ -74,11 +74,30 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
-      <MainAppMenu
-        onLogout={onLogout}
-        onSpotifyConnect={() => window.open('https://accounts.spotify.com/en/login', '_blank')}
-        user={user}
-      />
+      {/* Top navigation bar restored */}
+      <nav className="flex justify-start items-center space-x-0.5 p-1 bg-[#C0C0C0] border-t-2 border-[#DFDFDF] mb-2">
+        <button
+          onClick={() => setActiveView('scan')}
+          className={getNavButtonClass('scan')}
+          aria-pressed={activeView === 'scan'}
+        >
+          New Scan Job
+        </button>
+        <button
+          onClick={() => setActiveView('jobs')}
+          className={getNavButtonClass('jobs')}
+          aria-pressed={activeView === 'jobs'}
+        >
+          Job Console ({activeOrPendingJobs > 0 ? `${activeOrPendingJobs} Active / ` : ''}{totalJobs} Total)
+        </button>
+        <button
+          onClick={() => setActiveView('dashboard')}
+          className={getNavButtonClass('dashboard')}
+          aria-pressed={activeView === 'dashboard'}
+        >
+          Dashboard ({previousScans.length} Logs)
+        </button>
+      </nav>
       {isAppDataLoading && (
         <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
           <ProgressBar text={`Loading ${activeView} data...`} />
