@@ -10,6 +10,7 @@ const GIFS = [
 
 function getRandomGifUrl() {
   const idx = Math.floor(Math.random() * GIFS.length);
+  // Try public path first (Vite/React best practice)
   return `/src/components/gifs/${GIFS[idx]}`;
 }
 
@@ -55,13 +56,25 @@ const AppContentInternal: React.FC = React.memo(() => {
   // Set background style on body
   useEffect(() => {
     if (!bgGif) return;
-    document.body.style.backgroundImage = `url('${bgGif}')`;
-    document.body.style.backgroundRepeat = 'no-repeat';
-    document.body.style.backgroundPosition = 'center';
-    document.body.style.backgroundAttachment = 'fixed';
-    document.body.style.backgroundSize = 'cover';
-    document.body.style.backgroundColor = '#222';
-    // Optionally, for a landscape crop, you could use backgroundPosition: 'center 40%' or similar
+    // Try to load as public asset (Vite/React best practice)
+    const img = new window.Image();
+    img.onload = () => {
+      document.body.style.backgroundImage = `url('${bgGif}')`;
+      document.body.style.backgroundRepeat = 'no-repeat';
+      document.body.style.backgroundPosition = 'center';
+      document.body.style.backgroundAttachment = 'fixed';
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundColor = '#222';
+    };
+    img.onerror = () => {
+      // fallback: try relative import (for dev/build differences)
+      try {
+        // @ts-ignore
+        const fallback = require(`./components/gifs/${bgGif.split('/').pop()}`);
+        document.body.style.backgroundImage = `url('${fallback}')`;
+      } catch {}
+    };
+    img.src = bgGif;
     return () => {
       document.body.style.backgroundImage = '';
       document.body.style.backgroundRepeat = '';
