@@ -56,6 +56,7 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
           log.matches.map(m => m.spotifyTrackId).filter(Boolean)
         )
       ));
+      console.log('[StreamHistoryTab] trackIds:', trackIds);
       if (trackIds.length === 0) {
         setLoading(false);
         return;
@@ -65,12 +66,17 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         const results = await Promise.all(
           trackIds.map(async (id) => {
             try {
-              // Proxy endpoint: /api/streamclout/tracks/:trackId/history
-              const res = await fetch(`/api/streamclout/tracks/${id}/history?time_period=7d`);
-              if (!res.ok) return null;
+              const url = `/api/streamclout/tracks/${id}/history?time_period=7d`;
+              console.log('[StreamHistoryTab] Fetching:', url);
+              const res = await fetch(url);
+              if (!res.ok) {
+                console.error('[StreamHistoryTab] Fetch failed:', url, res.status);
+                return null;
+              }
               const data = await res.json();
               return data;
-            } catch {
+            } catch (err) {
+              console.error('[StreamHistoryTab] Fetch error:', err);
               return null;
             }
           })
