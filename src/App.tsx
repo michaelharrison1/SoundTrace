@@ -254,27 +254,26 @@ const AppContentInternal: React.FC = React.memo(() => {
 
   return (
     <>
-      <div
-        className="min-h-screen flex flex-col items-center justify-center app-bg-transparent"
-        style={{ background: 'transparent', boxShadow: 'none' }}
-      >
-        {/* Header: no blue background, just logo and user/buttons, centered */}
-        <header className="w-full flex justify-center items-center py-2" style={{ background: 'transparent', border: 'none' }}>
-          <div className="flex items-center justify-between w-full max-w-2xl px-4">
-            <h1 className="text-lg font-normal text-black" style={{ letterSpacing: 1 }}>SoundTrace</h1>
-            <div className="flex items-center space-x-1">
-              <AuthHeaderContent
-                currentUser={currentUser}
-                authView={authView}
-                onSetAuthView={setAuthView}
-                onLogout={handleLogout}
-              />
+      <div className="min-h-screen bg-transparent flex flex-col app-bg-transparent" style={{ background: 'transparent', boxShadow: 'none' }}>
+        <header className="bg-[#084B8A] sticky top-0 z-50 border-b-2 border-b-black">
+          <div className="mx-auto px-2">
+            <div className="flex items-center justify-between h-8">
+              <div className="flex items-center">
+                <h1 className="text-lg font-normal text-white ml-2">SoundTrace</h1>
+              </div>
+              <div className="flex items-center space-x-1">
+                 <AuthHeaderContent
+                    currentUser={currentUser}
+                    authView={authView}
+                    onSetAuthView={setAuthView}
+                    onLogout={handleLogout}
+                 />
+              </div>
             </div>
           </div>
         </header>
-        <main className="flex flex-col items-center justify-center flex-grow w-full px-2">
-          {currentUser ? (
-            <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center">
+        <main className="mx-auto p-2 w-full flex-grow">
+            {currentUser ? (
               <MainAppLayout
                 user={currentUser}
                 onLogout={handleLogout}
@@ -286,21 +285,20 @@ const AppContentInternal: React.FC = React.memo(() => {
                 onJobUpdate={handleGenericUpdateTrigger}
                 onIndividualLogUpdate={handleGenericUpdateTrigger}
               />
-            </div>
-          ) : (
-            <div className="flex flex-col md:flex-row w-full gap-4 max-w-3xl mx-auto items-center justify-center">
-              <AppIntroduction />
-              <div className="w-full md:w-1/2 order-2 md:order-2 flex flex-col items-center justify-center">
-                {authView === 'login' ? (
-                  <LoginPage onLogin={handleLoginRegistrationSuccess} />
-                ) : (
-                  <RegistrationPage onRegister={handleLoginRegistrationSuccess} />
-                )}
+            ) : (
+              <div className="flex flex-col md:flex-row w-full gap-4 max-w-6xl mx-auto">
+                <AppIntroduction />
+                <div className="w-full md:w-1/3 order-2 md:order-2 flex flex-col">
+                  {authView === 'login' ? (
+                    <LoginPage onLogin={handleLoginRegistrationSuccess} />
+                  ) : (
+                    <RegistrationPage onRegister={handleLoginRegistrationSuccess} />
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </main>
-        <footer className="py-1 px-2 text-xs text-black border-t-2 border-t-white bg-[#C0C0C0] flex justify-between items-center w-full max-w-2xl mx-auto">
+        <footer className="py-1 px-2 text-xs text-black border-t-2 border-t-white bg-[#C0C0C0] flex justify-between items-center">
           <div>
             <span>&copy; {new Date().getFullYear()} SoundTrace. </span>
             <span>Powered by ACRCloud & Spotify. </span>
