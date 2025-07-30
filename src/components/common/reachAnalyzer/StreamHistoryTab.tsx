@@ -42,15 +42,13 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
 const TIME_PERIODS = [
   { label: '7 days', value: '7d' },
   { label: '30 days', value: '30d' },
-  { label: '90 days', value: '90d' },
-  { label: '1 year', value: '365d' },
 ];
 
 const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading, error }) => {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [historyData, setHistoryData] = useState<{ date: string; total_streams: number }[]>([]);
-  const [timePeriod, setTimePeriod] = useState<string>('365d');
+  const [timePeriod, setTimePeriod] = useState<string>('7d');
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +62,6 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
           log.matches.map(m => m.spotifyTrackId).filter(Boolean)
         )
       ));
-      console.log('[StreamHistoryTab] trackIds:', trackIds);
       if (trackIds.length === 0) {
         setLoading(false);
         return;
@@ -75,22 +72,24 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
           trackIds.map(async (id) => {
             try {
               const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=${timePeriod}`;
-              console.log('[StreamHistoryTab] Fetching:', url);
               const res = await fetch(url);
               if (!res.ok) {
-                console.error('[StreamHistoryTab] Fetch failed:', url, res.status);
                 return null;
               }
               const data = await res.json();
               return data;
             } catch (err) {
-              console.error('[StreamHistoryTab] Fetch error:', err);
               return null;
             }
           })
         );
         const valid = results.filter(Boolean) as TrackHistory[];
-        const agg = aggregateHistories(valid);
+        let agg = aggregateHistories(valid);
+        // Add daily new streams (difference from previous day)
+        agg = agg.map((d, i, arr) => ({
+          ...d,
+          new_streams: i === 0 ? null : d.total_streams - arr[i - 1].total_streams
+        }));
         if (!cancelled) setHistoryData(agg);
       } catch (e) {
         if (!cancelled) setApiError('Failed to fetch stream history.');
@@ -108,6 +107,11 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
   if (error || apiError) {
     return <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center flex-grow"><p>{error || apiError}</p></div>;
   }
+  // Calculate average daily streams for the period
+  const avgDaily = historyData.length > 1
+    ? (historyData[historyData.length - 1].total_streams - historyData[0].total_streams) / (historyData.length - 1)
+    : null;
+
   if (!historyData.length) {
     return (
       <div className="w-full h-full flex flex-col">
@@ -128,6 +132,25 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
       </div>
     );
   }
+
+  // Custom tooltip for recharts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const total = payload[0].payload.total_streams;
+      const newStreams = payload[0].payload.new_streams;
+      return (
+        <div className="bg-white border rounded shadow p-2 text-xs">
+          <div><strong>{label}</strong></div>
+          <div>Total Streams: <span className="font-semibold">{total.toLocaleString()}</span></div>
+          {typeof newStreams === 'number' && (
+            <div>Daily New Streams: <span className="font-semibold">{newStreams.toLocaleString()}</span></div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="w-full h-full flex flex-col">
       <div className="flex items-center justify-between mb-2">
@@ -144,13 +167,18 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         </select>
       </div>
       <p className="text-xs text-gray-600 text-center mb-2">Aggregated daily Spotify streams for all your matched tracks.</p>
+      {avgDaily !== null && (
+        <div className="text-xs text-center mb-2 text-blue-700 font-medium">
+          Average daily streams in this period: {avgDaily.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        </div>
+      )}
       <div className="flex-1 min-h-[250px]">
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={historyData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip formatter={(v: number) => v.toLocaleString()} />
+            <Tooltip content={<CustomTooltip />} />
             <Line type="monotone" dataKey="total_streams" stroke="#1D9BF0" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
