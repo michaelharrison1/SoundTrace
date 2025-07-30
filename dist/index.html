@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-  <link rel="preload" as="image" href="/src/assets/background.jpg">
+  <!-- Removed preload of unused background.jpg -->
   <link rel="prerender" href="/privacy-policy">
   <link rel="prerender" href="/terms-of-service">
 
@@ -39,17 +39,11 @@
       margin: 0;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
+      /* Remove default background-image and related properties to allow JS/CSS background GIF */
     }
-    body.logged-out-background {
-      background-image: url('/src/assets/background.jpg');
-    }
-    body.logged-in-background {
-      background-image: none;
-      background-color: #C0C0C0; /* Ensure gray background for logged-in state */
+    body.logged-out-background, body.logged-in-background {
+      background-image: none !important;
+      background-color: #C0C0C0 !important;
     }
 
     /* Minimal scrollbar styling for consistency */
@@ -182,7 +176,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/assets/index-BfhdzDHk.js"></script>
+  <script type="module" crossorigin src="/assets/index-P0lEr31v.js"></script>
 </head>
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>
