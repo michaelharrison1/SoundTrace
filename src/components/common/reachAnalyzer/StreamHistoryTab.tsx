@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { TrackScanLog } from '../../../types';
 import ProgressBar from '../ProgressBar';
