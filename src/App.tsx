@@ -8,10 +8,11 @@ const GIFS = [
   '8giphy.gif', '9giphy.gif', 'giphy.gif'
 ];
 
+// IMPORTANT: For Vite/React, GIFs must be in the public directory for direct URL access
+// Move your gifs to 'public/gifs/' and use '/gifs/filename.gif' as the URL
 function getRandomGifUrl() {
   const idx = Math.floor(Math.random() * GIFS.length);
-  // Try public path first (Vite/React best practice)
-  return `/src/components/gifs/${GIFS[idx]}`;
+  return `/gifs/${GIFS[idx]}`;
 }
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
