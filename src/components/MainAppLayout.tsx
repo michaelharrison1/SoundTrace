@@ -77,7 +77,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
       {/* Top navigation bar with Win95 border and margin */}
       <nav
         className="flex items-center space-x-0.5 bg-[#C0C0C0] win95-border-outset mt-6 mb-4 px-2 py-1"
-        style={{ maxWidth: 900, width: '98%', minWidth: 320 }}
+        style={{ maxWidth: 1100, width: '99%', minWidth: 320 }}
       >
         <button
           onClick={() => setActiveView('scan')}
@@ -109,13 +109,13 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         />
       </nav>
       {isAppDataLoading && (
-        <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center mx-auto mt-2" style={{ maxWidth: 900, width: '98%' }}>
+        <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center mx-auto mt-2" style={{ maxWidth: 1100, width: '99%' }}>
           <ProgressBar text={`Loading ${activeView} data...`} />
           <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
         </div>
       )}
       {appDataError && (
-        <div className="p-3 win95-border-outset bg-yellow-200 text-black border border-black mb-2 mx-auto mt-2" style={{ maxWidth: 900, width: '98%' }}>
+        <div className="p-3 win95-border-outset bg-yellow-200 text-black border border-black mb-2 mx-auto mt-2" style={{ maxWidth: 1100, width: '99%' }}>
           <p className="font-semibold text-center">Application Error:</p>
           <p className="text-center mb-1 whitespace-pre-line">{appDataError}</p>
           <div className="flex justify-center">
@@ -124,7 +124,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         </div>
       )}
       {!isAppDataLoading && !appDataError && (
-        <div className="win95-border-outset bg-[#C0C0C0] mx-auto" style={{ maxWidth: 900, width: '98%', minHeight: 400, marginBottom: 32, padding: 0 }}>
+        <div className="win95-border-outset bg-[#C0C0C0] mx-auto" style={{ maxWidth: 1100, width: '99%', minHeight: 400, marginBottom: 32, padding: 0 }}>
           <div className="p-2 sm:p-4">
             {activeView === 'scan' && (
               <ScanPage
