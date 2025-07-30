@@ -75,7 +75,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       {/* Top navigation bar restored */}
-      <nav className="flex justify-start items-center space-x-0.5 p-1 bg-[#C0C0C0] border-t-2 border-[#DFDFDF] mb-2">
+      <nav className="flex items-center space-x-0.5 p-1 bg-[#C0C0C0] border-t-2 border-[#DFDFDF] mb-2">
         <button
           onClick={() => setActiveView('scan')}
           className={getNavButtonClass('scan')}
@@ -97,6 +97,13 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         >
           Dashboard ({previousScans.length} Logs)
         </button>
+        <div className="flex-1" />
+        <MainAppMenu
+          onLogout={onLogout}
+          onSpotifyConnect={() => window.open('https://accounts.spotify.com/en/login', '_blank')}
+          user={user}
+          navStyle={true}
+        />
       </nav>
       {isAppDataLoading && (
         <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">

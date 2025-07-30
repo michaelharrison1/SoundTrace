@@ -245,8 +245,7 @@ const AppContentInternal: React.FC = React.memo(() => {
 
   const { pathname } = window.location;
   if (pathname === '/spotify-callback-receiver') return <SpotifyCallbackReceiver />;
-  if (pathname === '/privacy-policy') return <PrivacyPolicyPage />;
-  if (pathname === '/terms-of-service') return <TermsOfServicePage />;
+
 
   return (
     <>
@@ -289,9 +288,6 @@ const AppContentInternal: React.FC = React.memo(() => {
           <div>
             <span>&copy; {new Date().getFullYear()} SoundTrace. </span>
             <span>Powered by ACRCloud & Spotify. </span>
-            <a href="/privacy-policy" className="text-blue-700 hover:underline">Privacy Policy</a>
-            <span className="mx-1">|</span>
-            <a href="/terms-of-service" className="text-blue-700 hover:underline">Terms of Service</a>
           </div>
           <span>Created by Michael Harrison</span>
         </footer>

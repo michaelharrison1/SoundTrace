@@ -5,6 +5,7 @@ interface MainAppMenuProps {
   onLogout: () => void;
   onSpotifyConnect: () => void;
   user: any;
+  navStyle?: boolean;
 }
 
 const menuStyle: React.CSSProperties = {
@@ -32,7 +33,7 @@ const menuItemStyle: React.CSSProperties = {
   boxShadow: '0 1px 2px #eee',
 };
 
-const MainAppMenu: React.FC<MainAppMenuProps> = ({ onLogout, onSpotifyConnect, user }) => {
+const MainAppMenu: React.FC<MainAppMenuProps> = ({ onLogout, onSpotifyConnect, user, navStyle }) => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -47,14 +48,14 @@ const MainAppMenu: React.FC<MainAppMenuProps> = ({ onLogout, onSpotifyConnect, u
   }, [open]);
 
   return (
-    <div style={{ position: 'absolute', top: 8, right: 16, zIndex: 100 }}>
+    <div style={navStyle ? { position: 'static' } : { position: 'absolute', top: 8, right: 16, zIndex: 100 }}>
       <button
         aria-label="Open menu"
         onClick={() => setOpen(v => !v)}
-        className="px-3 py-1 text-black text-sm win95-border-outset hover:bg-gray-300 flex items-center justify-center"
-        style={{ minWidth: 36, minHeight: 32, borderRadius: 4 }}
+        className={`px-4 py-1 text-black text-base win95-border-outset hover:bg-gray-300 flex items-center justify-center ${navStyle ? 'h-10' : ''}`}
+        style={navStyle ? { minWidth: 48, minHeight: 40, borderRadius: 4, marginLeft: 8 } : { minWidth: 36, minHeight: 32, borderRadius: 4 }}
       >
-        <img src="/icons/Settings.png" alt="Settings" style={{ width: 20, height: 20 }} />
+        <img src="/icons/Settings.png" alt="Settings" style={{ width: navStyle ? 28 : 20, height: navStyle ? 28 : 20 }} />
       </button>
       {open && (
         <div ref={menuRef} style={menuStyle}>
