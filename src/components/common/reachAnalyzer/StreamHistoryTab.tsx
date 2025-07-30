@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { TrackScanLog } from '../../../types';
 import ProgressBar from '../ProgressBar';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { analyticsService } from '../../../services/analyticsService';
 
 interface StreamHistoryTabProps {
   scanLogs: TrackScanLog[];
@@ -16,12 +15,19 @@ interface TrackHistoryPoint {
   streams: number;
 }
 
+interface TrackHistory {
+  track_id: string;
+  track_name: string;
+  artist_name: string;
+  stream_history: TrackHistoryPoint[];
+}
 
-function aggregateHistories(histories: TrackHistoryPoint[][]): { date: string; total_streams: number }[] {
+
+function aggregateHistories(histories: TrackHistory[]): { date: string; total_streams: number }[] {
   // Aggregate by date
   const dateMap = new Map<string, number>();
-  histories.forEach(histArr => {
-    histArr.forEach(point => {
+  histories.forEach(hist => {
+    hist.stream_history.forEach(point => {
       const date = point.date.slice(0, 10); // YYYY-MM-DD
       dateMap.set(date, (dateMap.get(date) || 0) + point.streams);
     });
@@ -54,19 +60,26 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         setLoading(false);
         return;
       }
+      // Use backend proxy endpoint to call StreamClout API with backend STREAMCLOUT_API_KEY
       try {
-        // Fetch all histories in parallel using analyticsService
         const results = await Promise.all(
-          trackIds.map(id =>
-            analyticsService.getSongStreamHistory(id as string)
-              .catch(() => null)
-          )
+          trackIds.map(async (id) => {
+            try {
+              // Proxy endpoint: /api/streamclout/tracks/:trackId/history
+              const res = await fetch(`/api/streamclout/tracks/${id}/history?time_period=7d`);
+              if (!res.ok) return null;
+              const data = await res.json();
+              return data;
+            } catch {
+              return null;
+            }
+          })
         );
-        const valid = results.filter(Boolean) as TrackHistoryPoint[][];
+        const valid = results.filter(Boolean) as TrackHistory[];
         const agg = aggregateHistories(valid);
         if (!cancelled) setHistoryData(agg);
-      } catch (e: any) {
-        if (!cancelled) setApiError(e?.message || 'Failed to fetch stream history.');
+      } catch (e) {
+        if (!cancelled) setApiError('Failed to fetch stream history.');
       } finally {
         if (!cancelled) setLoading(false);
       }
