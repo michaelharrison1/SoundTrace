@@ -63,10 +63,11 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
       }
       // Use backend proxy endpoint to call StreamClout API with backend STREAMCLOUT_API_KEY
       try {
+        const backendBase = import.meta.env.VITE_API_BASE_URL || '';
         const results = await Promise.all(
           trackIds.map(async (id) => {
             try {
-              const url = `/api/streamclout/tracks/${id}/history?time_period=7d`;
+              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=7d`;
               console.log('[StreamHistoryTab] Fetching:', url);
               const res = await fetch(url);
               if (!res.ok) {
