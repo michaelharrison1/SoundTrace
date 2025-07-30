@@ -8,7 +8,8 @@
     "clean": "rm -rf dist",
     "build": "npm run clean && tsc -b tsconfig.build.json && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "vercel-build": "npx git-lfs install && npx git-lfs pull && vite build"
   },
   "dependencies": {
     "@react-three/drei": "^10.6.1",
