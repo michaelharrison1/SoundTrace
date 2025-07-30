@@ -38,11 +38,19 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+
+const TIME_PERIODS = [
+  { label: '7 days', value: '7d' },
+  { label: '30 days', value: '30d' },
+  { label: '90 days', value: '90d' },
+  { label: '1 year', value: '365d' },
+];
+
 const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading, error }) => {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [historyData, setHistoryData] = useState<{ date: string; total_streams: number }[]>([]);
-
+  const [timePeriod, setTimePeriod] = useState<string>('365d');
 
   useEffect(() => {
     let cancelled = false;
@@ -61,13 +69,12 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         setLoading(false);
         return;
       }
-      // Use backend proxy endpoint to call StreamClout API with backend STREAMCLOUT_API_KEY
       try {
         const backendBase = import.meta.env.VITE_API_BASE_URL || '';
         const results = await Promise.all(
           trackIds.map(async (id) => {
             try {
-              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=7d`;
+              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=${timePeriod}`;
               console.log('[StreamHistoryTab] Fetching:', url);
               const res = await fetch(url);
               if (!res.ok) {
@@ -93,7 +100,7 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
     }
     load();
     return () => { cancelled = true; };
-  }, [scanLogs]);
+  }, [scanLogs, timePeriod]);
 
   if (isLoading || loading) {
     return <div className="flex flex-col items-center justify-center flex-grow py-4"><ProgressBar text="Loading stream history..." /></div>;
@@ -102,11 +109,40 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
     return <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center flex-grow"><p>{error || apiError}</p></div>;
   }
   if (!historyData.length) {
-    return <div className="text-center text-gray-700 py-8">No stream history data available.</div>;
+    return (
+      <div className="w-full h-full flex flex-col">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-base font-semibold text-black text-center flex-1">Total Stream History</h4>
+          <select
+            className="ml-2 border rounded px-2 py-1 text-sm"
+            value={timePeriod}
+            onChange={e => setTimePeriod(e.target.value)}
+            aria-label="Select time period"
+          >
+            {TIME_PERIODS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="text-center text-gray-700 py-8 flex-1">No stream history data available.</div>
+      </div>
+    );
   }
   return (
     <div className="w-full h-full flex flex-col">
-      <h4 className="text-base font-semibold text-black mb-2 text-center">Total Stream History</h4>
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-base font-semibold text-black text-center flex-1">Total Stream History</h4>
+        <select
+          className="ml-2 border rounded px-2 py-1 text-sm"
+          value={timePeriod}
+          onChange={e => setTimePeriod(e.target.value)}
+          aria-label="Select time period"
+        >
+          {TIME_PERIODS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
       <p className="text-xs text-gray-600 text-center mb-2">Aggregated daily Spotify streams for all your matched tracks.</p>
       <div className="flex-1 min-h-[250px]">
         <ResponsiveContainer width="100%" height={300}>
