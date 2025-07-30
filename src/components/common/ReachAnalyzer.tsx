@@ -627,7 +627,6 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
       </div>
       <div className="status-bar flex justify-end items-center px-1 py-0 border-t-2 border-t-[#808080] bg-[#C0C0C0] h-5 text-xs select-none">
         <div className="flex space-x-0.5 h-[18px]">
-           <div className="win95-border-inset w-16 px-1 flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 1 H9 V9 H1Z" fill="#008000" stroke="#000000" strokeWidth="0.5"/></svg></div>
            <div className="win95-border-inset w-12 px-1 flex items-center justify-center">{new Date().toLocaleTimeString('en-US', {hour12: false, hour: '2-digit', minute:'2-digit'})}</div>
         </div>
       </div>

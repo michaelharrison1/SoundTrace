@@ -29,6 +29,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   const [historicalAnalyticsData, setHistoricalAnalyticsData] = useState<DailyAnalyticsSnapshot[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(true);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [isRetryingFollowers, setIsRetryingFollowers] = useState<boolean>(false);
 
   const completedScans = useMemo(() => {
     const completedJobIds = new Set(
@@ -85,8 +86,10 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
     return () => { isMounted = false; };
   }, [user]);
 
+
   useEffect(() => {
     let isMounted = true;
+    let retryTimeout: NodeJS.Timeout | null = null;
 
     const fetchAllFollowers = async () => {
       if (!isMounted || isFollowerLoading) return; // Prevent re-entrant calls
@@ -103,6 +106,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
       setIsFollowerLoading(true);
       setFollowerFetchError(null);
+      setIsRetryingFollowers(false);
       const initialResults = new Map<string, SpotifyFollowerResult>();
       uniqueArtistIds.forEach(id => initialResults.set(id, {status: 'loading', artistId: id}));
       if(isMounted) setFollowerResults(initialResults);
@@ -141,8 +145,16 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         setFollowerResults(newFollowerResults);
         setTotalFollowers(sumFollowers);
         if (errorsEncountered > 0 && successfulFetches === 0 && uniqueArtistIds.length > 0) setFollowerFetchError("Could not load any artist data.");
-        else if (errorsEncountered > 0) setFollowerFetchError("Could not load data for some artists. Total might be inaccurate.");
-        else setFollowerFetchError(null);
+        else if (errorsEncountered > 0) {
+          setFollowerFetchError("Could not load data for some artists. Total might be inaccurate.");
+          setIsRetryingFollowers(true);
+          retryTimeout = setTimeout(() => {
+            if (isMounted) {
+              setIsRetryingFollowers(false);
+              fetchAllFollowers();
+            }
+          }, 10000);
+        } else setFollowerFetchError(null);
         setIsFollowerLoading(false);
       }
     };
@@ -154,10 +166,11 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         setFollowerResults(new Map());
         setFollowerFetchError(null);
         setIsFollowerLoading(false);
+        setIsRetryingFollowers(false);
     }
 
-    return () => { isMounted = false; };
-  }, [uniqueArtistIds, user]); // Removed totalStreams dependency
+    return () => { isMounted = false; if (retryTimeout) clearTimeout(retryTimeout); };
+  }, [uniqueArtistIds, user]);
 
 
   // Separate useEffect for saving analytics snapshot
@@ -258,6 +271,12 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
   return (
     <div className="bg-[#C0C0C0] p-1"> {/* Main container with gray background */}
+      {isRetryingFollowers && (
+        <div className="win95-border-outset bg-[#C0C0C0] text-center p-2 mb-2 mx-auto" style={{ maxWidth: 400 }}>
+          <span className="inline-block align-middle mr-2 w-4 h-4 border-2 border-[#808080] border-t-white border-l-white border-b-[#C0C0C0] border-r-[#C0C0C0] animate-spin" style={{ borderRadius: 2, borderTopColor: '#000', borderRightColor: '#000', borderBottomColor: '#C0C0C0', borderLeftColor: '#C0C0C0', borderWidth: 2, borderStyle: 'solid', display: 'inline-block' }}></span>
+          <span className="font-mono text-sm align-middle">Reloading artist data...</span>
+        </div>
+      )}
       <ReachAnalyzer
         totalFollowers={totalFollowers}
         totalStreams={totalStreams}
