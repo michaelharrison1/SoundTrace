@@ -68,16 +68,17 @@ const AppContentInternal: React.FC = React.memo(() => {
     styleTag.innerHTML = `
       body::before {
         content: '';
-        position: fixed;
-        z-index: -1;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-image: url('${bgGif}');
-        background-repeat: no-repeat;
-        background-position: center 40%;
-        background-size: 200vw 100vh;
-        filter: blur(2px) brightness(0.7);
-        opacity: 1;
-        pointer-events: none;
+        position: fixed !important;
+        z-index: -1 !important;
+        top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+        background-image: url('${bgGif}') !important;
+        background-repeat: no-repeat !important;
+        background-position: center 40% !important;
+        background-size: 200vw 100vh !important;
+        filter: blur(2px) brightness(0.7) !important;
+        opacity: 1 !important;
+        pointer-events: none !important;
+        background-color: #ff00ff !important; /* fallback magenta for debugging */
       }
     `;
     document.body.style.background = '#222';
