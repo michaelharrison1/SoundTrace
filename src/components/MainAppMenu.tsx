@@ -73,9 +73,11 @@ const MainAppMenu: React.FC<MainAppMenuProps> = ({ onLogout, onSpotifyConnect, u
             {user?.displayName || 'User Menu'}
           </div>
           <div style={menuItemStyle} onClick={onSpotifyConnect}>
+            <img src="/icons/ConnectSpotify.png" alt="Connect Spotify" style={{ width: 18, height: 18, marginRight: 8, verticalAlign: 'middle', display: 'inline-block' }} />
             Spotify Connect
           </div>
           <div style={menuItemStyle} onClick={onLogout}>
+            <img src="/icons/key_32x32.png" alt="Logout" style={{ width: 16, height: 16, marginRight: 8, verticalAlign: 'middle', display: 'inline-block' }} />
             Logout
           </div>
         </div>

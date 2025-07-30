@@ -21,7 +21,7 @@ import { User, TrackScanLog, ScanJob } from './types';
 import ProgressBar from './components/common/ProgressBar';
 import { SpotifyProvider, SpotifyCallbackReceiver } from './contexts/SpotifyContext';
 import { authService } from './services/authService';
-import AuthHeaderContent from './components/app/AuthHeaderContent';
+import MainAppMenu from './components/MainAppMenu';
 import AppIntroduction from './components/app/AppIntroduction';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import TermsOfServicePage from './components/TermsOfServicePage';
@@ -252,23 +252,12 @@ const AppContentInternal: React.FC = React.memo(() => {
   return (
     <>
       <div className="min-h-screen bg-transparent flex flex-col app-bg-transparent" style={{ background: 'transparent', boxShadow: 'none' }}>
-        <header className="bg-[#084B8A] sticky top-0 z-50 border-b-2 border-b-black">
-          <div className="mx-auto px-2">
-            <div className="flex items-center justify-between h-8">
-              <div className="flex items-center">
-                <h1 className="text-lg font-normal text-white ml-2">SoundTrace</h1>
-              </div>
-              <div className="flex items-center space-x-1">
-                 <AuthHeaderContent
-                    currentUser={currentUser}
-                    authView={authView}
-                    onSetAuthView={setAuthView}
-                    onLogout={handleLogout}
-                 />
-              </div>
-            </div>
-          </div>
-        </header>
+      {/* Settings menu in top right, absolute position */}
+      <MainAppMenu
+        onLogout={handleLogout}
+        onSpotifyConnect={() => window.open('https://accounts.spotify.com/en/login', '_blank')}
+        user={currentUser}
+      />
         <main className="mx-auto p-2 w-full flex-grow">
             {currentUser ? (
               <MainAppLayout
