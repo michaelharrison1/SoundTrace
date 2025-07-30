@@ -56,32 +56,33 @@ const AppContentInternal: React.FC = React.memo(() => {
   // Set background style on body
   useEffect(() => {
     if (!bgGif) return;
-    // Try to load as public asset (Vite/React best practice)
-    const img = new window.Image();
-    img.onload = () => {
-      document.body.style.backgroundImage = `url('${bgGif}')`;
-      document.body.style.backgroundRepeat = 'no-repeat';
-      document.body.style.backgroundPosition = 'center';
-      document.body.style.backgroundAttachment = 'fixed';
-      document.body.style.backgroundSize = 'cover';
-      document.body.style.backgroundColor = '#222';
-    };
-    img.onerror = () => {
-      // fallback: try relative import (for dev/build differences)
-      try {
-        // @ts-ignore
-        const fallback = require(`./components/gifs/${bgGif.split('/').pop()}`);
-        document.body.style.backgroundImage = `url('${fallback}')`;
-      } catch {}
-    };
-    img.src = bgGif;
+    // Use a pseudo-element for advanced background styling
+    const styleId = 'soundtrace-bg-gif-style';
+    let styleTag = document.getElementById(styleId);
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = styleId;
+      document.head.appendChild(styleTag);
+    }
+    styleTag.innerHTML = `
+      body::before {
+        content: '';
+        position: fixed;
+        z-index: -1;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-image: url('${bgGif}');
+        background-repeat: no-repeat;
+        background-position: center 40%;
+        background-size: 200vw 100vh;
+        filter: blur(2px) brightness(0.7);
+        opacity: 1;
+        pointer-events: none;
+      }
+    `;
+    document.body.style.background = '#222';
     return () => {
-      document.body.style.backgroundImage = '';
-      document.body.style.backgroundRepeat = '';
-      document.body.style.backgroundPosition = '';
-      document.body.style.backgroundAttachment = '';
-      document.body.style.backgroundSize = '';
-      document.body.style.backgroundColor = '';
+      if (styleTag) styleTag.remove();
+      document.body.style.background = '';
     };
   }, [bgGif]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
