@@ -255,7 +255,10 @@ const AppContentInternal: React.FC = React.memo(() => {
 
   return (
     <>
-      <div className="min-h-screen bg-transparent flex flex-col" style={{ background: 'rgba(255,255,255,0.80)' }}>
+      <div
+        className="min-h-screen flex flex-col app-bg-transparent"
+        style={{ background: 'transparent', boxShadow: 'none' }}
+      >
         <header className="bg-[#084B8A] sticky top-0 z-50 border-b-2 border-b-black">
           <div className="mx-auto px-2">
             <div className="flex items-center justify-between h-8">
