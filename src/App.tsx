@@ -1,11 +1,6 @@
 // List of available gif filenames in src/components/gifs
 const GIFS = [
-  '10giphy.gif', '11giphy.gif', '12giphy.gif', '13giphy.gif', '15giphy.gif', '16giphy.gif', '17giphy.gif', '18giphy.gif', '19giphy.gif',
-  '20giphy.gif', '21giphy.gif', '22giphy.gif', '23giphy.gif', '24giphy.gif', '25giphy.gif', '26giphy.gif', '27giphy.gif', '28giphy.gif',
-  '29giphy.gif', '2giphy.gif', '30giphy.gif', '31giphy.gif', '32giphy.gif', '33giphy.gif', '34giphy.gif', '35giphy.gif', '36giphy.gif',
-  '37giphy.gif', '38giphy.gif', '39giphy.gif', '3giphy.gif', '40giphy.gif', '41giphy.gif', '42giphy.gif', '43giphy.gif', '44giphy.gif',
-  '45giphy.gif', '46giphy.gif', '47giphy.gif', '48giphy.gif', '49giphy.gif', '4giphy.gif', '5giphy.gif', '6giphy.gif', '7giphy.gif',
-  '8giphy.gif', '9giphy.gif', 'giphy.gif'
+  '43giphy.gif'
 ];
 
 // IMPORTANT: For Vite/React, GIFs must be in the public directory for direct URL access
