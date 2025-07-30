@@ -51,21 +51,10 @@ const MainAppMenu: React.FC<MainAppMenuProps> = ({ onLogout, onSpotifyConnect, u
       <button
         aria-label="Open menu"
         onClick={() => setOpen(v => !v)}
-        style={{
-          background: '#C0C0C0',
-          border: '2px outset #fff',
-          borderRadius: 6,
-          padding: 4,
-          boxShadow: '1px 1px 4px #aaa',
-          cursor: 'pointer',
-          width: 36,
-          height: 36,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+        className="px-3 py-1 text-black text-sm win95-border-outset hover:bg-gray-300 flex items-center justify-center"
+        style={{ minWidth: 36, minHeight: 32, borderRadius: 4 }}
       >
-        <img src="/icons/Settings.png" alt="Settings" style={{ width: 24, height: 24 }} />
+        <img src="/icons/Settings.png" alt="Settings" style={{ width: 20, height: 20 }} />
       </button>
       {open && (
         <div ref={menuRef} style={menuStyle}>

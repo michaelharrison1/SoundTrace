@@ -252,12 +252,14 @@ const AppContentInternal: React.FC = React.memo(() => {
   return (
     <>
       <div className="min-h-screen bg-transparent flex flex-col app-bg-transparent" style={{ background: 'transparent', boxShadow: 'none' }}>
-      {/* Settings menu in top right, absolute position */}
-      <MainAppMenu
-        onLogout={handleLogout}
-        onSpotifyConnect={() => window.open('https://accounts.spotify.com/en/login', '_blank')}
-        user={currentUser}
-      />
+      {/* Settings menu in top right, only show when logged in */}
+      {currentUser && (
+        <MainAppMenu
+          onLogout={handleLogout}
+          onSpotifyConnect={() => window.open('https://accounts.spotify.com/en/login', '_blank')}
+          user={currentUser}
+        />
+      )}
         <main className="mx-auto p-2 w-full flex-grow">
             {currentUser ? (
               <MainAppLayout
