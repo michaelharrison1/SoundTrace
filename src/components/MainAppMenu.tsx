@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import settingsIcon from '../icons/Settings.png';
-import Button from '../common/Button';
 
 interface MainAppMenuProps {
   onLogout: () => void;
