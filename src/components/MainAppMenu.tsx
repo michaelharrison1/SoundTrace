@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import settingsIcon from '../icons/Settings.png';
+// import settingsIcon from '../icons/Settings.png'; // Commented out to remove the import
 
 interface MainAppMenuProps {
   onLogout: () => void;
@@ -65,7 +65,7 @@ const MainAppMenu: React.FC<MainAppMenuProps> = ({ onLogout, onSpotifyConnect, u
           justifyContent: 'center',
         }}
       >
-        <img src={settingsIcon} alt="Settings" style={{ width: 24, height: 24 }} />
+        <img src="/icons/Settings.png" alt="Settings" style={{ width: 24, height: 24 }} />
       </button>
       {open && (
         <div ref={menuRef} style={menuStyle}>
