@@ -77,8 +77,7 @@ const AppContentInternal: React.FC = React.memo(() => {
         filter: blur(2px) brightness(0.7) !important;
         opacity: 1 !important;
         pointer-events: none !important;
-        background-color: transparent !important; /* fallback only if GIF fails */
-        border: 2px solid #00ff00 !important; /* debug: green border to see if ::before is rendered */
+        background-color: transparent !important;
       }
     `;
     document.body.style.background = '#222';
