@@ -57,7 +57,8 @@ const AppContentInternal: React.FC = React.memo(() => {
   // Set background style on body
   useEffect(() => {
     if (!bgGif) return;
-    // Use a pseudo-element for advanced background styling
+    // Debug: log the actual background URL
+    console.log('[App] Setting background GIF:', bgGif);
     const styleId = 'soundtrace-bg-gif-style';
     let styleTag = document.getElementById(styleId);
     if (!styleTag) {
@@ -78,7 +79,8 @@ const AppContentInternal: React.FC = React.memo(() => {
         filter: blur(2px) brightness(0.7) !important;
         opacity: 1 !important;
         pointer-events: none !important;
-        background-color: #ff00ff !important; /* fallback magenta for debugging */
+        background-color: transparent !important; /* fallback only if GIF fails */
+        border: 2px solid #00ff00 !important; /* debug: green border to see if ::before is rendered */
       }
     `;
     document.body.style.background = '#222';
