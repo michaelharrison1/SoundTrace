@@ -1,6 +1,7 @@
 // List of available gif filenames in src/components/gifs
 const GIFS = [
-  '43giphy.gif'
+  '1.gif', '2.gif', '3.gif', '4.gif', '5.gif', '6.gif', '7.gif', '8.gif', '9.gif', '10.gif', '11.gif', '12.gif', '13.gif', '14.gif', '15.gif', '16.gif', '17.gif', '18.gif', '19.gif', '20.gif',
+  // ...add more if present in the folder
 ];
 
 // IMPORTANT: For Vite/React, GIFs must be in the public directory for direct URL access
@@ -43,11 +44,12 @@ export interface AppWindow {
 
 
 const AppContentInternal: React.FC = React.memo(() => {
-  // Pick a random gif on mount
-  const [bgGif, setBgGif] = useState<string>(() => getRandomGifUrl());
-  useEffect(() => {
-    setBgGif(getRandomGifUrl());
-  }, []);
+
+  // On each reload, randomly choose a GIF, and keep it fixed until next reload
+  const [gifIndex] = useState(() => {
+    return Math.floor(Math.random() * GIFS.length);
+  });
+  const bgGif = `/gifs/${GIFS[gifIndex]}`;
 
   // Set background style on body
   useEffect(() => {
