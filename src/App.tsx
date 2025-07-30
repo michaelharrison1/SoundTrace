@@ -21,27 +21,7 @@ import { User, TrackScanLog, ScanJob } from './types';
 import ProgressBar from './components/common/ProgressBar';
 import { SpotifyProvider, SpotifyCallbackReceiver } from './contexts/SpotifyContext';
 import { authService } from './services/authService';
-// import AuthHeaderContent from './components/app/AuthHeaderContent';
-import settingsCog from './components/icons/Settings.png';
-
-// Windows95-style CogMenu
-type CogMenuProps = {
-  currentUser: User | null;
-  onLogout: () => void;
-  authView: AuthView;
-  onSetAuthView: (v: AuthView) => void;
-};
-const CogMenu: React.FC<CogMenuProps> = ({ currentUser, onLogout, authView, onSetAuthView }) => {
-  const [open, setOpen] = React.useState(false);
-  const menuRef = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
-    }
-
-
-export type AuthView = 'login' | 'register';
-
+import AuthHeaderContent from './components/app/AuthHeaderContent';
 import AppIntroduction from './components/app/AppIntroduction';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import TermsOfServicePage from './components/TermsOfServicePage';
@@ -272,12 +252,23 @@ const AppContentInternal: React.FC = React.memo(() => {
   return (
     <>
       <div className="min-h-screen bg-transparent flex flex-col app-bg-transparent" style={{ background: 'transparent', boxShadow: 'none' }}>
-        <header className="sticky top-0 z-50 border-b-2 border-b-black bg-[#C0C0C0] win95-border-outset h-10 flex items-center px-2">
-          <div className="flex items-center w-full justify-end relative">
-            <CogMenu currentUser={currentUser} onLogout={handleLogout} authView={authView} onSetAuthView={setAuthView} />
+        <header className="bg-[#084B8A] sticky top-0 z-50 border-b-2 border-b-black">
+          <div className="mx-auto px-2">
+            <div className="flex items-center justify-between h-8">
+              <div className="flex items-center">
+                <h1 className="text-lg font-normal text-white ml-2">SoundTrace</h1>
+              </div>
+              <div className="flex items-center space-x-1">
+                 <AuthHeaderContent
+                    currentUser={currentUser}
+                    authView={authView}
+                    onSetAuthView={setAuthView}
+                    onLogout={handleLogout}
+                 />
+              </div>
+            </div>
           </div>
         </header>
-
         <main className="mx-auto p-2 w-full flex-grow">
             {currentUser ? (
               <MainAppLayout

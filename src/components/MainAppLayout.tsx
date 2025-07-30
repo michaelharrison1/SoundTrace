@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { User, TrackScanLog, ScanJob } from '../types';
-import Button from './common/Button';
+import MainAppMenu from './MainAppMenu';
 import ScanPage from './ScanPage';
 import DashboardViewPage from './DashboardViewPage';
 import JobConsole from './jobConsole/JobConsole';
@@ -73,34 +73,12 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
 
 
   return (
-    <>
-      <nav className="flex justify-start items-center space-x-0.5 p-1 bg-[#C0C0C0] border-t-2 border-[#DFDFDF] mb-2">
-        <Button
-          onClick={() => setActiveView('scan')}
-          size="sm"
-          className={getNavButtonClass('scan')}
-          aria-pressed={activeView === 'scan'}
-        >
-          New Scan Job
-        </Button>
-        <Button
-          onClick={() => setActiveView('jobs')}
-          size="sm"
-          className={getNavButtonClass('jobs')}
-          aria-pressed={activeView === 'jobs'}
-        >
-          Job Console ({activeOrPendingJobs > 0 ? `${activeOrPendingJobs} Active / ` : ''}{totalJobs} Total)
-        </Button>
-        <Button
-          onClick={() => setActiveView('dashboard')}
-          size="sm"
-          className={getNavButtonClass('dashboard')}
-          aria-pressed={activeView === 'dashboard'}
-        >
-          Dashboard ({previousScans.length} Logs)
-        </Button>
-      </nav>
-
+    <div style={{ position: 'relative', minHeight: '100vh' }}>
+      <MainAppMenu
+        onLogout={onLogout}
+        onSpotifyConnect={() => window.open('https://accounts.spotify.com/en/login', '_blank')}
+        user={user}
+      />
       {isAppDataLoading && (
         <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center">
           <ProgressBar text={`Loading ${activeView} data...`} />
@@ -112,7 +90,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
           <p className="font-semibold text-center">Application Error:</p>
           <p className="text-center mb-1 whitespace-pre-line">{appDataError}</p>
           <div className="flex justify-center">
-            <Button onClick={onRefreshAllData} size="sm" className="hover:bg-gray-300">Retry Load</Button>
+            <button onClick={onRefreshAllData} className="hover:bg-gray-300 px-3 py-1 win95-border-outset rounded">Retry Load</button>
           </div>
         </div>
       )}
@@ -145,7 +123,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
           )}
         </>
       )}
-    </>
+    </div>
   );
 };
 
