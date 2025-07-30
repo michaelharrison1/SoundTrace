@@ -1,3 +1,17 @@
+// List of available gif filenames in src/components/gifs
+const GIFS = [
+  '10giphy.gif', '11giphy.gif', '12giphy.gif', '13giphy.gif', '15giphy.gif', '16giphy.gif', '17giphy.gif', '18giphy.gif', '19giphy.gif',
+  '20giphy.gif', '21giphy.gif', '22giphy.gif', '23giphy.gif', '24giphy.gif', '25giphy.gif', '26giphy.gif', '27giphy.gif', '28giphy.gif',
+  '29giphy.gif', '2giphy.gif', '30giphy.gif', '31giphy.gif', '32giphy.gif', '33giphy.gif', '34giphy.gif', '35giphy.gif', '36giphy.gif',
+  '37giphy.gif', '38giphy.gif', '39giphy.gif', '3giphy.gif', '40giphy.gif', '41giphy.gif', '42giphy.gif', '43giphy.gif', '44giphy.gif',
+  '45giphy.gif', '46giphy.gif', '47giphy.gif', '48giphy.gif', '49giphy.gif', '4giphy.gif', '5giphy.gif', '6giphy.gif', '7giphy.gif',
+  '8giphy.gif', '9giphy.gif', 'giphy.gif'
+];
+
+function getRandomGifUrl() {
+  const idx = Math.floor(Math.random() * GIFS.length);
+  return `/src/components/gifs/${GIFS[idx]}`;
+}
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoginPage from './components/LoginPage';
@@ -32,6 +46,31 @@ export interface AppWindow {
 
 
 const AppContentInternal: React.FC = React.memo(() => {
+  // Pick a random gif on mount
+  const [bgGif, setBgGif] = useState<string>(() => getRandomGifUrl());
+  useEffect(() => {
+    setBgGif(getRandomGifUrl());
+  }, []);
+
+  // Set background style on body
+  useEffect(() => {
+    if (!bgGif) return;
+    document.body.style.backgroundImage = `url('${bgGif}')`;
+    document.body.style.backgroundRepeat = 'no-repeat';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundAttachment = 'fixed';
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundColor = '#222';
+    // Optionally, for a landscape crop, you could use backgroundPosition: 'center 40%' or similar
+    return () => {
+      document.body.style.backgroundImage = '';
+      document.body.style.backgroundRepeat = '';
+      document.body.style.backgroundPosition = '';
+      document.body.style.backgroundAttachment = '';
+      document.body.style.backgroundSize = '';
+      document.body.style.backgroundColor = '';
+    };
+  }, [bgGif]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [authView, setAuthView] = useState<AuthView>('login');
@@ -200,7 +239,7 @@ const AppContentInternal: React.FC = React.memo(() => {
 
   return (
     <>
-      <div className="min-h-screen bg-transparent flex flex-col">
+      <div className="min-h-screen bg-transparent flex flex-col" style={{ background: 'rgba(255,255,255,0.80)' }}>
         <header className="bg-[#084B8A] sticky top-0 z-50 border-b-2 border-b-black">
           <div className="mx-auto px-2">
             <div className="flex items-center justify-between h-8">
