@@ -252,17 +252,43 @@ const AppContentInternal: React.FC = React.memo(() => {
       <div className="min-h-screen bg-transparent flex flex-col app-bg-transparent" style={{ background: 'transparent', boxShadow: 'none' }}>
         <main className="mx-auto p-2 w-full flex-grow">
             {currentUser ? (
-              <MainAppLayout
-                user={currentUser}
-                onLogout={handleLogout}
-                previousScans={previousScans}
-                jobs={jobs}
-                isAppDataLoading={isAppDataLoading}
-                appDataError={appDataError}
-                onRefreshAllData={() => fetchData('manual')}
-                onJobUpdate={handleGenericUpdateTrigger}
-                onIndividualLogUpdate={handleGenericUpdateTrigger}
-              />
+              <div>
+                {/* Navigation bar with three rectangular buttons */}
+                <nav className="flex flex-row gap-2 mb-4">
+                  <button
+                    className="px-4 py-2 bg-[#C0C0C0] win95-border-outset text-black font-bold hover:bg-[#B0B0B0] focus:outline-none"
+                    style={{ minWidth: 120 }}
+                    // TODO: Add navigation logic for New Scan Job
+                  >
+                    New Scan Job
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-[#C0C0C0] win95-border-outset text-black font-bold hover:bg-[#B0B0B0] focus:outline-none"
+                    style={{ minWidth: 120 }}
+                    // TODO: Add navigation logic for Job Console
+                  >
+                    Job Console
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-[#C0C0C0] win95-border-outset text-black font-bold hover:bg-[#B0B0B0] focus:outline-none"
+                    style={{ minWidth: 120 }}
+                  >
+                    User Menu
+                  </button>
+                </nav>
+                {/* Main app content layout */}
+                <MainAppLayout
+                  user={currentUser}
+                  onLogout={handleLogout}
+                  previousScans={previousScans}
+                  jobs={jobs}
+                  isAppDataLoading={isAppDataLoading}
+                  appDataError={appDataError}
+                  onRefreshAllData={() => fetchData('manual')}
+                  onJobUpdate={handleGenericUpdateTrigger}
+                  onIndividualLogUpdate={handleGenericUpdateTrigger}
+                />
+              </div>
             ) : (
               <div className="flex flex-col md:flex-row w-full gap-4 max-w-6xl mx-auto">
                 <AppIntroduction />
