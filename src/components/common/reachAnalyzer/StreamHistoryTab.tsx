@@ -45,57 +45,33 @@ const TIME_PERIODS = [
   { label: '30 days', value: '30d' },
 ];
 
-// Win95 style dropdown
-function Win95Dropdown({ value, onChange, options, ...props }: {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  options: { label: string; value: string }[];
-  [key: string]: any;
-}) {
+
+// Win95 style button
+function Win95Button({ active, children, ...props }: { active?: boolean; children: React.ReactNode; [key: string]: any }) {
   return (
-    <div style={{
-      border: '2px outset #fff',
-      background: '#c3c7cb',
-      boxShadow: 'inset 1px 1px #fff, inset -1px -1px #808080',
-      padding: 0,
-      display: 'inline-block',
-      borderRadius: 2,
-      minWidth: 100,
-      height: 28,
-    }}>
-      <select
-        value={value}
-        onChange={onChange}
-        style={{
-          background: '#c3c7cb',
-          border: 'none',
-          outline: 'none',
-          fontFamily: 'inherit',
-          fontSize: 14,
-          height: 24,
-          padding: '2px 24px 2px 6px',
-          appearance: 'none',
-          WebkitAppearance: 'none',
-          MozAppearance: 'none',
-          color: '#222',
-          width: '100%',
-          cursor: 'pointer',
-        }}
-        {...props}
-      >
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-      <span style={{
-        position: 'absolute',
-        right: 8,
-        top: 7,
-        pointerEvents: 'none',
-        fontSize: 10,
+    <button
+      style={{
+        border: active ? '2px inset #808080' : '2px outset #fff',
+        background: '#c3c7cb',
+        boxShadow: active
+          ? 'inset 1px 1px #fff, inset -1px -1px #808080'
+          : 'inset 1px 1px #fff, inset -1px -1px #808080',
         color: '#222',
-      }}>▼</span>
-    </div>
+        fontFamily: 'inherit',
+        fontSize: 14,
+        padding: '2px 16px',
+        marginLeft: 4,
+        marginRight: 0,
+        borderRadius: 2,
+        minWidth: 60,
+        height: 28,
+        cursor: 'pointer',
+        outline: 'none',
+      }}
+      {...props}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -225,15 +201,19 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
 
   return (
     <div className="w-full h-full flex flex-col">
-      <div className="flex flex-col items-center justify-center mb-2">
-        <div className="flex items-center justify-center gap-2">
-          <h4 className="text-base font-semibold text-black text-center">Total Stream History</h4>
-          <Win95Dropdown
-            value={timePeriod}
-            onChange={e => setTimePeriod(e.target.value)}
-            options={TIME_PERIODS}
-            aria-label="Select time period"
-          />
+      <div className="flex flex-col items-center justify-center mb-2 relative">
+        <h4 className="text-base font-semibold text-black text-center">Total Stream History</h4>
+        <div style={{ position: 'absolute', right: 0, top: 0, display: 'flex', gap: 0 }}>
+          <Win95Button
+            active={timePeriod === '7d'}
+            onClick={() => setTimePeriod('7d')}
+            aria-label="7 days"
+          >7 days</Win95Button>
+          <Win95Button
+            active={timePeriod === '30d'}
+            onClick={() => setTimePeriod('30d')}
+            aria-label="30 days"
+          >30 days</Win95Button>
         </div>
         <p className="text-xs text-gray-600 text-center mt-1">Aggregated daily Spotify streams for all your matched tracks.</p>
         {avgDaily !== null && (
