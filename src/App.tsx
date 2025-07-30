@@ -57,7 +57,6 @@ const AppContentInternal: React.FC = React.memo(() => {
   useEffect(() => {
     if (!bgGif) return;
     // Debug: log the actual background URL
-    console.log('[App] Setting background GIF:', bgGif);
     const styleId = 'soundtrace-bg-gif-style';
     let styleTag = document.getElementById(styleId);
     if (!styleTag) {
@@ -167,15 +166,13 @@ const AppContentInternal: React.FC = React.memo(() => {
         const token = localStorage.getItem('authToken');
         if (token && API_BASE_URL) {
             const url = `${API_BASE_URL}/api/job-updates/subscribe`;
-            console.log('[App SSE] Attempting to connect to SSE endpoint:', url);
             const es = new EventSource(url, { withCredentials: true });
             eventSourceRef.current = es;
 
-            es.onopen = () => { console.log('[App SSE] Connection opened.'); };
+            es.onopen = () => {};
             es.onmessage = (event) => {
                 try {
                     const eventData = JSON.parse(event.data);
-                     console.log('[App SSE] Message received:', eventData.type);
                     if (eventData.type === 'JOB_UPDATE' || eventData.type === 'JOBS_REFRESH_REQUESTED') {
                         fetchData('sse');
                     }
@@ -190,14 +187,12 @@ const AppContentInternal: React.FC = React.memo(() => {
             };
         }
     } else if (!currentUser && eventSourceRef.current) {
-        console.log('[App SSE] Closing SSE connection due to logout.');
         eventSourceRef.current.close();
         eventSourceRef.current = null;
     }
     // Cleanup function
     return () => {
         if (eventSourceRef.current) {
-            console.log('[App SSE] Cleaning up SSE connection on component unmount/user change.');
             eventSourceRef.current.close();
             eventSourceRef.current = null;
         }

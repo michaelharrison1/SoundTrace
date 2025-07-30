@@ -2,16 +2,16 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import ProgressBar from './ProgressBar';
 import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, AggregatedSongData, TrackScanLogStatus } from '../../types';
 import ArtistFollowers from './ArtistFollowers';
-import CollaborationRadarGraph from './CollaborationRadarGraph';
+// Lazy-load heavy/non-critical components for performance
+const CollaborationRadarGraph = React.lazy(() => import('./CollaborationRadarGraph'));
 import Button from '../common/Button';
 import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
-import StreamHistoryTab from './reachAnalyzer/StreamHistoryTab';
-// TimeBasedAnalyticsGraph removed
+const StreamHistoryTab = React.lazy(() => import('./reachAnalyzer/StreamHistoryTab'));
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
-import SongStreamDetail from './reachAnalyzer/SongStreamDetail';
-import EstimatedRevenueTab from './reachAnalyzer/EstimatedRevenueTab';
+const SongStreamDetail = React.lazy(() => import('./reachAnalyzer/SongStreamDetail'));
+const EstimatedRevenueTab = React.lazy(() => import('./reachAnalyzer/EstimatedRevenueTab'));
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 
@@ -124,8 +124,6 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         }
       }
     }
-    // (Old reach bar animation logic removed; new logic is above)
-    // --- REMOVE DUPLICATE/OLD reach bar animation state/logic below this line (if present) ---
     // Clean up on unmount
     return () => {
       if (reachAnimationFrameId.current) { cancelAnimationFrame(reachAnimationFrameId.current); reachAnimationFrameId.current = null; }
@@ -245,7 +243,6 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   }, [scanLogs]);
 
 
-  // Song detail logic removed (not used in UI)
 
 
 
@@ -601,13 +598,11 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
       <div className="title-bar flex items-center justify-between bg-[#000080] text-white px-1 py-0.5 h-6 select-none">
         <div className="flex items-center"><FakeWindowIcon /><span className="font-bold text-sm">Reach Analyzer</span></div>
         <div className="flex space-x-0.5">
-          {/* Placeholder for window controls; functionality removed for tabbed layout */}
           <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs" aria-label="Minimize" disabled>_</button>
           <button className="win95-button-sm bg-[#C0C0C0] text-black font-mono w-4 h-4 leading-none text-xs flex items-center justify-center" aria-label="Maximize" disabled><div className="w-2 h-2 border border-black"></div></button>
           <button className="win95-button-sm bg-[#C0C0C0] text-black font-bold font-mono w-4 h-4 leading-none text-xs" aria-label="Close" disabled>X</button>
         </div>
       </div>
-      {/* Top menu removed as per TODO. Adjusted layout below. */}
       <div className="tabs-container flex pl-1 pt-2 bg-[#C0C0C0] select-none">
         {monitorTabs.map(tab => (
             <div
@@ -624,9 +619,11 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         ))}
       </div>
       <div className="tab-content-wrapper p-0.5 pt-0 bg-[#C0C0C0]">
-        <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[350px] flex flex-col" role="tabpanel" aria-labelledby={`tab-${activeMonitorTab}`}>
-          {renderTabContent()}
-        </div>
+        <React.Suspense fallback={<div className="p-4 text-center text-gray-500">Loading...</div>}>
+          <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[350px] flex flex-col" role="tabpanel" aria-labelledby={`tab-${activeMonitorTab}`}> 
+            {renderTabContent()}
+          </div>
+        </React.Suspense>
       </div>
       <div className="status-bar flex justify-end items-center px-1 py-0 border-t-2 border-t-[#808080] bg-[#C0C0C0] h-5 text-xs select-none">
         <div className="flex space-x-0.5 h-[18px]">

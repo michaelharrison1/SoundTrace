@@ -5,7 +5,6 @@ const ACR_CLOUD_BACKEND_ENDPOINT = '/api/scan-track';
 
 export const acrCloudService = {
   scanWithAcrCloud: async (file: File): Promise<SnippetScanResult> => { // file is a snippet
-    console.log(`[acrCloudService] Attempting to scan snippet: ${file.name}, size: ${file.size}, type: ${file.type}`);
 
     const formData = new FormData();
     formData.append('audioFile', file, file.name); // Send snippet with its generated name

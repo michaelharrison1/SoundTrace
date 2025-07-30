@@ -97,7 +97,6 @@ const generateSingleSnippetFromBuffer = async (
         const snippetFileName = `${sanitizedOriginalName}_S${segmentIndex}_${Math.round(actualStartTime)}s_T${Date.now()}.wav`; // Added timestamp for more uniqueness
 
         const snippetFile = new File([wavBlob], snippetFileName, { type: 'audio/wav' });
-        console.log(`[audioProcessing] Created Snippet: ${snippetFile.name}, size: ${snippetFile.size}, type: ${snippetFile.type}`);
         return snippetFile;
 
     } catch (error) {

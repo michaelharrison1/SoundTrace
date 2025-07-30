@@ -59,12 +59,10 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
 
   const refreshAccessToken = useCallback(async () => {
     if (!soundTraceAuthToken) return null;
-    console.log("Attempting to refresh Spotify token...");
     try {
       const { accessToken, expiresAt } = await spotifyService.refreshToken();
       setSpotifyUser(prev => prev ? { ...prev, accessToken, expiresAt } : null);
       setNeedsRefresh(false);
-      console.log("Spotify token refreshed successfully.");
       return accessToken;
     } catch (error) {
       console.error("Failed to refresh Spotify token:", error);
@@ -121,7 +119,6 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
 
     // Ensure token is fresh before making API calls
     if (new Date(spotifyUser.expiresAt) < new Date(Date.now() - 5 * 60 * 1000)) { // 5 min buffer
-      console.log("SpotifyContext: Token expired or nearing expiry for playlist creation. Refreshing...");
       const newAccessToken = await refreshAccessToken();
       if (!newAccessToken) {
         return { error: "Failed to refresh Spotify token. Cannot create playlist."};
