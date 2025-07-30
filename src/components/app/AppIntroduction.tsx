@@ -18,10 +18,7 @@ const AppIntroduction: React.FC = () => {
           Now with <strong className="text-green-700">Spotify playlist exporting</strong>! Connect your Spotify account to easily create playlists from your matched tracks.
         </p>
         <p className="text-base">
-          Get Spotify links, estimate reach from artist followers, and discover where your music is being played.
-        </p>
-         <p className="text-xs text-gray-700 mt-4">
-          Note: Spotify features require account connection.
+          Get Spotify links, estimate reach from artist followers, and discover where your music is being used.
         </p>
       </div>
     </div>
