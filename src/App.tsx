@@ -69,8 +69,8 @@ const AppContentInternal: React.FC = React.memo(() => {
         top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
         background-image: url('${bgGif}') !important;
         background-repeat: no-repeat !important;
-        background-position: center 40% !important;
-        background-size: 200vw 100vh !important;
+        background-position: center center !important;
+        background-size: cover !important;
         filter: blur(2px) brightness(0.7) !important;
         opacity: 1 !important;
         pointer-events: none !important;
