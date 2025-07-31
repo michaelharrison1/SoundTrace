@@ -12,6 +12,10 @@ import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
 const SongStreamDetail = React.lazy(() => import('./reachAnalyzer/SongStreamDetail'));
 const EstimatedRevenueTab = React.lazy(() => import('./reachAnalyzer/EstimatedRevenueTab'));
+const TrackMomentumTab = React.lazy(() => import('./reachAnalyzer/TrackMomentumTab'));
+const AIPersonaTab = React.lazy(() => import('./reachAnalyzer/AIPersonaTab'));
+const DeadweightTab = React.lazy(() => import('./reachAnalyzer/DeadweightTab'));
+const WeeklyGrowthSnapshotTile = React.lazy(() => import('./reachAnalyzer/WeeklyGrowthSnapshotTile'));
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 
@@ -74,7 +78,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 }) => {
 
 
-  const [activeMonitorTab, setActiveMonitorTab] = useState<MonitorTab>('reach');
+  const [activeMonitorTab, setActiveMonitorTab] = useState<MonitorTab | string>('reach');
   // Classic colors: green for reach, blue for streams
   const reachBarColor = '#00C800'; // classic green
   const streamBarColor = '#1D9BF0'; // classic blue
@@ -426,6 +430,12 @@ const renderNote = () => note ? (
     }
 
     switch (activeMonitorTab) {
+      case 'trackMomentum':
+        return <TrackMomentumTab />;
+      case 'aiPersona':
+        return <AIPersonaTab />;
+      case 'deadweight':
+        return <DeadweightTab />;
       case 'reach': {
         // Calculate stream bar config and color, force 1M per bar and never fill all bars
         const minBarUnit = 1000000;
@@ -589,11 +599,14 @@ const renderNote = () => note ? (
     }
   };
 
-  const monitorTabs: {id: MonitorTab, label: string}[] = [
+  const monitorTabs: {id: MonitorTab | string, label: string}[] = [
     { id: 'reach', label: 'Total Reach' },
+    { id: 'trackMomentum', label: 'Track Momentum' },
+    { id: 'artistStats', label: 'Artist Stats' },
     { id: 'streamHistory', label: 'Stream History' },
     { id: 'estimatedRevenue', label: 'Est. Revenue' },
-    { id: 'artistStats', label: 'Artist Stats' },
+    { id: 'aiPersona', label: 'AI Persona' },
+    { id: 'deadweight', label: 'Deadweight Detector' },
     { id: 'beatStats', label: 'Beat Matches' },
     { id: 'collaborationRadar', label: 'Collab Radar'}
   ];
@@ -609,27 +622,36 @@ const renderNote = () => note ? (
           <button className="win95-button-sm bg-[#C0C0C0] text-black font-bold font-mono w-4 h-4 leading-none text-xs" aria-label="Close" disabled>X</button>
         </div>
       </div>
-      <div className="tabs-container flex pl-1 pt-2 bg-[#C0C0C0] select-none">
-        {monitorTabs.map(tab => (
-            <div
-              key={tab.id}
-              className={`tab px-3 py-1 text-sm cursor-default hover:bg-black hover:text-white ${activeMonitorTab === tab.id ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10 bg-[#C0C0C0]' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5 bg-gray-300'}`}
-              onClick={() => setActiveMonitorTab(tab.id)}
-              role="tab"
-              aria-selected={activeMonitorTab === tab.id}
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveMonitorTab(tab.id);}}
-            >
-              {tab.label}
-            </div>
-        ))}
-      </div>
-      <div className="tab-content-wrapper p-0.5 pt-0 bg-[#C0C0C0]">
-        <React.Suspense fallback={<div className="p-4 text-center text-gray-500">Loading...</div>}>
-          <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[350px] flex flex-col" role="tabpanel" aria-labelledby={`tab-${activeMonitorTab}`}> 
-            {renderTabContent()}
+      <div className="flex">
+        <div className="flex-1">
+          <div className="tabs-container flex pl-1 pt-2 bg-[#C0C0C0] select-none">
+            {monitorTabs.map(tab => (
+                <div
+                  key={tab.id}
+                  className={`tab px-3 py-1 text-sm cursor-default hover:bg-black hover:text-white ${activeMonitorTab === tab.id ? 'selected win95-border-outset border-b-[#C0C0C0] relative -mb-px z-10 bg-[#C0C0C0]' : 'win95-border-outset border-t-gray-400 border-l-gray-400 text-gray-600 opacity-75 ml-0.5 bg-gray-300'}`}
+                  onClick={() => setActiveMonitorTab(tab.id)}
+                  role="tab"
+                  aria-selected={activeMonitorTab === tab.id}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveMonitorTab(tab.id);}}
+                >
+                  {tab.label}
+                </div>
+            ))}
           </div>
-        </React.Suspense>
+          <div className="tab-content-wrapper p-0.5 pt-0 bg-[#C0C0C0]">
+            <React.Suspense fallback={<div className="p-4 text-center text-gray-500">Loading...</div>}>
+              <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[350px] flex flex-col" role="tabpanel" aria-labelledby={`tab-${activeMonitorTab}`}> 
+                {renderTabContent()}
+              </div>
+            </React.Suspense>
+          </div>
+        </div>
+        <div className="w-64 p-2">
+          <React.Suspense fallback={<div className="p-2 text-center text-gray-500">Loading...</div>}>
+            <WeeklyGrowthSnapshotTile />
+          </React.Suspense>
+        </div>
       </div>
       <div className="status-bar flex justify-between items-center px-1 py-0 border-t-2 border-t-[#808080] bg-[#C0C0C0] h-5 text-xs select-none">
         <div className="flex items-center h-[18px]">
