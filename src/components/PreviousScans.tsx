@@ -365,6 +365,28 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
 
   return (
     <div className="win95-border-outset bg-[#C0C0C0] p-0.5">
+      {/* Custom Scrollbar Styles for Beat Matches & Scan Log */}
+      <style>{`
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #7a7a7a #e0e0e0;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 10px;
+          background: #e0e0e0;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #7a7a7a;
+          border-radius: 6px;
+          border: 2px solid #e0e0e0;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #555;
+        }
+        .custom-scrollbar::-webkit-scrollbar-corner {
+          background: #e0e0e0;
+        }
+      `}</style>
       <div className="p-2 bg-[#C0C0C0]">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-lg font-normal text-black">Beat Matches & Scan Log</h3>
@@ -384,7 +406,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
 
 
         {!hasAnyMatchesInAnyLog && scanLogs.length > 0 ? ( <p className="text-black text-center py-2 text-sm">No song matches found in your scan history. {scanLogs.length} record(s) processed without matches or with errors.</p> ) : (
-        <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-320px)]">
+        <div className="overflow-x-auto win95-border-inset bg-white max-h-[calc(100vh-320px)] custom-scrollbar">
           <table className="min-w-full text-sm" style={{tableLayout: 'fixed'}}>
              <colgroup>
                 <col style={{ width: '5%' }} />
