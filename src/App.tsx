@@ -275,7 +275,7 @@ const AppContentInternal: React.FC = React.memo(() => {
         <footer className="py-1 px-2 text-xs text-black border-t-2 border-t-white bg-[#C0C0C0] flex justify-between items-center">
           <div>
             <span>&copy; {new Date().getFullYear()} SoundTrace. </span>
-            <span>Powered by ACRCloud & Spotify. </span>
+            <span>Powered by ACRCloud, Spotify & StreamClout. </span>
           </div>
           <span>Created by Michael Harrison</span>
         </footer>

@@ -216,54 +216,80 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     return stringData;
   };
   const handleExportToCSV = async () => {
-    const { confirm } = useWin95Modal();
-    const proceed = await confirm({
-      title: 'Export Table to CSV',
-      message: 'Export the current table view to a CSV file?',
-      confirmText: 'Export',
-      cancelText: 'Cancel',
-    });
-    if (!proceed) return;
-    const headers = [
-      "Original File/Source Title", "Scan Date", "Platform Source", "Source URL", "Status",
-      "Cover Art URL", "Matched Song Title", "Matched Artist", "Matched Album", "Release Date",
-      "Confidence (%)", "Spotify Link",
-      "Spotify Artist ID", "Spotify Track ID",
-      "Fetched Artist Followers", "Fetched Artist Popularity",
-      "StreamClout Stream Count", "StreamClout Timestamp"
-    ];
-    const csvRows = [headers.join(',')];
-    sortedTableRows.forEach(row => {
-      const rowData = [
-        escapeCsvCell(row.originalFileName),
-        escapeCsvCell(new Date(row.originalScanDate).toLocaleString()),
-        escapeCsvCell(formatPlatformSource(row.platformSource)),
-        escapeCsvCell(row.sourceUrl),
-        escapeCsvCell(row.isMatchRow ? (row.statusMessage || 'Match Found') : row.statusMessage || 'No Match')
+    setExportMessage(null);
+    try {
+      const defaultFileName = `soundtrace_scan_logs_${new Date().toISOString().split('T')[0]}.csv`;
+      const fileName = await prompt({
+        title: 'Export Table to CSV',
+        message: 'Enter a file name for your CSV export:',
+        defaultValue: defaultFileName,
+        confirmText: 'Export',
+        cancelText: 'Cancel',
+      });
+      if (fileName === null) {
+        setExportMessage({ type: 'error', text: 'CSV export cancelled.' });
+        return;
+      }
+      const trimmedFileName = fileName.trim() === '' ? defaultFileName : fileName.trim();
+      const proceed = await confirm({
+        title: 'Confirm Export',
+        message: `Export the current table view to "${trimmedFileName}"?`,
+        confirmText: 'Export',
+        cancelText: 'Cancel',
+      });
+      if (!proceed) {
+        setExportMessage({ type: 'error', text: 'CSV export cancelled.' });
+        return;
+      }
+      const headers = [
+        "Original File/Source Title", "Scan Date", "Platform Source", "Source URL", "Status",
+        "Cover Art URL", "Matched Song Title", "Matched Artist", "Matched Album", "Release Date",
+        "Confidence (%)", "Spotify Link",
+        "Spotify Artist ID", "Spotify Track ID",
+        "Fetched Artist Followers", "Fetched Artist Popularity",
+        "StreamClout Stream Count", "StreamClout Timestamp"
       ];
-      if (row.isMatchRow && row.matchDetails) {
-        const match = row.matchDetails;
-        const followerInfo = match.spotifyArtistId ? followerResults.get(match.spotifyArtistId) : undefined;
-        rowData.push(
-          escapeCsvCell(match.coverArtUrl),
-          escapeCsvCell(match.title), escapeCsvCell(match.artist), escapeCsvCell(match.album),
-          escapeCsvCell(match.releaseDate), escapeCsvCell(match.matchConfidence),
-          escapeCsvCell(match.platformLinks?.spotify),
-          escapeCsvCell(match.spotifyArtistId), escapeCsvCell(match.spotifyTrackId),
-          escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.followers : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
-          escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.popularity : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
-          escapeCsvCell(match.streamCount),
-          escapeCsvCell(match.streamCountTimestamp ? new Date(match.streamCountTimestamp).toISOString() : '')
-        );
-      } else rowData.push(...Array(headers.length - rowData.length).fill(''));
-      csvRows.push(rowData.join(','));
-    });
-    const csvString = csvRows.join('\n'); const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob); link.setAttribute('href', url);
-      link.setAttribute('download', `soundtrace_scan_logs_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      const csvRows = [headers.join(',')];
+      sortedTableRows.forEach(row => {
+        const rowData = [
+          escapeCsvCell(row.originalFileName),
+          escapeCsvCell(new Date(row.originalScanDate).toLocaleString()),
+          escapeCsvCell(formatPlatformSource(row.platformSource)),
+          escapeCsvCell(row.sourceUrl),
+          escapeCsvCell(row.isMatchRow ? (row.statusMessage || 'Match Found') : row.statusMessage || 'No Match')
+        ];
+        if (row.isMatchRow && row.matchDetails) {
+          const match = row.matchDetails;
+          const followerInfo = match.spotifyArtistId ? followerResults.get(match.spotifyArtistId) : undefined;
+          rowData.push(
+            escapeCsvCell(match.coverArtUrl),
+            escapeCsvCell(match.title), escapeCsvCell(match.artist), escapeCsvCell(match.album),
+            escapeCsvCell(match.releaseDate), escapeCsvCell(match.matchConfidence),
+            escapeCsvCell(match.platformLinks?.spotify),
+            escapeCsvCell(match.spotifyArtistId), escapeCsvCell(match.spotifyTrackId),
+            escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.followers : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
+            escapeCsvCell(followerInfo?.status === 'success' ? followerInfo.popularity : (followerInfo?.status === 'loading' ? 'Loading...' : 'N/A')),
+            escapeCsvCell(match.streamCount),
+            escapeCsvCell(match.streamCountTimestamp ? new Date(match.streamCountTimestamp).toISOString() : '')
+          );
+        } else rowData.push(...Array(headers.length - rowData.length).fill(''));
+        csvRows.push(rowData.join(','));
+      });
+      const csvString = csvRows.join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', trimmedFileName.endsWith('.csv') ? trimmedFileName : trimmedFileName + '.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setExportMessage({ type: 'success', text: `Exported table to "${trimmedFileName.endsWith('.csv') ? trimmedFileName : trimmedFileName + '.csv'}".` });
+      }
+    } catch (err: any) {
+      setExportMessage({ type: 'error', text: `Failed to export CSV: ${err.message || err}` });
     }
   };
 
@@ -291,15 +317,27 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   };
 
   const handleClearAllConfirm = async () => {
-    const { confirm } = useWin95Modal();
-    const shouldDelete = await confirm({
-      title: 'Delete All Scan Logs',
-      message: 'Are you sure you want to delete ALL scan logs? This action cannot be undone.',
-      confirmText: 'Delete All',
-      cancelText: 'Cancel',
-    });
-    if (shouldDelete) {
-      onClearAllScans();
+    setExportMessage(null);
+    try {
+      const shouldDelete = await confirm({
+        title: 'Delete All Scan Logs',
+        message: 'Are you sure you want to delete ALL scan logs? This action cannot be undone.',
+        confirmText: 'Delete All',
+        cancelText: 'Cancel',
+      });
+      if (!shouldDelete) {
+        setExportMessage({ type: 'error', text: 'Delete all scan logs cancelled.' });
+        return;
+      }
+      await onClearAllScans();
+      await alert({
+        title: 'Scan Logs Deleted',
+        message: 'All scan logs have been deleted.',
+        confirmText: 'OK',
+      });
+      setExportMessage({ type: 'success', text: 'All scan logs deleted.' });
+    } catch (err: any) {
+      setExportMessage({ type: 'error', text: `Failed to delete all scan logs: ${err.message || err}` });
     }
   };
 
