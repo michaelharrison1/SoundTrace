@@ -3,10 +3,10 @@ import React, {useState, useMemo, JSX} from 'react';
 import { useWin95Modal } from './common/Win95ModalProvider';
 import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, PlatformSource, TrackScanLogStatus } from '../types';
 import Button from './common/Button';
-import TrashIcon from './icons/TrashIcon';
+// import TrashIcon from './icons/TrashIcon';
 import ArtistFollowers from './common/ArtistFollowers';
 import { useSpotifyPlayer } from '../contexts/SpotifyContext';
-import UploadIcon from './icons/UploadIcon';
+// import UploadIcon from './icons/UploadIcon';
 import MusicNoteIcon from './icons/MusicNoteIcon';
 import SpotifyIcon from './icons/SpotifyIcon';
 import Win95SpotifyIcon from './icons/Win95SpotifyIcon';
@@ -313,8 +313,16 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           <h3 className="text-lg font-normal text-black">Beat Matches & Scan Log</h3>
           <div className="flex items-center space-x-1">
             {hasAnyMatchesInAnyLog && ( <Button onClick={handleExportPlaylist} size="sm" className="p-1 !text-xs hover:bg-gray-300 win95-button-sm" disabled={isDeleting || isLoadingExport || isLoadingSpotifyAuth || sortedTableRows.filter(row => row.isMatchRow && row.matchDetails?.spotifyTrackId).length === 0} isLoading={isLoadingExport} title="Export visible Spotify tracks to a new playlist">Export to Spotify</Button> )}
-            <Button onClick={handleExportToCSV} size="sm" className="p-1 !text-xs hover:bg-gray-300 win95-button-sm" title="Export current table view to CSV" icon={<UploadIcon className="w-3 h-3 transform rotate-180"/>} disabled={isDeleting}>Export Table CSV</Button>
-            {scanLogs.length > 0 && ( <Button onClick={handleClearAllConfirm} size="sm" className="p-1 hover:bg-gray-300 win95-button-sm" aria-label="Clear all scan records" title="Clear all scan records" disabled={isDeleting}><TrashIcon className="h-3.5 w-3.5" /></Button> )}
+            <Button onClick={handleExportToCSV} size="sm" className="p-1 !text-xs hover:bg-gray-300 win95-button-sm flex items-center gap-1" title="Export current table view to CSV" disabled={isDeleting}>
+              <img src="/icons/export.png" alt="Export CSV" className="w-4 h-4 inline-block align-middle mr-1" />
+              Export Table CSV
+            </Button>
+            {scanLogs.length > 0 && (
+              <Button onClick={handleClearAllConfirm} size="sm" className="p-1 hover:bg-gray-300 win95-button-sm flex items-center gap-1" aria-label="Clear all scan records" title="Clear all scan records" disabled={isDeleting}>
+                <img src="/icons/trash.png" alt="Delete All" className="h-4 w-4 inline-block align-middle mr-1" />
+                Delete Everything
+              </Button>
+            )}
           </div>
         </div>
          {exportMessage && ( <div className={`mb-2 p-2 text-sm border ${exportMessage.type === 'success' ? 'bg-green-100 border-green-700 text-green-700' : 'bg-red-100 border-red-700 text-red-700'}`}>{exportMessage.text}</div> )}
@@ -421,7 +429,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                     </>
                   ) : ( <td colSpan={8} className="px-2 py-1.5 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
                    <DataCell title={row.originalFileName}> {row.originalFileName} {row.statusMessage && row.isMatchRow && <div className="text-[10px] text-yellow-600 italic leading-tight">{row.statusMessage}</div>} </DataCell>
-                  <DataCell className="text-center"> <Button onClick={() => handleSingleDelete(row.logId, row.originalFileName)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300 win95-button-sm" title={`Delete scan record for ${row.originalFileName}`} disabled={isDeleting}> <TrashIcon className="h-3 w-3" /> </Button> </DataCell>
+                  <DataCell className="text-center"> <Button onClick={() => handleSingleDelete(row.logId, row.originalFileName)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300 win95-button-sm" title={`Delete scan record for ${row.originalFileName}`} disabled={isDeleting}> <img src="/icons/trash.png" alt="Delete" className="h-3 w-3 inline-block align-middle" /> </Button> </DataCell>
                   <DataCell className="text-center text-xs">{formatPlatformSource(row.platformSource)}</DataCell>
                 </tr>
               )})}
