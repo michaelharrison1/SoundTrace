@@ -414,8 +414,9 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                       rel="noopener noreferrer"
                       className="inline-block hover:opacity-75"
                       title={`Open ${row.matchDetails.title} on Spotify`}
+                      style={{ width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <img src="/icons/Link.png" alt="Link" className="w-4 h-4 align-middle" />
+                      <img src="/icons/Link.png" alt="Link" className="w-7 h-7 object-contain" style={{ display: 'block' }} />
                     </a>
                   );
                 }
@@ -428,10 +429,11 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                         href={row.matchDetails.platformLinks.spotify}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-block hover:opacity-75"
+                        className="inline-block hover:opacity-75 win95-border-inset"
                         title={`Open ${row.matchDetails.title} on Spotify`}
+                        style={{ width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}
                       >
-                        <img src="/icons/Link.png" alt="Link" className="w-4 h-4 align-middle" />
+                        <img src="/icons/Link.png" alt="Link" className="w-7 h-7 object-contain" style={{ display: 'block' }} />
                       </a>
                     ) : (
                       <span className="text-xs text-gray-400">-</span>

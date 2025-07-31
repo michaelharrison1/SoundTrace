@@ -88,7 +88,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
             border: '3px solid #333', // dark grey outer border
             boxSizing: 'border-box',
             boxShadow: '0 0 0 2px #222', // double border effect
-            borderRadius: 7,
+            borderRadius: 0, // sharp corners for Win95 look
           }}
         >
         <button
