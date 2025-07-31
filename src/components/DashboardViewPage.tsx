@@ -331,12 +331,12 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   }
 
   return (
-    <div className="bg-[#C0C0C0] p-1"> {/* Main container with gray background */}
-      <div className="flex flex-col items-center mb-4">
+    <div className="bg-[#C0C0C0] p-0"> {/* Main container with gray background, less padding */}
+      <div className="flex flex-col items-center mb-1 mt-0"> {/* Less margin below and above */}
         {isCacheLoading ? (
-          <div className="mb-2"><ProgressBar text="Loading dashboard cache..." /></div>
+          <div className="mb-1"><ProgressBar text="Loading dashboard cache..." /></div>
         ) : dashboardCache ? (
-          <div className="text-xs text-gray-700 mb-1">
+          <div className="text-xs text-gray-700 mb-0.5">
             <span>Dashboard data cached</span>
             {dashboardCache.lastRefreshed && (
               <>
@@ -346,19 +346,21 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
             )}
           </div>
         ) : null}
-        {cacheError && <div className="text-xs text-red-700 mb-1">{cacheError}</div>}
+        {cacheError && <div className="text-xs text-red-700 mb-0.5">{cacheError}</div>}
       </div>
-      <ReachAnalyzer
-        totalFollowers={totalFollowers}
-        totalStreams={totalStreams}
-        isLoading={isLoadingOverall}
-        error={followerFetchError}
-        scanLogs={completedScans} // Pass completedScans
-        followerResults={followerResults}
-        historicalAnalyticsData={historicalAnalyticsData}
-        onDeleteAnalyticsHistory={handleDeleteAnalyticsHistory}
-        note="Dashboard data is refreshed automatically once per week."
-      />
+      <div className="mt-[-8px]"> {/* Move ReachAnalyzer up closer to the top */}
+        <ReachAnalyzer
+          totalFollowers={totalFollowers}
+          totalStreams={totalStreams}
+          isLoading={isLoadingOverall}
+          error={followerFetchError}
+          scanLogs={completedScans} // Pass completedScans
+          followerResults={followerResults}
+          historicalAnalyticsData={historicalAnalyticsData}
+          onDeleteAnalyticsHistory={handleDeleteAnalyticsHistory}
+          note="Dashboard data is refreshed automatically once per week."
+        />
+      </div>
       <PreviousScans
         scanLogs={completedScans} // Pass completedScans
         followerResults={followerResults}
