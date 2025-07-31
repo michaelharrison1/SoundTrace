@@ -1,20 +1,23 @@
 /* Custom Scrollbars for Beat Matches & Scan Log */
 
+
 .beat-matches-scrollbar, .scan-log-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #4b9cd3 #e0e0e0;
+  scrollbar-width: auto;
+  scrollbar-color: #000080 #C0C0C0;
 }
 
 .beat-matches-scrollbar::-webkit-scrollbar, .scan-log-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  background: #e0e0e0;
-  border-radius: 6px;
+  width: 16px;
+  background: #C0C0C0;
+  border: 2px solid #808080;
+  border-radius: 0;
 }
 
 .beat-matches-scrollbar::-webkit-scrollbar-thumb, .scan-log-scrollbar::-webkit-scrollbar-thumb {
-  background: #4b9cd3;
-  border-radius: 6px;
-  border: 2px solid #e0e0e0;
+  background: #000080;
+  border: 2px solid #808080;
+  border-radius: 0;
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #404040;
 }
 
 .beat-matches-scrollbar::-webkit-scrollbar-thumb:hover, .scan-log-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -22,5 +25,5 @@
 }
 
 .beat-matches-scrollbar::-webkit-scrollbar-corner, .scan-log-scrollbar::-webkit-scrollbar-corner {
-  background: #e0e0e0;
+  background: #C0C0C0;
 }
