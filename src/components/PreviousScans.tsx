@@ -296,8 +296,14 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & {sortKey?: SortableColumn, width?: string}> = React.memo(({ children, sortKey, width, className, ...props }) => (
     <th
       scope="col"
-      className={`px-2 py-1 text-left font-normal text-black win95-border-outset border-b-2 border-b-[#808080] select-none whitespace-nowrap ${sortKey ? 'cursor-pointer hover:bg-gray-300' : ''} ${className || ''}`}
-      style={{ width: width }}
+      className={`px-2 py-1 text-left font-normal text-black win95-border-outset select-none whitespace-nowrap ${sortKey ? 'cursor-pointer hover:bg-gray-300' : ''} ${className || ''}`}
+      style={{
+        width: width,
+        borderBottom: '3px solid #808080',
+        borderTop: '2px solid #fff',
+        background: '#C0C0C0',
+        boxSizing: 'border-box',
+      }}
       onClick={sortKey ? () => handleSort(sortKey) : undefined}
       {...props}
     >
