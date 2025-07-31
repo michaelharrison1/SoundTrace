@@ -75,10 +75,22 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }} className="flex flex-col items-center justify-start w-full">
       {/* Top navigation bar with Win95 border and margin */}
-      <nav
-        className="flex items-center space-x-0.5 bg-[#C0C0C0] win95-border-outset mt-6 mb-4 px-2 py-1"
-        style={{ maxWidth: 1250, width: '99%', minWidth: 320 }}
+      <div
+        className="mt-6 mb-4 flex justify-center w-full"
+        style={{ width: '100%' }}
       >
+        <nav
+          className="flex items-center space-x-0.5 bg-[#C0C0C0] win95-border-outset px-2 py-1"
+          style={{
+            maxWidth: 1320, // slightly wider than before
+            width: '99.5%', // slightly more horizontal space
+            minWidth: 340,
+            border: '3px solid #333', // dark grey outer border
+            boxSizing: 'border-box',
+            boxShadow: '0 0 0 2px #222', // double border effect
+            borderRadius: 7,
+          }}
+        >
         <button
           onClick={() => setActiveView('scan')}
           className={getNavButtonClass('scan')}
@@ -107,7 +119,8 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
           user={user}
           navStyle={true}
         />
-      </nav>
+        </nav>
+      </div>
       {isAppDataLoading && (
         <div className="p-4 win95-border-outset bg-[#C0C0C0] text-center mx-auto mt-2" style={{ maxWidth: 1250, width: '99%' }}>
           <ProgressBar text={`Loading ${activeView} data...`} />
