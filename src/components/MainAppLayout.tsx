@@ -85,9 +85,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
             maxWidth: 1320, // slightly wider than before
             width: '99.5%', // slightly more horizontal space
             minWidth: 340,
-            border: '3px solid #333', // dark grey outer border
             boxSizing: 'border-box',
-            boxShadow: '0 0 0 2px #222', // double border effect
             borderRadius: 0, // sharp corners for Win95 look
           }}
         >
