@@ -415,7 +415,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                       className="inline-block hover:opacity-75"
                       title={`Open ${row.matchDetails.title} on Spotify`}
                     >
-                      <SpotifyIcon className="w-3.5 h-3.5 text-green-600" />
+                      <img src="/icons/Link.png" alt="Link" className="w-4 h-4 align-middle" />
                     </a>
                   );
                 }
@@ -431,7 +431,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                         className="inline-block hover:opacity-75"
                         title={`Open ${row.matchDetails.title} on Spotify`}
                       >
-                        <Win95SpotifyIcon className="w-4 h-4" />
+                        <img src="/icons/Link.png" alt="Link" className="w-4 h-4 align-middle" />
                       </a>
                     ) : (
                       <span className="text-xs text-gray-400">-</span>
