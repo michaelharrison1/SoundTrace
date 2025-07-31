@@ -351,14 +351,12 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
           <h3 className="text-lg font-normal text-black">Beat Matches & Scan Log</h3>
           <div className="flex items-center space-x-1">
             {hasAnyMatchesInAnyLog && ( <Button onClick={handleExportPlaylist} size="sm" className="p-1 !text-xs hover:bg-gray-300 win95-button-sm" disabled={isDeleting || isLoadingExport || isLoadingSpotifyAuth || sortedTableRows.filter(row => row.isMatchRow && row.matchDetails?.spotifyTrackId).length === 0} isLoading={isLoadingExport} title="Export visible Spotify tracks to a new playlist">Export to Spotify</Button> )}
-            <Button onClick={handleExportToCSV} size="sm" className="p-1 !text-xs hover:bg-gray-300 win95-button-sm flex items-center gap-1" title="Export current table view to CSV" disabled={isDeleting}>
-              <img src="/icons/export.png" alt="Export CSV" className="w-4 h-4 inline-block align-middle mr-1" />
+            <Button onClick={handleExportToCSV} size="sm" className="p-1 !text-xs hover:bg-gray-300 win95-button-sm" title="Export current table view to CSV" disabled={isDeleting}>
               Export Table CSV
             </Button>
             {scanLogs.length > 0 && (
-              <Button onClick={handleClearAllConfirm} size="sm" className="p-1 hover:bg-gray-300 win95-button-sm flex items-center gap-1" aria-label="Clear all scan records" title="Clear all scan records" disabled={isDeleting}>
-                <img src="/icons/trash.png" alt="Delete All" className="h-4 w-4 inline-block align-middle mr-1" />
-                Delete Everything
+              <Button onClick={handleClearAllConfirm} size="sm" className="p-1 !text-xs hover:bg-gray-300 win95-button-sm" aria-label="Clear all scan records" title="Delete Everything" disabled={isDeleting}>
+                <img src="/icons/trash.png" alt="Delete Everything" className="h-4 w-4 inline-block align-middle" />
               </Button>
             )}
           </div>
