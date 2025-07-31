@@ -9,6 +9,7 @@ function getRandomGifUrl() {
 }
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import './components/customScrollbars.css';
 import LoginPage from './components/LoginPage';
 import RegistrationPage from './components/RegistrationPage';
 import MainAppLayout from './components/MainAppLayout';
