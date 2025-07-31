@@ -82,22 +82,20 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
   // Use same bar config logic as streaming data for reach
   const [reachBarConfig, setReachBarConfig] = useState(() => {
-    const minBarUnit = 1000000;
-    const maxBars = 30;
-    const barUnit = Math.max(minBarUnit, Math.ceil((totalFollowers ?? 1) / (maxBars - 2)));
-    return {
-      barUnit,
-      numberOfBarsToActivate: Math.min(maxBars - 1, Math.floor((totalFollowers ?? 0) / barUnit)),
-      unitLabel: barUnit >= 1000000 ? `${(barUnit / 1000000).toFixed(0)}M` : `${barUnit}`
-  
-  // Show note if provided
-  const renderNote = () => note ? (
-    <div className="text-xs text-gray-600 mt-1 mb-2 italic">{note}</div>
-  ) : null;
-    };
-  });
+  const minBarUnit = 1000000;
+  const maxBars = 30;
+  const barUnit = Math.max(minBarUnit, Math.ceil((totalFollowers ?? 1) / (maxBars - 2)));
+  return {
+    barUnit,
+    numberOfBarsToActivate: Math.min(maxBars - 1, Math.floor((totalFollowers ?? 0) / barUnit)),
+    unitLabel: barUnit >= 1000000 ? `${(barUnit / 1000000).toFixed(0)}M` : `${barUnit}`
+  };
+});
 
-      {renderNote()}
+// Show note if provided
+const renderNote = () => note ? (
+  <div className="text-xs text-gray-600 mt-1 mb-2 italic">{note}</div>
+) : null;
   // Reach bar animation state and refs (single source of truth)
   const [reachLineProgress, setReachLineProgress] = React.useState(0);
   const [reachBarStates, setReachBarStates] = React.useState<Array<'active' | 'falling' | 'inactive'>>(Array(30).fill('inactive'));
@@ -602,9 +600,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
 
   return (
-    <>
-      {renderNote()}
-      <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black">
+    <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black">
       <div className="title-bar flex items-center justify-between bg-[#000080] text-white px-1 py-0.5 h-6 select-none">
         <div className="flex items-center"><FakeWindowIcon /><span className="font-bold text-sm">Reach Analyzer</span></div>
         <div className="flex space-x-0.5">
@@ -635,13 +631,15 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
           </div>
         </React.Suspense>
       </div>
-      <div className="status-bar flex justify-end items-center px-1 py-0 border-t-2 border-t-[#808080] bg-[#C0C0C0] h-5 text-xs select-none">
+      <div className="status-bar flex justify-between items-center px-1 py-0 border-t-2 border-t-[#808080] bg-[#C0C0C0] h-5 text-xs select-none">
+        <div className="flex items-center h-[18px]">
+          {note && <div className="text-xs text-gray-600 italic ml-1">{note}</div>}
+        </div>
         <div className="flex space-x-0.5 h-[18px]">
            <div className="win95-border-inset w-12 px-1 flex items-center justify-center">{new Date().toLocaleTimeString('en-US', {hour12: false, hour: '2-digit', minute:'2-digit'})}</div>
         </div>
       </div>
     </div>
-    </>
   );
 };
 export default React.memo(ReachAnalyzer);
