@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { getDashboardCache, refreshDashboardCache, DashboardCache } from '../services/dashboardCacheService';
 import { useWin95Modal } from './common/Win95ModalProvider';
 import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, TrackScanLogStatus, ScanJob } from '../types';
 import PreviousScans from './PreviousScans';
@@ -20,6 +21,32 @@ interface DashboardViewPageProps {
 }
 
 const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousScans, jobs, onDeleteScan: refreshDataAfterSingleDelete, onClearAllScans: refreshDataAfterClearAll }) => {
+  // Dashboard cache state
+  const [dashboardCache, setDashboardCache] = useState<DashboardCache | null>(null);
+  const [isCacheLoading, setIsCacheLoading] = useState(false);
+  const [cacheError, setCacheError] = useState<string | null>(null);
+  const [isRefreshingCache, setIsRefreshingCache] = useState(false);
+
+  // Fetch dashboard cache on mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCache = async () => {
+      setIsCacheLoading(true);
+      setCacheError(null);
+      try {
+        const cache = await getDashboardCache();
+        if (isMounted) setDashboardCache(cache);
+      } catch (err: any) {
+        if (isMounted) setCacheError(err.message || 'Failed to load dashboard cache.');
+      } finally {
+        if (isMounted) setIsCacheLoading(false);
+      }
+    };
+    fetchCache();
+    return () => { isMounted = false; };
+  }, [user]);
+
+  // Manual refresh handler removed (refresh is now backend-driven, weekly)
   const containerStyles = "p-4 win95-border-outset bg-[#C0C0C0] text-center";
 
   const [totalFollowers, setTotalFollowers] = useState<number | null | undefined>(undefined);
@@ -267,14 +294,30 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
   if (completedScans.length === 0 && !isLoadingOverall) { // Use completedScans
     return (
-        <div className={containerStyles}>
-            <img src={fireIcon} alt="Fire Icon" className="w-12 h-12 mx-auto" aria-hidden="true"/>
-            <h2 className="text-lg font-normal text-black mt-1">No Completed Scan Data Yet</h2>
-            <p className="text-gray-700 mt-0.5 text-sm">Processed tracks from completed jobs and their matches will
-                appear here.</p>
-            <p className="text-gray-700 mt-0.5 text-sm">Go to "New Scan Job" to start, then check "Job Console" for
-                progress.</p>
+      <div className={containerStyles}>
+        <div className="flex flex-col items-center mb-4">
+          {isCacheLoading ? (
+            <div className="mb-2"><ProgressBar text="Loading dashboard cache..." /></div>
+          ) : dashboardCache ? (
+            <div className="text-xs text-gray-700 mb-1">
+              <span>Dashboard data cached</span>
+              {dashboardCache.lastRefreshed && (
+                <>
+                  {" | Last refreshed: "}
+                  {new Date(dashboardCache.lastRefreshed).toLocaleString()}
+                </>
+              )}
+            </div>
+          ) : null}
+          {cacheError && <div className="text-xs text-red-700 mb-1">{cacheError}</div>}
         </div>
+        <img src={fireIcon} alt="Fire Icon" className="w-12 h-12 mx-auto" aria-hidden="true"/>
+        <h2 className="text-lg font-normal text-black mt-1">No Completed Scan Data Yet</h2>
+        <p className="text-gray-700 mt-0.5 text-sm">Processed tracks from completed jobs and their matches will
+            appear here.</p>
+        <p className="text-gray-700 mt-0.5 text-sm">Go to "New Scan Job" to start, then check "Job Console" for
+            progress.</p>
+      </div>
     );
   }
 
@@ -289,6 +332,22 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
 
   return (
     <div className="bg-[#C0C0C0] p-1"> {/* Main container with gray background */}
+      <div className="flex flex-col items-center mb-4">
+        {isCacheLoading ? (
+          <div className="mb-2"><ProgressBar text="Loading dashboard cache..." /></div>
+        ) : dashboardCache ? (
+          <div className="text-xs text-gray-700 mb-1">
+            <span>Dashboard data cached</span>
+            {dashboardCache.lastRefreshed && (
+              <>
+                {" | Last refreshed: "}
+                {new Date(dashboardCache.lastRefreshed).toLocaleString()}
+              </>
+            )}
+          </div>
+        ) : null}
+        {cacheError && <div className="text-xs text-red-700 mb-1">{cacheError}</div>}
+      </div>
       <ReachAnalyzer
         totalFollowers={totalFollowers}
         totalStreams={totalStreams}
@@ -298,6 +357,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         followerResults={followerResults}
         historicalAnalyticsData={historicalAnalyticsData}
         onDeleteAnalyticsHistory={handleDeleteAnalyticsHistory}
+        note="Dashboard data is refreshed automatically once per week."
       />
       <PreviousScans
         scanLogs={completedScans} // Pass completedScans

@@ -24,6 +24,7 @@ interface ReachAnalyzerProps {
   followerResults: Map<string, SpotifyFollowerResult>;
   historicalAnalyticsData: DailyAnalyticsSnapshot[];
   onDeleteAnalyticsHistory: () => Promise<void>;
+  note?: string;
 }
 
 export type MonitorTab = 'reach' | 'streamHistory' | 'artistStats' | 'beatStats' | 'collaborationRadar' | 'estimatedRevenue';
@@ -68,7 +69,8 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
   scanLogs, // Will receive filtered scans
   followerResults,
   historicalAnalyticsData,
-  onDeleteAnalyticsHistory
+  onDeleteAnalyticsHistory,
+  note
 }) => {
 
 
@@ -87,9 +89,15 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
       barUnit,
       numberOfBarsToActivate: Math.min(maxBars - 1, Math.floor((totalFollowers ?? 0) / barUnit)),
       unitLabel: barUnit >= 1000000 ? `${(barUnit / 1000000).toFixed(0)}M` : `${barUnit}`
+  
+  // Show note if provided
+  const renderNote = () => note ? (
+    <div className="text-xs text-gray-600 mt-1 mb-2 italic">{note}</div>
+  ) : null;
     };
   });
 
+      {renderNote()}
   // Reach bar animation state and refs (single source of truth)
   const [reachLineProgress, setReachLineProgress] = React.useState(0);
   const [reachBarStates, setReachBarStates] = React.useState<Array<'active' | 'falling' | 'inactive'>>(Array(30).fill('inactive'));
@@ -594,7 +602,9 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
 
 
   return (
-    <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black">
+    <>
+      {renderNote()}
+      <div className="win95-border-outset bg-[#C0C0C0] mb-4 text-black">
       <div className="title-bar flex items-center justify-between bg-[#000080] text-white px-1 py-0.5 h-6 select-none">
         <div className="flex items-center"><FakeWindowIcon /><span className="font-bold text-sm">Reach Analyzer</span></div>
         <div className="flex space-x-0.5">
@@ -631,6 +641,7 @@ const ReachAnalyzer: React.FC<ReachAnalyzerProps> = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
 export default React.memo(ReachAnalyzer);
