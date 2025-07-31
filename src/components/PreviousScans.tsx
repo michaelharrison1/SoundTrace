@@ -296,8 +296,8 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & {sortKey?: SortableColumn, width?: string}> = React.memo(({ children, sortKey, width, className, ...props }) => (
     <th
       scope="col"
-      className={`px-2 py-1 text-left font-normal text-black win95-border-outset border-b-2 border-b-[#808080] select-none whitespace-nowrap border-r border-r-[#808080] ${sortKey ? 'cursor-pointer hover:bg-gray-300' : ''} ${className || ''}`}
-      style={{ width: width, borderRight: '2px solid #808080' }}
+      className={`px-2 py-1 text-left font-normal text-black win95-border-outset border-b-2 border-b-[#808080] select-none whitespace-nowrap ${sortKey ? 'cursor-pointer hover:bg-gray-300' : ''} ${className || ''}`}
+      style={{ width: width }}
       onClick={sortKey ? () => handleSort(sortKey) : undefined}
       {...props}
     >
@@ -307,8 +307,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
   HeaderCell.displayName = 'HeaderCell';
   const DataCell: React.FC<React.TdHTMLAttributes<HTMLTableCellElement>> = React.memo(({ children, className, ...props }) => (
     <td
-      className={`px-2 py-1 text-gray-800 truncate whitespace-nowrap border-r border-r-[#808080] ${className || ''}`}
-      style={{ borderRight: '2px solid #808080' }}
+      className={`px-2 py-1 text-gray-800 truncate whitespace-nowrap ${className || ''}`}
       {...props}
     >
       {children}
