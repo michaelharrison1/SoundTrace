@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import './customScrollbars.css';
 import { BeatStatsEntry, BeatSortableColumn, SortDirection } from '../ReachAnalyzer'; // Import shared types
 
 interface BeatStatsTableProps {
@@ -71,7 +72,7 @@ const BeatStatsTable: React.FC<BeatStatsTableProps> = ({
   return (
     <div className="beat-stats flex flex-col h-full">
       <h4 className="text-base font-semibold text-black mb-2 text-center">Beat Matches</h4>
-      <div className="overflow-auto win95-border-inset bg-white flex-grow p-0.5">
+      <div className="overflow-auto win95-border-inset bg-white flex-grow p-0.5 beat-matches-scrollbar">
         <table className="min-w-full text-sm" style={{ tableLayout: 'fixed' }}>
           <colgroup><col style={{ width: '70%' }} /><col style={{ width: '30%' }} /></colgroup>
           <thead className="bg-[#C0C0C0] sticky top-0 z-10">
