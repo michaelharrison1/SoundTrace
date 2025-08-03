@@ -36,15 +36,14 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
 
   // Sort by date ascending
   const sorted = [...dailyData].sort((a, b) => a.date.localeCompare(b.date));
-  // Get the most recent 14 days
-  const last14 = sorted.slice(-14);
+  // Calculate daily new streams (difference from previous day)
+  const dailyNew = sorted.map((d, i, arr) => i === 0 ? 0 : d.streams - arr[i - 1].streams);
+  // Get the most recent 14 days of daily new streams
+  const last14New = dailyNew.slice(-14);
   // This week: last 7 days
-  const week1 = last14.slice(-7);
+  const week1New = last14New.slice(-7).reduce((sum, n) => sum + n, 0);
   // Last week: previous 7 days
-  const week0 = last14.slice(-14, -7);
-  // Calculate new streams for each week as difference between first and last day
-  const week1New = week1.length >= 2 ? week1[week1.length - 1].streams - week1[0].streams : 0;
-  const week0New = week0.length >= 2 ? week0[week0.length - 1].streams - week0[0].streams : 0;
+  const week0New = last14New.slice(-14, -7).reduce((sum, n) => sum + n, 0);
   const percent = week0New > 0 ? ((week1New - week0New) / week0New) * 100 : 0;
 
   return (

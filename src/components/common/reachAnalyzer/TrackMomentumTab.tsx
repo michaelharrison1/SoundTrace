@@ -35,22 +35,22 @@ const TrackMomentumTab: React.FC<TrackMomentumTabProps> = ({ scanLogs }) => {
   // For each track, build a sorted array of {date, streams}
   const tracks = Object.entries(trackData).map(([trackId, { title, artist, daily }]) => {
     const days = Object.entries(daily).map(([date, streams]) => ({ date, streams })).sort((a, b) => a.date.localeCompare(b.date));
-    return { trackId, title, artist, days };
+    // Calculate daily new streams
+    const dailyNew = days.map((d, i, arr) => i === 0 ? 0 : d.streams - arr[i - 1].streams);
+    return { trackId, title, artist, days, dailyNew };
   });
 
-  // Calculate velocity (difference between first and last day of most recent 7 days)
+  // Calculate velocity (sum of daily new streams for last 7 days)
   const ranked = tracks.map(track => {
-    const last14 = track.days.slice(-14);
+    const last14New = track.dailyNew.slice(-14);
     // This week: last 7 days
-    const week1 = last14.slice(-7);
+    const week1New = last14New.slice(-7).reduce((sum, n) => sum + n, 0);
     // Last week: previous 7 days
-    const week0 = last14.slice(-14, -7);
-    // Velocity: difference between first and last day of this week
-    const velocity = week1.length >= 2 ? week1[week1.length - 1].streams - week1[0].streams : 0;
-    // Last week's velocity
-    const prevVelocity = week0.length >= 2 ? week0[week0.length - 1].streams - week0[0].streams : 0;
-    // Acceleration: difference between this week's and last week's velocity
-    const acceleration = velocity - prevVelocity;
+    const week0New = last14New.slice(-14, -7).reduce((sum, n) => sum + n, 0);
+    // Velocity: this week's new streams
+    const velocity = week1New;
+    // Acceleration: difference between this week and last week
+    const acceleration = velocity - week0New;
     return { ...track, velocity, acceleration };
   });
   // Rank by velocity, assign 1-10
