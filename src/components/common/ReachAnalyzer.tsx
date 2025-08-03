@@ -13,8 +13,7 @@ import { MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFo
 const SongStreamDetail = React.lazy(() => import('./reachAnalyzer/SongStreamDetail'));
 const EstimatedRevenueTab = React.lazy(() => import('./reachAnalyzer/EstimatedRevenueTab'));
 const TrackMomentumTab = React.lazy(() => import('./reachAnalyzer/TrackMomentumTab'));
-const AIPersonaTab = React.lazy(() => import('./reachAnalyzer/AIPersonaTab'));
-const DeadweightTab = React.lazy(() => import('./reachAnalyzer/DeadweightTab'));
+// ...existing code...
 const WeeklyGrowthSnapshotTile = React.lazy(() => import('./reachAnalyzer/WeeklyGrowthSnapshotTile'));
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -431,11 +430,8 @@ const renderNote = () => note ? (
 
     switch (activeMonitorTab) {
       case 'trackMomentum':
-        return <TrackMomentumTab />;
-      case 'aiPersona':
-        return <AIPersonaTab />;
-      case 'deadweight':
-        return <DeadweightTab />;
+        return <TrackMomentumTab scanLogs={scanLogs} />;
+// ...existing code...
       case 'reach': {
         // Calculate stream bar config and color, force 1M per bar and never fill all bars
         const minBarUnit = 1000000;
@@ -605,8 +601,7 @@ const renderNote = () => note ? (
     { id: 'artistStats', label: 'Artist Stats' },
     { id: 'streamHistory', label: 'Stream History' },
     { id: 'estimatedRevenue', label: 'Est. Revenue' },
-    { id: 'aiPersona', label: 'AI Persona' },
-    { id: 'deadweight', label: 'Deadweight Detector' },
+// ...existing code...
     { id: 'beatStats', label: 'Beat Matches' },
     { id: 'collaborationRadar', label: 'Collab Radar'}
   ];
@@ -649,7 +644,7 @@ const renderNote = () => note ? (
         </div>
         <div className="w-64 p-2">
           <React.Suspense fallback={<div className="p-2 text-center text-gray-500">Loading...</div>}>
-            <WeeklyGrowthSnapshotTile />
+            <WeeklyGrowthSnapshotTile scanLogs={scanLogs} historicalAnalyticsData={historicalAnalyticsData} />
           </React.Suspense>
         </div>
       </div>
