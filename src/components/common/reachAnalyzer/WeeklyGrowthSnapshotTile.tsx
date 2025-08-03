@@ -36,27 +36,22 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
 
   // Sort by date ascending
   const sorted = [...dailyData].sort((a, b) => a.date.localeCompare(b.date));
-  const lastDay = sorted[sorted.length - 1];
-  // Find last Sunday (or today if Sunday)
-  function getLastSunday(dateStr: string) {
-    const d = new Date(dateStr);
-    const day = d.getDay();
-    d.setDate(d.getDate() - day);
-    return d.toISOString().slice(0, 10);
-  }
-  // Get last 2 full weeks (Sun-Sat)
-  const lastSunday = lastDay ? getLastSunday(lastDay.date) : null;
-  const week1 = sorted.filter(d => d.date > lastSunday!);
-  const week0 = sorted.filter(d => d.date <= lastSunday!).slice(-7);
-  const week1Total = week1.reduce((sum, d) => sum + d.streams, 0);
-  const week0Total = week0.reduce((sum, d) => sum + d.streams, 0);
-  const delta = week1Total - week0Total;
-  const percent = week0Total > 0 ? (delta / week0Total) * 100 : 0;
+  // Get the most recent 14 days
+  const last14 = sorted.slice(-14);
+  // This week: last 7 days
+  const week1 = last14.slice(-7);
+  // Last week: previous 7 days
+  const week0 = last14.slice(-14, -7);
+  // Calculate new streams for each week as difference between first and last day
+  const week1New = week1.length >= 2 ? week1[week1.length - 1].streams - week1[0].streams : 0;
+  const week0New = week0.length >= 2 ? week0[week0.length - 1].streams - week0[0].streams : 0;
+  const percent = week0New > 0 ? ((week1New - week0New) / week0New) * 100 : 0;
 
   return (
     <div className="p-2 bg-[#E0E0E0] win95-border-inset rounded">
       <h4 className="font-bold mb-1">Weekly Growth Snapshot</h4>
-      <div>+{delta.toLocaleString()} streams this week ({percent.toFixed(1)}%)</div>
+      <div>+{week1New.toLocaleString()} new streams this week</div>
+      <div>Stream growth: {percent.toFixed(1)}%</div>
     </div>
   );
 };

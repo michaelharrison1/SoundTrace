@@ -38,19 +38,20 @@ const TrackMomentumTab: React.FC<TrackMomentumTabProps> = ({ scanLogs }) => {
     return { trackId, title, artist, days };
   });
 
-  // Calculate velocity (last 7 days - previous 7 days)
+  // Calculate velocity (difference between first and last day of most recent 7 days)
   const ranked = tracks.map(track => {
     const last14 = track.days.slice(-14);
-    const prev7 = last14.slice(0, 7).reduce((sum, d) => sum + d.streams, 0);
-    const last7 = last14.slice(7).reduce((sum, d) => sum + d.streams, 0);
-    const velocity = last7 - prev7;
-    // Acceleration: week-over-week change for last 4 weeks
-    const weeks = [0, 1, 2, 3].map(i => {
-      const week = track.days.slice(-(7 * (i + 1)), -(7 * i) || undefined);
-      return week.reduce((sum, d) => sum + d.streams, 0);
-    });
-    const acceleration = weeks[0] - weeks[1]; // last week - week before
-    return { ...track, velocity, acceleration, weeks };
+    // This week: last 7 days
+    const week1 = last14.slice(-7);
+    // Last week: previous 7 days
+    const week0 = last14.slice(-14, -7);
+    // Velocity: difference between first and last day of this week
+    const velocity = week1.length >= 2 ? week1[week1.length - 1].streams - week1[0].streams : 0;
+    // Last week's velocity
+    const prevVelocity = week0.length >= 2 ? week0[week0.length - 1].streams - week0[0].streams : 0;
+    // Acceleration: difference between this week's and last week's velocity
+    const acceleration = velocity - prevVelocity;
+    return { ...track, velocity, acceleration };
   });
   // Rank by velocity, assign 1-10
   const sorted = [...ranked].sort((a, b) => b.velocity - a.velocity).slice(0, 10);
@@ -64,7 +65,7 @@ const TrackMomentumTab: React.FC<TrackMomentumTabProps> = ({ scanLogs }) => {
             <th>Track</th>
             <th>Artist</th>
             <th>Velocity (last 7d)</th>
-            <th>Acceleration (last 4w)</th>
+            <th>Acceleration (Δ velocity vs prev week)</th>
           </tr>
         </thead>
         <tbody>
@@ -74,7 +75,7 @@ const TrackMomentumTab: React.FC<TrackMomentumTabProps> = ({ scanLogs }) => {
               <td>{track.title}</td>
               <td>{track.artist}</td>
               <td>{track.velocity.toLocaleString()}</td>
-              <td>{track.acceleration.toLocaleString()} (4w trend: {track.weeks.map((w, idx) => `${4-idx}:${w}`).join(' | ')})</td>
+              <td>{track.acceleration.toLocaleString()}</td>
             </tr>
           ))}
         </tbody>
