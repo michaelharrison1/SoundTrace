@@ -644,7 +644,7 @@ const renderNote = () => note ? (
         </div>
         <div className="w-64 p-2">
           <React.Suspense fallback={<div className="p-2 text-center text-gray-500">Loading...</div>}>
-            <WeeklyGrowthSnapshotTile scanLogs={scanLogs} historicalAnalyticsData={historicalAnalyticsData} />
+            <WeeklyGrowthSnapshotTile scanLogs={scanLogs} />
           </React.Suspense>
         </div>
       </div>
