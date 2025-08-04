@@ -163,7 +163,14 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
     else { setSortColumn(column); setSortDirection('desc'); }
   };
 
-  const renderSortArrow = (column: SortableColumn) => (sortColumn === column ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : '');
+  const renderSortArrow = (column: SortableColumn) => {
+    // Always reserve space for arrow
+    let arrow = '';
+    if (sortColumn === column) arrow = sortDirection === 'asc' ? '▲' : '▼';
+    return (
+      <span style={{ display: 'inline-block', width: '1.2em', textAlign: 'center', marginLeft: 2, color: sortColumn === column ? undefined : 'transparent' }}>{arrow || '▲'}</span>
+    );
+  };
 
   const { confirm, prompt } = useWin95Modal();
 
@@ -308,7 +315,10 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
       onClick={sortKey ? () => handleSort(sortKey) : undefined}
       {...props}
     >
-      {children}{sortKey && renderSortArrow(sortKey)}
+      <span className="inline-flex items-center">
+        {children}
+        {sortKey && renderSortArrow(sortKey)}
+      </span>
     </th>
   ));
   HeaderCell.displayName = 'HeaderCell';

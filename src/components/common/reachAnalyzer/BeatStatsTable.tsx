@@ -16,7 +16,8 @@ const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & 
   currentSortDirection: SortDirection;
   onSortClick: (column: BeatSortableColumn) => void;
 }> = React.memo(({ children, sortKey, currentSortColumn, currentSortDirection, onSortClick, className, ...props }) => {
-  const sortArrow = sortKey === currentSortColumn ? (currentSortDirection === 'asc' ? ' ▲' : ' ▼') : '';
+  let arrow = '';
+  if (sortKey === currentSortColumn) arrow = currentSortDirection === 'asc' ? '▲' : '▼';
   return (
     <th
       scope="col"
@@ -24,7 +25,10 @@ const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & 
       onClick={sortKey ? () => onSortClick(sortKey) : undefined}
       {...props}
     >
-      {children}{sortArrow && <span className="ml-1">{sortArrow}</span>}
+      <span className="inline-flex items-center">
+        {children}
+        <span style={{ display: 'inline-block', width: '1.2em', textAlign: 'center', marginLeft: 2, color: sortKey === currentSortColumn ? undefined : 'transparent' }}>{arrow || '▲'}</span>
+      </span>
     </th>
   );
 });
