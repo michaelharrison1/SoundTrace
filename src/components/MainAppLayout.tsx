@@ -77,11 +77,15 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
       style={{
         position: 'relative',
         minHeight: '100vh',
+        minWidth: '100vw',
         width: '100%',
         backgroundImage: 'url(/background.jpg)',
         backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundPosition: 'center center',
         backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed',
+        backgroundColor: '#222', // fallback color
+        overflow: 'hidden',
       }}
       className="flex flex-col items-center justify-start w-full"
     >
