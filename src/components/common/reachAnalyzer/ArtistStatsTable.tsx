@@ -38,7 +38,9 @@ const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & 
   currentSortDirection: SortDirection;
   onSortClick: (column: ArtistSortableColumn) => void;
 }> = React.memo(({ children, sortKey, currentSortColumn, currentSortDirection, onSortClick, className, ...props }) => {
-  const sortArrow = sortKey === currentSortColumn ? (currentSortDirection === 'asc' ? ' ▲' : ' ▼') : '';
+  // Always reserve space for arrow
+  let arrow = '';
+  if (sortKey === currentSortColumn) arrow = currentSortDirection === 'asc' ? '▲' : '▼';
   return (
     <th
       scope="col"
@@ -46,7 +48,11 @@ const HeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableHeaderCellElement> & 
       onClick={sortKey ? () => onSortClick(sortKey) : undefined}
       {...props}
     >
-      {children}{sortArrow && <span className="ml-1">{sortArrow}</span>}
+      <span className="inline-flex items-center">
+        {children}
+        {/* Reserve space for arrow, always present but transparent if not sorted */}
+        <span style={{ display: 'inline-block', width: '1.2em', textAlign: 'center', marginLeft: 2, color: sortKey === currentSortColumn ? undefined : 'transparent' }}>{arrow || '▲'}</span>
+      </span>
     </th>
   );
 });
@@ -68,10 +74,17 @@ const ArtistStatsTable: React.FC<ArtistStatsTableProps> = ({
   sortColumn,
   sortDirection,
   onSort,
+  onSortDirection,
 }) => {
 
   const handleSort = (column: ArtistSortableColumn) => {
-    onSort(column); 
+    if (sortColumn === column) {
+      // Toggle direction
+      onSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      onSort(column);
+      onSortDirection('desc'); // Default to desc when changing column
+    }
   };
 
   const sortedData = useMemo(() => {
