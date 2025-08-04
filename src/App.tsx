@@ -44,16 +44,32 @@ export interface AppWindow {
 
 const AppContentInternal: React.FC = React.memo(() => {
 
+
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [authView, setAuthView] = useState<AuthView>('login');
+
+  const [previousScans, setPreviousScans] = useState<TrackScanLog[]>([]);
+  const [jobs, setJobs] = useState<ScanJob[]>([]);
+  const [isAppDataLoading, setIsAppDataLoading] = useState<boolean>(false);
+  const [appDataError, setAppDataError] = useState<string | null>(null);
+
   // On each reload, randomly choose a GIF, and keep it fixed until next reload
   const [gifIndex] = useState(() => {
     return Math.floor(Math.random() * GIFS.length);
   });
   const bgGif = `/gifs/${GIFS[gifIndex]}`;
 
-  // Set background style on body
+  // Only set GIF background if not logged in
   useEffect(() => {
+    if (currentUser) {
+      // Remove any existing style if logging in
+      const styleTag = document.getElementById('soundtrace-bg-gif-style');
+      if (styleTag) styleTag.remove();
+      document.body.style.background = '';
+      return;
+    }
     if (!bgGif) return;
-    // Debug: log the actual background URL
     const styleId = 'soundtrace-bg-gif-style';
     let styleTag = document.getElementById(styleId);
     if (!styleTag) {
@@ -82,15 +98,7 @@ const AppContentInternal: React.FC = React.memo(() => {
       if (styleTag) styleTag.remove();
       document.body.style.background = '';
     };
-  }, [bgGif]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [authView, setAuthView] = useState<AuthView>('login');
-
-  const [previousScans, setPreviousScans] = useState<TrackScanLog[]>([]);
-  const [jobs, setJobs] = useState<ScanJob[]>([]);
-  const [isAppDataLoading, setIsAppDataLoading] = useState<boolean>(false);
-  const [appDataError, setAppDataError] = useState<string | null>(null);
+  }, [bgGif, currentUser]);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.soundtrace.uk';
   const eventSourceRef = useRef<EventSource | null>(null);
