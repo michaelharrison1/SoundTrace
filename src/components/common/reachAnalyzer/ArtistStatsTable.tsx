@@ -9,7 +9,6 @@ import { formatFollowersDisplay } from './reachAnalyzerUtils';
 interface ArtistStatsTableProps {
   aggregatedArtistData: ArtistLeaderboardEntry[];
   isLoading: boolean;
-  currentArtistLevel: number;
   sortColumn: ArtistSortableColumn;
   sortDirection: SortDirection;
   onSort: (column: ArtistSortableColumn) => void;
@@ -70,7 +69,6 @@ DataCell.displayName = 'DataCell';
 const ArtistStatsTable: React.FC<ArtistStatsTableProps> = ({
   aggregatedArtistData,
   isLoading,
-  currentArtistLevel,
   sortColumn,
   sortDirection,
   onSort,
@@ -117,7 +115,7 @@ const ArtistStatsTable: React.FC<ArtistStatsTableProps> = ({
   return (
     <div className="artist-leaderboard flex flex-col h-full">
       <h4 className="text-base font-semibold text-black mb-0 text-center">Artist Statistics</h4>
-      <p className="text-xs text-gray-600 text-center mb-1">Total Unique Artists: {aggregatedArtistData.length} &bull; Artist Level: {currentArtistLevel}</p>
+      <p className="text-xs text-gray-600 text-center mb-1">Total Unique Artists: {aggregatedArtistData.length}</p>
       <div className="overflow-auto win95-border-inset bg-white flex-grow p-0.5 scan-log-scrollbar">
         <table className="min-w-full text-sm" style={{ tableLayout: 'fixed' }}>
           <colgroup>

@@ -560,7 +560,7 @@ const renderNote = () => note ? (
             sortDirection={artistSortDirection}
             onSort={setArtistSortColumn}
             onSortDirection={setArtistSortDirection}
-            currentArtistLevel={0}
+            // currentArtistLevel removed
           />
         );
       case 'beatStats':
