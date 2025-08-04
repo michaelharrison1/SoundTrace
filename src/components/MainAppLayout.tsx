@@ -73,7 +73,18 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
 
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh' }} className="flex flex-col items-center justify-start w-full">
+    <div
+      style={{
+        position: 'relative',
+        minHeight: '100vh',
+        width: '100%',
+        backgroundImage: 'url(/background.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+      className="flex flex-col items-center justify-start w-full"
+    >
       {/* Top navigation bar with Win95 border and margin */}
       <div
         className="mt-6 mb-4 flex justify-center w-full"
