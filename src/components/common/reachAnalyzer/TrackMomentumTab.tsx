@@ -6,36 +6,29 @@ interface TrackMomentumTabProps {
   scanLogs: TrackScanLog[];
 }
 
-// Helper: get per-track, per-day stream counts for last 30 days
-function getTrackHistories(scanLogs: TrackScanLog[]) {
-  const now = new Date();
-  const cutoff = new Date(now);
-  cutoff.setDate(now.getDate() - 30);
+// Aggregate per-track, per-day stream counts for all tracks
+function getTrackHistories(scanLogs: TrackScanLog[]): Record<string, { title: string; artist: string; daily: Record<string, number> }> {
   const trackMap: Record<string, { title: string; artist: string; daily: Record<string, number> }> = {};
   scanLogs.forEach(log => {
-    if (log.status === 'completed_match_found' || log.status === 'scanned_match_found' || log.status === 'imported_spotify_track') {
-      log.matches.forEach(match => {
-        if (match.spotifyTrackId && match.streamCount && match.streamCountTimestamp) {
-          const date = match.streamCountTimestamp.slice(0, 10);
-          if (new Date(date) < cutoff) return;
-          if (!trackMap[match.spotifyTrackId]) {
-            trackMap[match.spotifyTrackId] = { title: match.title, artist: match.artist, daily: {} };
-          }
-          trackMap[match.spotifyTrackId].daily[date] = (trackMap[match.spotifyTrackId].daily[date] || 0) + match.streamCount;
+    log.matches.forEach(match => {
+      if (match.spotifyTrackId && match.streamCount && match.streamCountTimestamp) {
+        const date = match.streamCountTimestamp.slice(0, 10);
+        if (!trackMap[match.spotifyTrackId]) {
+          trackMap[match.spotifyTrackId] = { title: match.title, artist: match.artist, daily: {} };
         }
-      });
-    }
+        trackMap[match.spotifyTrackId].daily[date] = (trackMap[match.spotifyTrackId].daily[date] || 0) + match.streamCount;
+      }
+    });
   });
   return trackMap;
 }
 
 const TrackMomentumTab: React.FC<TrackMomentumTabProps> = ({ scanLogs }) => {
-  // Build per-track, per-day stream history for last 30 days
+  // Build per-track, per-day stream history
   const trackData = useMemo(() => getTrackHistories(scanLogs), [scanLogs]);
-  // For each track, build a sorted array of {date, streams}
+  // For each track, build a sorted array of {date, streams} and daily new streams
   const tracks = Object.entries(trackData).map(([trackId, { title, artist, daily }]) => {
     const days = Object.entries(daily).map(([date, streams]) => ({ date, streams })).sort((a, b) => a.date.localeCompare(b.date));
-    // Calculate daily new streams
     const dailyNew = days.map((d, i, arr) => i === 0 ? 0 : d.streams - arr[i - 1].streams);
     return { trackId, title, artist, days, dailyNew };
   });
