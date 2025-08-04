@@ -82,16 +82,21 @@ export const SpotifyProvider: React.FC<SpotifyProviderProps> = ({ children }) =>
     setIsLoadingSpotifyAuth(true);
     try {
       const status = await spotifyService.getConnectionStatus();
-      if (status.isConnected && status.spotifyUser) {
-        setIsSpotifyConnected(true);
-        setSpotifyUser(status.spotifyUser);
-        setNeedsRefresh(new Date(status.spotifyUser.expiresAt) < new Date());
+      if (typeof status === 'object' && status !== null) {
+        if ((status as { isConnected?: boolean }).isConnected && (status as { spotifyUser?: any }).spotifyUser) {
+          setIsSpotifyConnected(true);
+          setSpotifyUser((status as { spotifyUser: SpotifyUserInfo }).spotifyUser);
+          setNeedsRefresh(new Date((status as { spotifyUser: SpotifyUserInfo }).spotifyUser.expiresAt) < new Date());
+        } else {
+          setIsSpotifyConnected(false);
+          setSpotifyUser(null);
+          if ((status as { needsRefresh?: boolean }).needsRefresh) {
+            setNeedsRefresh(true);
+          }
+        }
       } else {
         setIsSpotifyConnected(false);
         setSpotifyUser(null);
-        if (status.needsRefresh) {
-          setNeedsRefresh(true);
-        }
       }
     } catch (error) {
       console.error("Error checking Spotify status:", error);
