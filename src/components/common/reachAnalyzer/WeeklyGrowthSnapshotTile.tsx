@@ -1,49 +1,51 @@
 
+
 import React, { useMemo } from 'react';
-import { TrackScanLog, DailyAnalyticsSnapshot } from '../../../types';
+import { TrackScanLog } from '../../../types';
 
 interface WeeklyGrowthSnapshotTileProps {
   scanLogs: TrackScanLog[];
-  historicalAnalyticsData?: DailyAnalyticsSnapshot[];
 }
 
-// Helper to aggregate total streams by date (YYYY-MM-DD)
-function aggregateStreamsByDate(scanLogs: TrackScanLog[]): Record<string, number> {
-  const dateMap: Record<string, number> = {};
+// Robustly aggregate daily new streams for all tracks
+function getDailyNewStreams(scanLogs: TrackScanLog[]): { date: string; newStreams: number }[] {
+  // Map: date -> set of trackId -> max streamCount for that day
+  const dateTrackMap: Record<string, Record<string, number>> = {};
   scanLogs.forEach(log => {
-    if (log.status === 'completed_match_found' || log.status === 'scanned_match_found' || log.status === 'imported_spotify_track') {
-      log.matches.forEach(match => {
-        if (match.streamCount && match.streamCountTimestamp) {
-          const date = match.streamCountTimestamp.slice(0, 10);
-          dateMap[date] = (dateMap[date] || 0) + match.streamCount;
-        }
-      });
-    }
+    log.matches.forEach(match => {
+      if (match.spotifyTrackId && match.streamCount && match.streamCountTimestamp) {
+        const date = match.streamCountTimestamp.slice(0, 10);
+        if (!dateTrackMap[date]) dateTrackMap[date] = {};
+        // Use max streamCount for a track on a given day
+        dateTrackMap[date][match.spotifyTrackId] = Math.max(
+          dateTrackMap[date][match.spotifyTrackId] || 0,
+          match.streamCount
+        );
+      }
+    });
   });
-  return dateMap;
+  // For each date, sum all track streamCounts
+  const dailyTotals = Object.entries(dateTrackMap)
+    .map(([date, trackCounts]) => ({
+      date,
+      total: Object.values(trackCounts).reduce((a, b) => a + b, 0)
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  // Calculate daily new streams (difference from previous day)
+  const dailyNew = dailyTotals.map((d, i, arr) => ({
+    date: d.date,
+    newStreams: i === 0 ? 0 : Math.max(0, d.total - arr[i - 1].total)
+  }));
+  return dailyNew;
 }
 
-const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ scanLogs, historicalAnalyticsData }) => {
-  // Prefer historicalAnalyticsData if available, else aggregate from scanLogs
-  const dailyData = useMemo(() => {
-    if (historicalAnalyticsData && historicalAnalyticsData.length > 0) {
-      return historicalAnalyticsData.map(d => ({ date: d.date, streams: d.cumulativeStreams ?? 0 }));
-    }
-    // fallback: aggregate from scanLogs
-    const agg = aggregateStreamsByDate(scanLogs);
-    return Object.entries(agg).map(([date, streams]) => ({ date, streams }));
-  }, [scanLogs, historicalAnalyticsData]);
-
-  // Sort by date ascending
-  const sorted = [...dailyData].sort((a, b) => a.date.localeCompare(b.date));
-  // Calculate daily new streams (difference from previous day)
-  const dailyNew = sorted.map((d, i, arr) => i === 0 ? 0 : d.streams - arr[i - 1].streams);
-  // Get the most recent 14 days of daily new streams
-  const last14New = dailyNew.slice(-14);
-  // This week: last 7 days
-  const week1New = last14New.slice(-7).reduce((sum, n) => sum + n, 0);
-  // Last week: previous 7 days
-  const week0New = last14New.slice(-14, -7).reduce((sum, n) => sum + n, 0);
+const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ scanLogs }) => {
+  const dailyNew = useMemo(() => getDailyNewStreams(scanLogs), [scanLogs]);
+  const last14 = dailyNew.slice(-14);
+  const week1 = last14.slice(-7);
+  const week0 = last14.slice(-14, -7);
+  const week1New = week1.reduce((sum, d) => sum + d.newStreams, 0);
+  const week0New = week0.reduce((sum, d) => sum + d.newStreams, 0);
   const percent = week0New > 0 ? ((week1New - week0New) / week0New) * 100 : 0;
 
   return (

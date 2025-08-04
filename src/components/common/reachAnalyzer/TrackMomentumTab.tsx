@@ -6,44 +6,43 @@ interface TrackMomentumTabProps {
   scanLogs: TrackScanLog[];
 }
 
-// Aggregate per-track, per-day stream counts for all tracks
-function getTrackHistories(scanLogs: TrackScanLog[]): Record<string, { title: string; artist: string; daily: Record<string, number> }> {
-  const trackMap: Record<string, { title: string; artist: string; daily: Record<string, number> }> = {};
+
+// Robustly aggregate daily new streams per track
+function getTrackMomentum(scanLogs: TrackScanLog[]) {
+  // Map: trackId -> date -> max streamCount for that day
+  const trackDateMap: Record<string, { title: string; artist: string; daily: Record<string, number> }> = {};
   scanLogs.forEach(log => {
     log.matches.forEach(match => {
       if (match.spotifyTrackId && match.streamCount && match.streamCountTimestamp) {
         const date = match.streamCountTimestamp.slice(0, 10);
-        if (!trackMap[match.spotifyTrackId]) {
-          trackMap[match.spotifyTrackId] = { title: match.title, artist: match.artist, daily: {} };
+        if (!trackDateMap[match.spotifyTrackId]) {
+          trackDateMap[match.spotifyTrackId] = { title: match.title, artist: match.artist, daily: {} };
         }
-        trackMap[match.spotifyTrackId].daily[date] = (trackMap[match.spotifyTrackId].daily[date] || 0) + match.streamCount;
+        // Use max streamCount for a track on a given day
+        trackDateMap[match.spotifyTrackId].daily[date] = Math.max(
+          trackDateMap[match.spotifyTrackId].daily[date] || 0,
+          match.streamCount
+        );
       }
     });
   });
-  return trackMap;
+  // For each track, build sorted array of {date, streams} and daily new streams
+  return Object.entries(trackDateMap).map(([trackId, { title, artist, daily }]) => {
+    const days = Object.entries(daily).map(([date, streams]) => ({ date, streams })).sort((a, b) => a.date.localeCompare(b.date));
+    const dailyNew = days.map((d, i, arr) => i === 0 ? 0 : Math.max(0, d.streams - arr[i - 1].streams));
+    return { trackId, title, artist, days, dailyNew };
+  });
 }
 
 const TrackMomentumTab: React.FC<TrackMomentumTabProps> = ({ scanLogs }) => {
-  // Build per-track, per-day stream history
-  const trackData = useMemo(() => getTrackHistories(scanLogs), [scanLogs]);
-  // For each track, build a sorted array of {date, streams} and daily new streams
-  const tracks = Object.entries(trackData).map(([trackId, { title, artist, daily }]) => {
-    const days = Object.entries(daily).map(([date, streams]) => ({ date, streams })).sort((a, b) => a.date.localeCompare(b.date));
-    const dailyNew = days.map((d, i, arr) => i === 0 ? 0 : d.streams - arr[i - 1].streams);
-    return { trackId, title, artist, days, dailyNew };
-  });
-
-  // Calculate velocity (sum of daily new streams for last 7 days)
+  const tracks = useMemo(() => getTrackMomentum(scanLogs), [scanLogs]);
+  // Calculate velocity and acceleration for each track
   const ranked = tracks.map(track => {
-    const last14New = track.dailyNew.slice(-14);
-    // This week: last 7 days
-    const week1New = last14New.slice(-7).reduce((sum, n) => sum + n, 0);
-    // Last week: previous 7 days
-    const week0New = last14New.slice(-14, -7).reduce((sum, n) => sum + n, 0);
-    // Velocity: this week's new streams
-    const velocity = week1New;
-    // Acceleration: difference between this week and last week
-    const acceleration = velocity - week0New;
+    const last14 = track.dailyNew.slice(-14);
+    const week1 = last14.slice(-7);
+    const week0 = last14.slice(-14, -7);
+    const velocity = week1.reduce((sum, n) => sum + n, 0);
+    const acceleration = velocity - week0.reduce((sum, n) => sum + n, 0);
     return { ...track, velocity, acceleration };
   });
   // Rank by velocity, assign 1-10
