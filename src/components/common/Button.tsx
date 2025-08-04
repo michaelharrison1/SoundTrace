@@ -31,7 +31,7 @@ const Button: React.FC<ButtonProps> = ({
     lg: "px-6 py-2 text-lg",
   };
   
-  let variantSpecificStyles = "";
+  const variantSpecificStyles = "";
   if (variant === 'danger') {
      // For danger, you might slightly change background or border colors if desired,
      // but Win95 buttons were mostly gray. Context usually indicated danger.

@@ -32,14 +32,14 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
     }
     const errorMessage = errorData.message || `Request to ${url} failed with status ${response.status}: ${response.statusText || 'Unknown server error'}`;
     const error = new Error(errorMessage);
-    (error as any).status = response.status;
+    (error as unknown as { status?: number }).status = response.status;
     throw error;
   }
   return response;
 }
 
 export const spotifyService = {
-  getConnectionStatus: async (): Promise<any> => {
+  getConnectionStatus: async (): Promise<unknown> => {
     const response = await fetchWithAuth(`${SPOTIFY_AUTH_ENDPOINT}/status`);
     return response.json();
   },
@@ -49,7 +49,7 @@ export const spotifyService = {
     return response.json();
   },
 
-  disconnect: async (): Promise<any> => {
+  disconnect: async (): Promise<unknown> => {
     const response = await fetchWithAuth(`${SPOTIFY_AUTH_ENDPOINT}/disconnect`, { method: 'POST' });
     if (response.status === 204 || response.headers.get("content-length") === "0") { // Check for empty response body
       return { message: 'Successfully disconnected from Spotify on backend.' };

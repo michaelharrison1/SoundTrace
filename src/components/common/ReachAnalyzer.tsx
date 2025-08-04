@@ -124,8 +124,8 @@ const renderNote = () => note ? (
     function animateReach(timestamp: number) {
       if (reachPhase === 'scan') {
         if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
-        let elapsed = timestamp - reachAnimationStartTime.current;
-        let progress = Math.min(1, elapsed / LINE_ANIMATION_DURATION_MS);
+        const elapsed = timestamp - reachAnimationStartTime.current;
+        const progress = Math.min(1, elapsed / LINE_ANIMATION_DURATION_MS);
         setReachLineProgress(progress);
         setReachBarStates(prev => prev.map((_, i) => (progress * 30 > i && reachBarsToActivate > i) ? 'active' : 'inactive'));
         if (progress >= 1) {
@@ -277,8 +277,8 @@ const renderNote = () => note ? (
     function animateStream(timestamp: number) {
       if (streamPhase === 'scan') {
         if (streamAnimationStartTime.current === 0) streamAnimationStartTime.current = timestamp;
-        let elapsed = timestamp - streamAnimationStartTime.current;
-        let progress = Math.min(1, elapsed / LINE_ANIMATION_DURATION_MS);
+        const elapsed = timestamp - streamAnimationStartTime.current;
+        const progress = Math.min(1, elapsed / LINE_ANIMATION_DURATION_MS);
         setStreamLineProgress(progress);
         setStreamBarStates(prev => prev.map((_, i) => (progress * 30 > i && streamBarsToActivate > i) ? 'active' : 'inactive'));
         if (progress >= 1) {
@@ -289,9 +289,9 @@ const renderNote = () => note ? (
         }
       } else if (streamPhase === 'fall') {
         if (streamAnimationStartTime.current === 0) streamAnimationStartTime.current = timestamp;
-        let elapsed = timestamp - streamAnimationStartTime.current;
+        const elapsed = timestamp - streamAnimationStartTime.current;
         const totalFallTime = 4000; // ms
-        let newStates = Array(30).fill('inactive');
+        const newStates = Array(30).fill('inactive');
         for (let i = 0; i < streamBarsToActivate; i++) {
           const barIndex = streamBarsToActivate - 1 - i;
           const fallStep = totalFallTime / Math.max(1, streamBarsToActivate);
@@ -349,8 +349,8 @@ const renderNote = () => note ? (
     function animateReach(timestamp: number) {
       if (reachPhase === 'scan') {
         if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
-        let elapsed = timestamp - reachAnimationStartTime.current;
-        let progress = Math.min(1, elapsed / LINE_ANIMATION_DURATION_MS);
+        const elapsed = timestamp - reachAnimationStartTime.current;
+        const progress = Math.min(1, elapsed / LINE_ANIMATION_DURATION_MS);
         setReachLineProgress(progress);
         setReachBarStates(prev => prev.map((_, i) => (progress * 30 > i && reachBarsToActivate > i) ? 'active' : 'inactive'));
         if (progress >= 1) {
@@ -361,9 +361,9 @@ const renderNote = () => note ? (
         }
       } else if (reachPhase === 'fall') {
         if (reachAnimationStartTime.current === 0) reachAnimationStartTime.current = timestamp;
-        let elapsed = timestamp - reachAnimationStartTime.current;
+        const elapsed = timestamp - reachAnimationStartTime.current;
         const totalFallTime = 4000; // ms
-        let newStates = Array(30).fill('inactive');
+        const newStates = Array(30).fill('inactive');
         for (let i = 0; i < reachBarsToActivate; i++) {
           const barIndex = reachBarsToActivate - 1 - i;
           const fallStep = totalFallTime / Math.max(1, reachBarsToActivate);
@@ -462,10 +462,10 @@ const renderNote = () => note ? (
                 >
                   <div className="flex w-full h-full items-end">
                     {[...Array(30)].map((_, i) => {
-                      let barIsActive = streamBarStates[i] === 'active';
-                      let barIsFalling = streamBarStates[i] === 'falling';
-                      let barHeight = barIsActive ? '100%' : (barIsFalling ? '100%' : '0%');
-                      let barOpacity = barIsFalling ? 0.3 : 1;
+                      const barIsActive = streamBarStates[i] === 'active';
+                      const barIsFalling = streamBarStates[i] === 'falling';
+                      const barHeight = barIsActive ? '100%' : (barIsFalling ? '100%' : '0%');
+                      const barOpacity = barIsFalling ? 0.3 : 1;
                       return (
                         <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
                           <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>
@@ -510,10 +510,10 @@ const renderNote = () => note ? (
                 >
                   <div className="flex w-full h-full items-end">
                     {[...Array(30)].map((_, i) => {
-                      let barIsActive = reachBarStates[i] === 'active';
-                      let barIsFalling = reachBarStates[i] === 'falling';
-                      let barHeight = barIsActive ? '100%' : (barIsFalling ? '100%' : '0%');
-                      let barOpacity = barIsFalling ? 0.3 : 1;
+                      const barIsActive = reachBarStates[i] === 'active';
+                      const barIsFalling = reachBarStates[i] === 'falling';
+                      const barHeight = barIsActive ? '100%' : (barIsFalling ? '100%' : '0%');
+                      const barOpacity = barIsFalling ? 0.3 : 1;
                       return (
                         <div key={i} className="chart-bar-slot flex-1 h-full mx-px relative flex items-end justify-center">
                           <div className="absolute bottom-0 left-0 right-0 h-full win95-border-inset bg-neutral-700 opacity-50"></div>

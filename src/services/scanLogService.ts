@@ -15,8 +15,8 @@ const handleApiResponse = async <T>(response: Response): Promise<T> => {
     let errorData: { message?: string } = {};
     try { errorData = await response.json(); } catch (e) { /* ignore */ }
     const errorMessage = errorData.message || `Request failed: ${response.status} ${response.statusText || 'Unknown error'}`;
-    const error = new Error(errorMessage); (error as any).status = response.status;
-    if (response.status === 499) (error as any).isCancellation = true;
+    const error = new Error(errorMessage); (error as unknown as { status?: number }).status = response.status;
+    if (response.status === 499) (error as unknown as { isCancellation?: boolean }).isCancellation = true;
     throw error;
   }
   if (response.status === 204) return undefined as unknown as T; // No Content

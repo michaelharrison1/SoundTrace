@@ -30,9 +30,13 @@ export const acrCloudService = {
 
       const result: SnippetScanResult = await response.json(); // Backend returns SnippetScanResult
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error in scanWithAcrCloud:', error);
-      throw new Error(error.message || 'An unexpected error occurred while communicating with the server.');
+      let msg = 'An unexpected error occurred while communicating with the server.';
+      if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as { message?: string }).message === 'string') {
+        msg = (error as { message?: string }).message!;
+      }
+      throw new Error(msg);
     }
   },
 };

@@ -36,7 +36,7 @@ const handleAnalyticsApiResponse = async (response: Response) => {
     }
     const errorMessage = errorData.message || `Analytics API request failed with status ${response.status}: ${response.statusText || 'Unknown error'}`;
     const error = new Error(errorMessage);
-    (error as any).status = response.status; 
+    (error as unknown as { status?: number }).status = response.status; 
     throw error;
   }
   if (response.status === 204) { 
@@ -60,7 +60,7 @@ export const analyticsService = {
     const token = getAuthToken();
     if (!token) {
       const authError = new Error("Not authenticated. Cannot save analytics snapshot.");
-      (authError as any).status = 401;
+      (authError as unknown as { status?: number }).status = 401;
       throw authError;
     }
 
@@ -86,7 +86,7 @@ export const analyticsService = {
     const token = getAuthToken();
     if (!token) {
       const authError = new Error("Not authenticated. Cannot fetch analytics history.");
-      (authError as any).status = 401;
+      (authError as unknown as { status?: number }).status = 401;
       throw authError;
     }
 
@@ -97,19 +97,25 @@ export const analyticsService = {
       },
       credentials: 'include',
     });
-    const historyData: any[] = await handleAnalyticsApiResponse(response);
-    return historyData.map(item => ({
-        date: item.date, 
-        cumulativeFollowers: item.cumulativeFollowers,
-        cumulativeStreams: item.cumulativeStreams || 0, 
-    }));
+    const historyData: unknown[] = await handleAnalyticsApiResponse(response);
+    return historyData.map(item => {
+      let date = '';
+      let cumulativeFollowers = 0;
+      let cumulativeStreams = 0;
+      if (typeof item === 'object' && item !== null) {
+        date = (item as { date?: string }).date ?? '';
+        cumulativeFollowers = (item as { cumulativeFollowers?: number }).cumulativeFollowers ?? 0;
+        cumulativeStreams = (item as { cumulativeStreams?: number }).cumulativeStreams ?? 0;
+      }
+      return { date, cumulativeFollowers, cumulativeStreams };
+    });
   },
 
   deleteAnalyticsHistory: async (): Promise<void> => { 
     const token = getAuthToken();
     if (!token) {
       const authError = new Error("Not authenticated. Cannot delete analytics history.");
-      (authError as any).status = 401;
+      (authError as unknown as { status?: number }).status = 401;
       throw authError;
     }
 
@@ -128,7 +134,7 @@ export const analyticsService = {
     const token = getAuthToken();
     if (!token) {
       const authError = new Error("Not authenticated. Cannot fetch song stream history.");
-      (authError as any).status = 401;
+      (authError as unknown as { status?: number }).status = 401;
       throw authError;
     }
     if (!spotifyTrackId) {
@@ -143,18 +149,23 @@ export const analyticsService = {
         headers: { 'Authorization': `Bearer ${token}` },
         credentials: 'include',
     });
-    const historyData: any[] = await handleAnalyticsApiResponse(response);
-    return historyData.map(item => ({
-        date: item.date, // Ensure date is in YYYY-MM-DD string format or convert as needed
-        streams: item.streams || 0,
-    }));
+    const historyData: unknown[] = await handleAnalyticsApiResponse(response);
+    return historyData.map(item => {
+      let date = '';
+      let streams = 0;
+      if (typeof item === 'object' && item !== null) {
+        date = (item as { date?: string }).date ?? '';
+        streams = (item as { streams?: number }).streams ?? 0;
+      }
+      return { date, streams };
+    });
   },
 
   getSongStreamForecast: async (spotifyTrackId: string, rangeInDays: number = 30): Promise<PredictedStreamEntry[]> => {
     const token = getAuthToken();
     if (!token) {
       const authError = new Error("Not authenticated. Cannot fetch song stream forecast.");
-      (authError as any).status = 401;
+      (authError as unknown as { status?: number }).status = 401;
       throw authError;
     }
     if (!spotifyTrackId) {
@@ -171,10 +182,15 @@ export const analyticsService = {
       headers: { 'Authorization': `Bearer ${token}` },
       credentials: 'include',
     });
-    const forecastData: any[] = await handleAnalyticsApiResponse(response);
-    return forecastData.map(item => ({
-      date: item.date, // Expects YYYY-MM-DD
-      predictedStreams: item.predictedStreams || 0,
-    }));
+    const forecastData: unknown[] = await handleAnalyticsApiResponse(response);
+    return forecastData.map(item => {
+      let date = '';
+      let predictedStreams = 0;
+      if (typeof item === 'object' && item !== null) {
+        date = (item as { date?: string }).date ?? '';
+        predictedStreams = (item as { predictedStreams?: number }).predictedStreams ?? 0;
+      }
+      return { date, predictedStreams };
+    });
   }
 };

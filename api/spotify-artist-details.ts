@@ -22,7 +22,7 @@ interface SpotifyArtistApiResponse {
 }
 
 // Simple in-memory cache for the Spotify access token
-let tokenCache = {
+const tokenCache = {
   accessToken: '',
   expiresAt: 0,
 };

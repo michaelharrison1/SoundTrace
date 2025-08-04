@@ -1,7 +1,7 @@
 export async function POST(request: Request) {
-  let projectId = 'your project id';
-  let teamID = 'your team id';
-  let route = '${projectId}/pause?teamID=${teamID}';
+  const projectId = 'your project id';
+  const teamID = 'your team id';
+  const route = '${projectId}/pause?teamID=${teamID}';
 
   await fetch(`https://api.vercel.com/v1/projects/${route}`, {
     method: 'POST',

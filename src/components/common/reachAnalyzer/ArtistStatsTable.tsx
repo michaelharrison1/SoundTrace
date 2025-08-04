@@ -87,9 +87,15 @@ const ArtistStatsTable: React.FC<ArtistStatsTableProps> = ({
 
   const sortedData = useMemo(() => {
      return [...aggregatedArtistData].sort((a, b) => {
-      let valA: any, valB: any;
+      let valA: unknown, valB: unknown;
       switch (sortColumn) {
-        case 'artistName': valA = a.artistName; valB = b.artistName; return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'artistName':
+          valA = a.artistName;
+          valB = b.artistName;
+          if (typeof valA === 'string' && typeof valB === 'string') {
+            return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+          }
+          return 0;
         case 'matchedTracksCount': valA = a.matchedTracksCount; valB = b.matchedTracksCount; break;
         case 'spotifyFollowers': valA = a.spotifyFollowers ?? -1; valB = b.spotifyFollowers ?? -1; break;
         case 'totalArtistStreams': valA = a.totalArtistStreams ?? -1; valB = b.totalArtistStreams ?? -1; break; // Added sorting for total streams
@@ -100,7 +106,10 @@ const ArtistStatsTable: React.FC<ArtistStatsTableProps> = ({
         case 'spotifyPopularity': valA = a.spotifyPopularity ?? -1; valB = b.spotifyPopularity ?? -1; break;
         default: return 0;
       }
-      return sortDirection === 'asc' ? valA - valB : valB - valA;
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortDirection === 'asc' ? valA - valB : valB - valA;
+      }
+      return 0;
     });
   },[aggregatedArtistData, sortColumn, sortDirection])
 

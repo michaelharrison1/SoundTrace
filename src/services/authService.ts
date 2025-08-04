@@ -17,14 +17,14 @@ const handleAuthApiResponse = async (response: Response): Promise<LoginResponse>
 
     if (!response.ok) {
       const error = new Error(data.message || `Authentication operation failed with status: ${response.status}`);
-      (error as any).status = response.status;
+      (error as unknown as { status?: number }).status = response.status;
       throw error;
     }
 
     if (!data.token || !data.userId || !data.username) {
         console.error('Auth response missing expected fields:', data);
         const error = new Error('Authentication response from server was incomplete.');
-        (error as any).status = response.status; // Or a generic 500-like client error
+        (error as unknown as { status?: number }).status = response.status; // Or a generic 500-like client error
         throw error;
     }
     return data as LoginResponse;
@@ -34,7 +34,7 @@ export const authService = {
   login: async (username: string, password: string): Promise<LoginResponse> => {
     if (!BACKEND_URL) {
       const configError = new Error('Backend URL is not configured. Cannot log in.');
-      (configError as any).status = 500; // Indicate server-side configuration issue from client's perspective
+      (configError as unknown as { status?: number }).status = 500; // Indicate server-side configuration issue from client's perspective
       throw configError;
     }
 
@@ -53,7 +53,7 @@ export const authService = {
   register: async (username: string, password: string): Promise<LoginResponse> => {
     if (!BACKEND_URL) {
        const configError = new Error('Backend URL is not configured. Cannot register.');
-      (configError as any).status = 500;
+      (configError as unknown as { status?: number }).status = 500;
       throw configError;
     }
 

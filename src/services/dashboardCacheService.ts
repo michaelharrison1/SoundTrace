@@ -6,7 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.soundtrac
 export interface DashboardCache {
   _id: string;
   userId: string;
-  dashboardData: any;
+  dashboardData: unknown;
   lastRefreshed: string;
   createdAt: string;
   updatedAt: string;
@@ -19,8 +19,14 @@ export async function getDashboardCache(): Promise<DashboardCache | null> {
       headers: { Authorization: `Bearer ${token}` }
     });
     return res.data;
-  } catch (err: any) {
-    if (err.response && err.response.status === 404) return null;
+  } catch (err: unknown) {
+    if (
+      typeof err === 'object' && err !== null &&
+      'response' in err &&
+      (err as { response?: { status?: number } }).response?.status === 404
+    ) {
+      return null;
+    }
     throw err;
   }
 }

@@ -119,18 +119,33 @@ const AppContentInternal: React.FC = React.memo(() => {
     }
   }, []);
 
-  const handleAuthError = useCallback((err: any, operation?: string) => {
-    const isAuthError = (err.status === 401 || err.status === 403) ||
-                          (typeof err.message === 'string' &&
-                           (err.message.toLowerCase().includes('token is not valid') ||
-                            err.message.toLowerCase().includes('not authenticated') ||
-                            err.message.toLowerCase().includes('authorization denied')));
-    if (isAuthError) {
-        console.warn(`[App] Auth error during "${operation || 'unknown operation'}". Logging out.`, err.message);
-        handleLogout();
-        return true;
+  const handleAuthError = useCallback((err: unknown, operation?: string) => {
+    let isAuthError = false;
+    let message = '';
+    if (typeof err === 'object' && err !== null) {
+      const status = (err as { status?: number }).status;
+      const msg = (err as { message?: string }).message;
+      if (status === 401 || status === 403) isAuthError = true;
+      if (typeof msg === 'string') {
+        message = msg;
+        const lowerMsg = msg.toLowerCase();
+        if (
+          lowerMsg.includes('token is not valid') ||
+          lowerMsg.includes('not authenticated') ||
+          lowerMsg.includes('authorization denied')
+        ) {
+          isAuthError = true;
+        }
+      }
     }
-    return false;
+    if (isAuthError) {
+      console.warn(`[App] Auth error during "${operation || 'unknown operation'}". Logging out.`, message);
+      handleLogout();
+      return true;
+    } else {
+      setAppDataError(message || "Could not load app data.");
+      return false;
+    }
   }, [handleLogout]);
 
 
@@ -149,9 +164,13 @@ const AppContentInternal: React.FC = React.memo(() => {
       setJobs(userJobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
 
       if (source === 'initial' || source === 'manual') setAppDataError(null);
-    } catch (err: any) {
-      if(!handleAuthError(err, 'fetch app data')) {
-        setAppDataError(err.message || "Could not load app data.");
+    } catch (err: unknown) {
+      if (!handleAuthError(err, 'fetch app data')) {
+        let message = "Could not load app data.";
+        if (typeof err === 'object' && err !== null && 'message' in err && typeof (err as { message?: string }).message === 'string') {
+          message = (err as { message?: string }).message!;
+        }
+        setAppDataError(message);
       }
     } finally {
       if (source === 'initial' || source === 'manual') setIsAppDataLoading(false);

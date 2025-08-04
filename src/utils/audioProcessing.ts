@@ -108,7 +108,7 @@ const generateSingleSnippetFromBuffer = async (
 export const generateSnippetsForFile = async (file: File, numberOfSegmentsToScan: number): Promise<File[] | null> => {
     let mainAudioContext: AudioContext | null = null;
     try {
-      mainAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      mainAudioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
       const arrayBuffer = await file.arrayBuffer();
       const originalAudioBuffer = await mainAudioContext.decodeAudioData(arrayBuffer);
 
