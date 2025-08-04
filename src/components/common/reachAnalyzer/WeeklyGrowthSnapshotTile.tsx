@@ -1,5 +1,6 @@
 
 
+
 import React, { useMemo } from 'react';
 import { TrackScanLog } from '../../../types';
 
@@ -7,30 +8,32 @@ interface WeeklyGrowthSnapshotTileProps {
   scanLogs: TrackScanLog[];
 }
 
-// Robustly aggregate daily new streams for all tracks
-function getDailyNewStreams(scanLogs: TrackScanLog[]): { date: string; newStreams: number }[] {
-  // Map: date -> set of trackId -> max streamCount for that day
+// Aggregate daily new streams for all tracks using stream history logic
+function getDailyNewStreamsFromHistory(scanLogs: TrackScanLog[]): { date: string; newStreams: number }[] {
+  // Map: trackId -> date -> max streamCount for that day
   const dateTrackMap: Record<string, Record<string, number>> = {};
   scanLogs.forEach(log => {
     log.matches.forEach(match => {
       if (match.spotifyTrackId && match.streamCount && match.streamCountTimestamp) {
         const date = match.streamCountTimestamp.slice(0, 10);
-        if (!dateTrackMap[date]) dateTrackMap[date] = {};
-        // Use max streamCount for a track on a given day
-        dateTrackMap[date][match.spotifyTrackId] = Math.max(
-          dateTrackMap[date][match.spotifyTrackId] || 0,
+        if (!dateTrackMap[match.spotifyTrackId]) dateTrackMap[match.spotifyTrackId] = {};
+        dateTrackMap[match.spotifyTrackId][date] = Math.max(
+          dateTrackMap[match.spotifyTrackId][date] || 0,
           match.streamCount
         );
       }
     });
   });
   // For each date, sum all track streamCounts
-  const dailyTotals = Object.entries(dateTrackMap)
-    .map(([date, trackCounts]) => ({
-      date,
-      total: Object.values(trackCounts).reduce((a, b) => a + b, 0)
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const allDates = Array.from(new Set(Object.values(dateTrackMap).flatMap(track => Object.keys(track)))).sort();
+  // For each date, sum all track streamCounts
+  const dailyTotals = allDates.map(date => {
+    let total = 0;
+    Object.values(dateTrackMap).forEach(track => {
+      if (track[date] !== undefined) total += track[date];
+    });
+    return { date, total };
+  });
   // Calculate daily new streams (difference from previous day)
   const dailyNew = dailyTotals.map((d, i, arr) => ({
     date: d.date,
@@ -40,7 +43,8 @@ function getDailyNewStreams(scanLogs: TrackScanLog[]): { date: string; newStream
 }
 
 const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ scanLogs }) => {
-  const dailyNew = useMemo(() => getDailyNewStreams(scanLogs), [scanLogs]);
+  // Use the improved stream history logic for daily new streams
+  const dailyNew = useMemo(() => getDailyNewStreamsFromHistory(scanLogs), [scanLogs]);
   const last14 = dailyNew.slice(-14);
   const week1 = last14.slice(-7);
   const week0 = last14.slice(-14, -7);
