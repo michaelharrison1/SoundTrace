@@ -430,7 +430,7 @@ const renderNote = () => note ? (
 
     switch (activeMonitorTab) {
       case 'trackMomentum':
-        return <TrackMomentumTab scanLogs={scanLogs} />;
+        return <TrackMomentumTab />;
 // ...existing code...
       case 'reach': {
         // Calculate stream bar config and color, force 1M per bar and never fill all bars
@@ -644,7 +644,7 @@ const renderNote = () => note ? (
         </div>
         <div className="w-64 p-2">
           <React.Suspense fallback={<div className="p-2 text-center text-gray-500">Loading...</div>}>
-            <WeeklyGrowthSnapshotTile scanLogs={scanLogs} />
+            <WeeklyGrowthSnapshotTile />
           </React.Suspense>
         </div>
       </div>
