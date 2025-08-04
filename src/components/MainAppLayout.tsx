@@ -79,12 +79,8 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         minHeight: '100vh',
         minWidth: '100vw',
         width: '100%',
-        backgroundImage: 'url(/gifs/20.gif)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed',
-        backgroundColor: '#222', // fallback color
+        backgroundImage: 'none',
+        backgroundColor: '#008080', // Windows 95 teal
         overflow: 'hidden',
       }}
       className="flex flex-col items-center justify-start w-full"
