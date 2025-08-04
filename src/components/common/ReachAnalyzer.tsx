@@ -12,7 +12,7 @@ import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
 const SongStreamDetail = React.lazy(() => import('./reachAnalyzer/SongStreamDetail'));
 const EstimatedRevenueTab = React.lazy(() => import('./reachAnalyzer/EstimatedRevenueTab'));
-const TrackMomentumTab = React.lazy(() => import('./reachAnalyzer/TrackMomentumTab'));
+// ...existing code...
 // ...existing code...
 const WeeklyGrowthSnapshotTile = React.lazy(() => import('./reachAnalyzer/WeeklyGrowthSnapshotTile'));
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -429,8 +429,7 @@ const renderNote = () => note ? (
     }
 
     switch (activeMonitorTab) {
-      case 'trackMomentum':
-        return <TrackMomentumTab />;
+// ...existing code...
 // ...existing code...
       case 'reach': {
         // Calculate stream bar config and color, force 1M per bar and never fill all bars
@@ -597,7 +596,7 @@ const renderNote = () => note ? (
 
   const monitorTabs: {id: MonitorTab | string, label: string}[] = [
     { id: 'reach', label: 'Total Reach' },
-    { id: 'trackMomentum', label: 'Track Momentum' },
+// ...existing code...
     { id: 'artistStats', label: 'Artist Stats' },
     { id: 'streamHistory', label: 'Stream History' },
     { id: 'estimatedRevenue', label: 'Est. Revenue' },
