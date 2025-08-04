@@ -6,47 +6,74 @@ interface TrackMomentumTabProps {
   scanLogs: TrackScanLog[];
 }
 
-
-// Robustly aggregate daily new streams per track
-function getTrackMomentum(scanLogs: TrackScanLog[]) {
+// Helper to aggregate daily stream counts for each track
+function getTrackDailyStreams(scanLogs: TrackScanLog[]): Record<string, { title: string; artist: string; daily: { date: string; count: number }[] }> {
+  const trackMap: Record<string, { title: string; artist: string; daily: { date: string; count: number }[] }> = {};
   // Map: trackId -> date -> max streamCount for that day
-  const trackDateMap: Record<string, { title: string; artist: string; daily: Record<string, number> }> = {};
+  const dateTrackMap: Record<string, Record<string, number>> = {};
+  const trackMeta: Record<string, { title: string; artist: string }> = {};
   scanLogs.forEach(log => {
     log.matches.forEach(match => {
       if (match.spotifyTrackId && match.streamCount && match.streamCountTimestamp) {
         const date = match.streamCountTimestamp.slice(0, 10);
-        if (!trackDateMap[match.spotifyTrackId]) {
-          trackDateMap[match.spotifyTrackId] = { title: match.title, artist: match.artist, daily: {} };
-        }
-        // Use max streamCount for a track on a given day
-        trackDateMap[match.spotifyTrackId].daily[date] = Math.max(
-          trackDateMap[match.spotifyTrackId].daily[date] || 0,
+        if (!dateTrackMap[match.spotifyTrackId]) dateTrackMap[match.spotifyTrackId] = {};
+        dateTrackMap[match.spotifyTrackId][date] = Math.max(
+          dateTrackMap[match.spotifyTrackId][date] || 0,
           match.streamCount
         );
+        if (!trackMeta[match.spotifyTrackId]) {
+          trackMeta[match.spotifyTrackId] = { title: match.title, artist: match.artist };
+        }
       }
     });
   });
-  // For each track, build sorted array of {date, streams} and daily new streams
-  return Object.entries(trackDateMap).map(([trackId, { title, artist, daily }]) => {
-    const days = Object.entries(daily).map(([date, streams]) => ({ date, streams })).sort((a, b) => a.date.localeCompare(b.date));
-    const dailyNew = days.map((d, i, arr) => i === 0 ? 0 : Math.max(0, d.streams - arr[i - 1].streams));
-    return { trackId, title, artist, days, dailyNew };
+  // Convert to sorted daily arrays
+  Object.keys(dateTrackMap).forEach(trackId => {
+    const daily = Object.entries(dateTrackMap[trackId])
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    trackMap[trackId] = { ...trackMeta[trackId], daily };
   });
+  return trackMap;
 }
 
 const TrackMomentumTab: React.FC<TrackMomentumTabProps> = ({ scanLogs }) => {
-  const tracks = useMemo(() => getTrackMomentum(scanLogs), [scanLogs]);
-  // Calculate velocity and acceleration for each track
-  const ranked = tracks.map(track => {
-    const last14 = track.dailyNew.slice(-14);
-    const week1 = last14.slice(-7);
-    const week0 = last14.slice(-14, -7);
-    const velocity = week1.reduce((sum, n) => sum + n, 0);
-    const acceleration = velocity - week0.reduce((sum, n) => sum + n, 0);
-    return { ...track, velocity, acceleration };
-  });
-  // Rank by velocity, assign 1-10
-  const sorted = [...ranked].sort((a, b) => b.velocity - a.velocity).slice(0, 10);
+  // Calculate per-track daily new streams, velocity, and acceleration
+  const trackMomentum = useMemo(() => {
+    const trackMap = getTrackDailyStreams(scanLogs);
+    const today = new Date();
+    // Get last 14 days (YYYY-MM-DD)
+    const days: string[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+    const result: Array<{ trackId: string; title: string; artist: string; velocity: number; acceleration: number }> = [];
+    Object.entries(trackMap).forEach(([trackId, { title, artist, daily }]) => {
+      // Build a map of date -> count for this track
+      const dateToCount: Record<string, number> = {};
+      daily.forEach(d => { dateToCount[d.date] = d.count; });
+      // Build array of total counts for each of the last 14 days (fill missing with previous day's count)
+      let prev = 0;
+      const totals = days.map(date => {
+        if (dateToCount[date] !== undefined) prev = dateToCount[date];
+        return prev;
+      });
+      // Calculate daily new streams
+      const dailyNew = totals.map((val, i, arr) => i === 0 ? 0 : Math.max(0, val - arr[i - 1]));
+      // Velocity: sum of last 7 days
+      const velocity = dailyNew.slice(-7).reduce((a, b) => a + b, 0);
+      // Previous week velocity
+      const prevVelocity = dailyNew.slice(-14, -7).reduce((a, b) => a + b, 0);
+      // Acceleration: difference between this week and previous week
+      const acceleration = velocity - prevVelocity;
+      result.push({ trackId, title, artist, velocity, acceleration });
+    });
+    // Sort by velocity desc, then acceleration desc
+    return result.sort((a, b) => b.velocity - a.velocity || b.acceleration - a.acceleration).slice(0, 10);
+  }, [scanLogs]);
+
   return (
     <div className="p-2">
       <h4 className="font-bold mb-2">Track Momentum</h4>
@@ -61,13 +88,15 @@ const TrackMomentumTab: React.FC<TrackMomentumTabProps> = ({ scanLogs }) => {
           </tr>
         </thead>
         <tbody>
-          {sorted.map((track, i) => (
-            <tr key={track.trackId}>
+          {trackMomentum.map((t, i) => (
+            <tr key={t.trackId}>
               <td>{i + 1}</td>
-              <td>{track.title}</td>
-              <td>{track.artist}</td>
-              <td>{track.velocity.toLocaleString()}</td>
-              <td>{track.acceleration.toLocaleString()}</td>
+              <td>{t.title}</td>
+              <td>{t.artist}</td>
+              <td>{t.velocity.toLocaleString()}</td>
+              <td className={t.acceleration > 0 ? 'text-green-700' : t.acceleration < 0 ? 'text-red-700' : ''}>
+                {t.acceleration > 0 ? '+' : ''}{t.acceleration.toLocaleString()}
+              </td>
             </tr>
           ))}
         </tbody>
