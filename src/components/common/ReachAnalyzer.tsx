@@ -7,6 +7,7 @@ const CollaborationRadarGraph = React.lazy(() => import('./CollaborationRadarGra
 import Button from '../common/Button';
 import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
 const StreamHistoryTab = React.lazy(() => import('./reachAnalyzer/StreamHistoryTab'));
+const StreamForecastTab = React.lazy(() => import('./reachAnalyzer/StreamForecastTab'));
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
 import { MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
@@ -30,7 +31,7 @@ interface ReachAnalyzerProps {
   note?: string;
 }
 
-export type MonitorTab = 'reach' | 'streamHistory' | 'artistStats' | 'beatStats' | 'collaborationRadar' | 'estimatedRevenue';
+export type MonitorTab = 'reach' | 'streamHistory' | 'streamForecast' | 'artistStats' | 'beatStats' | 'collaborationRadar' | 'estimatedRevenue';
 export type ArtistSortableColumn = 'artistName' | 'matchedTracksCount' | 'spotifyFollowers' | 'totalArtistStreams' | 'mostRecentMatchDate' | 'spotifyPopularity';
 export type BeatSortableColumn = 'beatName' | 'totalMatches';
 export type SortDirection = 'asc' | 'desc';
@@ -419,12 +420,17 @@ const renderNote = () => note ? (
     if (isLoadingOverall && activeMonitorTab !== 'collaborationRadar' && activeMonitorTab !== 'beatStats' && activeMonitorTab !== 'estimatedRevenue' && aggregatedArtistData.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center flex-grow py-4">
-          <ProgressBar text={`Loading ${activeMonitorTab === 'reach' ? 'reach data' : (activeMonitorTab === 'streamHistory' ? 'stream history' : 'artist statistics')}...`} />
+          <ProgressBar text={`Loading ${
+            activeMonitorTab === 'reach' ? 'reach data' : 
+            activeMonitorTab === 'streamHistory' ? 'stream history' :
+            activeMonitorTab === 'streamForecast' ? 'stream forecast' :
+            'artist statistics'
+          }...`} />
           <p className="text-xs text-gray-700 text-center mt-1">This may take up to a minute.</p>
         </div>
       );
     }
-    if (overallError && (activeMonitorTab === 'reach' || activeMonitorTab === 'streamHistory' || activeMonitorTab === 'artistStats' || activeMonitorTab === 'estimatedRevenue')) {
+    if (overallError && (activeMonitorTab === 'reach' || activeMonitorTab === 'streamHistory' || activeMonitorTab === 'streamForecast' || activeMonitorTab === 'artistStats' || activeMonitorTab === 'estimatedRevenue')) {
       return <div className="text-center text-red-700 text-sm py-8 h-full flex items-center justify-center flex-grow"><p>Error loading data: {overallError}</p></div>;
     }
 
@@ -551,6 +557,14 @@ const renderNote = () => note ? (
             error={overallError}
           />
         );
+      case 'streamForecast':
+        return (
+          <StreamForecastTab
+            scanLogs={scanLogs}
+            isLoading={isLoadingOverall}
+            error={overallError}
+          />
+        );
       case 'artistStats':
         return (
           <ArtistStatsTable
@@ -599,6 +613,7 @@ const renderNote = () => note ? (
 // ...existing code...
     { id: 'artistStats', label: 'Artist Stats' },
     { id: 'streamHistory', label: 'Stream History' },
+    { id: 'streamForecast', label: 'Stream Forecast' },
     { id: 'estimatedRevenue', label: 'Est. Revenue' },
 // ...existing code...
     { id: 'beatStats', label: 'Beat Matches' },
