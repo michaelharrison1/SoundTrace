@@ -27,10 +27,12 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
   // Aggregate by date
   const dateMap = new Map<string, number>();
   histories.forEach(hist => {
-    hist.stream_history.forEach(point => {
-      const date = point.date.slice(0, 10); // YYYY-MM-DD
-      dateMap.set(date, (dateMap.get(date) || 0) + point.streams);
-    });
+    if (hist.stream_history && Array.isArray(hist.stream_history)) {
+      hist.stream_history.forEach(point => {
+        const date = point.date.slice(0, 10); // YYYY-MM-DD
+        dateMap.set(date, (dateMap.get(date) || 0) + point.streams);
+      });
+    }
   });
   // Sort by date
   return Array.from(dateMap.entries())

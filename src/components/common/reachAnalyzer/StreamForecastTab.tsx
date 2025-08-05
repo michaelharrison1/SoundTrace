@@ -57,25 +57,28 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
       }
       
       try {
+        // Get forecast days based on time period
+        const daysToForecast = timePeriod === '7d' ? 7 : timePeriod === '30d' ? 30 : 90;
+        
         // First, ensure we have historical data by calling the stream history for each track
         // This will populate the MongoDB with StreamClout data if not already cached
         const backendBase = import.meta.env.VITE_API_BASE_URL || '';
-        console.log(`[StreamForecastTab] Pre-loading historical data for ${trackIds.length} tracks to ensure forecasting data availability`);
+        
+        // Pre-load historical data with appropriate time period for forecasting
+        const historyTimePeriod = daysToForecast <= 7 ? '30d' : daysToForecast <= 30 ? '90d' : '180d';
         
         await Promise.all(
           trackIds.map(async (id) => {
             try {
-              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=90d&use_cache=true`;
+              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=${historyTimePeriod}&use_cache=true`;
               await fetch(url);
             } catch (err) {
-              console.warn(`[StreamForecastTab] Failed to pre-load history for track ${id}:`, err);
+              // Silently fail - forecasting will handle missing data gracefully
             }
           })
         );
         
         // Now fetch forecasts using the analytics service (which uses the populated MongoDB data)
-        const daysToForecast = timePeriod === '7d' ? 7 : timePeriod === '30d' ? 30 : 90;
-        
         const forecasts = await Promise.all(
           trackIds.map(async (id) => {
             try {
@@ -103,11 +106,9 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
         
         if (!cancelled) {
           setForecastData(aggregatedForecast);
-          console.log(`[StreamForecastTab] Generated forecast with ${aggregatedForecast.length} data points`);
         }
       } catch (e) {
         if (!cancelled) setApiError('Failed to fetch stream forecast.');
-        console.error('[StreamForecastTab] Error loading forecast:', e);
       } finally {
         if (!cancelled) setLoading(false);
       }
