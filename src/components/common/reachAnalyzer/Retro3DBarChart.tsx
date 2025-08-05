@@ -1,7 +1,8 @@
 import React, { useRef, useLayoutEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
-import * as THREE from 'three';
+// Import only what we need from Three.js to reduce bundle size
+import { Mesh } from 'three';
 
 export interface Retro3DBarChartDatum {
   label: string;
@@ -24,7 +25,7 @@ const pastelBg = '#FFF8DC';
 const defaultBarColor = '#3b82f6'; // blue
 
 function Bar({ x, y, z, width, height, depth, color, value, label, animate }: any) {
-  const mesh = useRef<THREE.Mesh>(null!);
+  const mesh = useRef<Mesh>(null!);
   useFrame((state, delta) => {
     if (animate && mesh.current) {
       // Animate bar growth

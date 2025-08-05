@@ -45,7 +45,6 @@ const PrivacyPolicyPage: React.FC = () => {
                 Personally identifiable information, such as your username and hashed password, that you voluntarily give to us when you register for an account. If you choose to link your account with third-party services, we may collect:
               </p>
               <ul className="list-disc list-inside pl-4 space-y-0.5 mt-1">
-                <li><strong>Google Account:</strong> Your Google email address, name, profile picture, and authentication tokens (access and refresh tokens) if you connect your Google account. This is used for basic profile information and to facilitate interactions with Google services as directed by you.</li>
                 <li><strong>Spotify Account:</strong> Your Spotify profile information (User ID, display name, profile URL, avatar), email address, and authentication tokens (access and refresh tokens) if you connect your Spotify account. This is used to fetch your Spotify data and enable features like playlist creation.</li>
               </ul>
             </section>
@@ -102,7 +101,6 @@ const PrivacyPolicyPage: React.FC = () => {
                     <li><strong>ACRCloud:</strong> For audio fingerprinting and music recognition. We send audio snippets or fingerprints of your uploaded instrumentals.</li>
                     <li><strong>StreamClout:</strong> To fetch estimated stream counts and related metadata. We send identifiers (e.g., Spotify track IDs) of matched songs.</li>
                     <li><strong>Spotify API:</strong> When you connect your Spotify account or use Spotify-related features (e.g., playlist creation), we interact with the Spotify API as authorized by you.</li>
-                    <li><strong>Google API Services:</strong> When you connect your Google account, we interact with Google APIs to retrieve profile information as authorized by you. Our use and transfer of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">Google API Services User Data Policy</a>, including the Limited Use requirements.</li>
                     <li>Other service providers for hosting, data storage, analytics, and customer service. These providers are obligated to protect your information.</li>
                 </ul>
               </li>

@@ -41,7 +41,7 @@ const TermsOfServicePage: React.FC = () => {
           <section aria-labelledby="use-of-service-heading">
             <h2 id="use-of-service-heading" className="text-base sm:text-lg font-normal mt-3 mb-1">1. Description of Service</h2>
             <p>
-              SoundTrace provides a platform for music producers and rights holders to upload their instrumentals (audio files) and scan for public uses across various platforms. The Service utilizes third-party audio recognition technology (e.g., ACRCloud) to identify matches. For matched tracks, the Service may retrieve additional metadata, such as estimated stream counts and cover art, from services like StreamClout. Users can also connect their Spotify and Google accounts for enhanced functionality, such as playlist creation and profile integration.
+              SoundTrace provides a platform for music producers and rights holders to upload their instrumentals (audio files) and scan for public uses across various platforms. The Service utilizes third-party audio recognition technology (e.g., ACRCloud) to identify matches. For matched tracks, the Service may retrieve additional metadata, such as estimated stream counts and cover art, from services like StreamClout. Users can also connect their Spotify accounts for enhanced functionality, such as playlist creation and profile integration.
             </p>
           </section>
 
@@ -68,13 +68,10 @@ const TermsOfServicePage: React.FC = () => {
           <section aria-labelledby="third-party-services-heading">
             <h2 id="third-party-services-heading" className="text-base sm:text-lg font-normal mt-3 mb-1">4. Third-Party Services and Data</h2>
             <p>
-              The Service integrates with and relies on various third-party services, including but not limited to ACRCloud (for audio recognition), StreamClout (for stream data), Spotify API, and Google API Services. Your use of these third-party services through SoundTrace may be subject to their respective terms of service and privacy policies.
+              The Service integrates with and relies on various third-party services, including but not limited to ACRCloud (for audio recognition), StreamClout (for stream data), and Spotify API. Your use of these third-party services through SoundTrace may be subject to their respective terms of service and privacy policies.
             </p>
             <p>
               SoundTrace does not guarantee the accuracy, completeness, or timeliness of data provided by these third-party services (e.g., match accuracy, stream counts, artist information). The Service provides this information "as is" based on what is available from these third parties.
-            </p>
-             <p>
-              Our use and transfer of information received from Google APIs adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">Google API Services User Data Policy</a>, including the Limited Use requirements.
             </p>
           </section>
 

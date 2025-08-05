@@ -2,12 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { TrackScanLog } from '../../../types';
 import ProgressBar from '../ProgressBar';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { analyticsService, PredictedStreamEntry } from '../../../services/analyticsService';
+import { generateLinearForecast, aggregateForecasts, type ForecastPoint, type HistoryPoint } from '../../../utils/forecastingUtils';
 
 interface StreamForecastTabProps {
   scanLogs: TrackScanLog[];
   isLoading: boolean;
   error?: string | null;
+}
+
+interface TrackHistoryPoint {
+  date: string;
+  streams: number;
+}
+
+interface TrackHistory {
+  track_id: string;
+  track_name: string;
+  artist_name: string;
+  stream_history: TrackHistoryPoint[];
 }
 
 const TIME_PERIODS = [
@@ -33,7 +45,7 @@ function Win95Button({ active, children, ...props }: { active?: boolean; childre
 const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoading, error }) => {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [forecastData, setForecastData] = useState<PredictedStreamEntry[]>([]);
+  const [forecastData, setForecastData] = useState<ForecastPoint[]>([]);
   const [timePeriod, setTimePeriod] = useState<string>('30d'); // Default to 30 days
 
   useEffect(() => {
@@ -60,30 +72,44 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
         // Get forecast days based on time period
         const daysToForecast = timePeriod === '7d' ? 7 : timePeriod === '30d' ? 30 : 90;
         
-        // Fetch forecasts for each track and aggregate them
-        const forecasts = await Promise.all(
+        // Fetch historical data for each track from StreamClout (same as Stream History Tab)
+        const backendBase = import.meta.env.VITE_API_BASE_URL || '';
+        const historyResults = await Promise.all(
           trackIds.map(async (id) => {
             try {
-              return await analyticsService.getSongStreamForecast(id as string, daysToForecast);
+              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=90d`; // Get more history for better forecasting
+              const res = await fetch(url);
+              if (!res.ok) {
+                return null;
+              }
+              const data = await res.json();
+              return data;
             } catch (err) {
-              return [];
+              return null;
             }
           })
         );
         
-        // Aggregate forecasts by date
-        const dateMap = new Map<string, number>();
-        forecasts.forEach((trackForecast: PredictedStreamEntry[]) => {
-          trackForecast.forEach((point: PredictedStreamEntry) => {
-            const date = point.date;
-            dateMap.set(date, (dateMap.get(date) || 0) + point.predictedStreams);
-          });
+        // Filter valid results and generate forecasts for each track
+        const validHistories = historyResults.filter(Boolean) as TrackHistory[];
+        const trackForecasts: ForecastPoint[][] = [];
+        
+        validHistories.forEach(trackHistory => {
+          if (trackHistory.stream_history && trackHistory.stream_history.length > 0) {
+            // Convert to our expected format
+            const historyPoints: HistoryPoint[] = trackHistory.stream_history.map(point => ({
+              date: point.date,
+              streams: point.streams
+            }));
+            
+            // Generate forecast for this track
+            const trackForecast = generateLinearForecast(historyPoints, daysToForecast);
+            trackForecasts.push(trackForecast);
+          }
         });
         
-        // Convert to array and sort by date
-        const aggregatedForecast = Array.from(dateMap.entries())
-          .map(([date, predictedStreams]) => ({ date, predictedStreams }))
-          .sort((a, b) => a.date.localeCompare(b.date));
+        // Aggregate all track forecasts
+        const aggregatedForecast = aggregateForecasts(trackForecasts);
         
         if (!cancelled) {
           setForecastData(aggregatedForecast);
