@@ -2,24 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { TrackScanLog } from '../../../types';
 import ProgressBar from '../ProgressBar';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { generateLinearForecast, aggregateForecasts, type ForecastPoint, type HistoryPoint } from '../../../utils/forecastingUtils';
+import { analyticsService, PredictedStreamEntry } from '../../../services/analyticsService';
 
 interface StreamForecastTabProps {
   scanLogs: TrackScanLog[];
   isLoading: boolean;
   error?: string | null;
-}
-
-interface TrackHistoryPoint {
-  date: string;
-  streams: number;
-}
-
-interface TrackHistory {
-  track_id: string;
-  track_name: string;
-  artist_name: string;
-  stream_history: TrackHistoryPoint[];
 }
 
 const TIME_PERIODS = [
@@ -45,7 +33,7 @@ function Win95Button({ active, children, ...props }: { active?: boolean; childre
 const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoading, error }) => {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [forecastData, setForecastData] = useState<ForecastPoint[]>([]);
+  const [forecastData, setForecastData] = useState<PredictedStreamEntry[]>([]);
   const [timePeriod, setTimePeriod] = useState<string>('30d'); // Default to 30 days
 
   useEffect(() => {
@@ -69,53 +57,57 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
       }
       
       try {
-        // Get forecast days based on time period
-        const daysToForecast = timePeriod === '7d' ? 7 : timePeriod === '30d' ? 30 : 90;
-        
-        // Fetch historical data for each track from StreamClout (same as Stream History Tab)
+        // First, ensure we have historical data by calling the stream history for each track
+        // This will populate the MongoDB with StreamClout data if not already cached
         const backendBase = import.meta.env.VITE_API_BASE_URL || '';
-        const historyResults = await Promise.all(
+        console.log(`[StreamForecastTab] Pre-loading historical data for ${trackIds.length} tracks to ensure forecasting data availability`);
+        
+        await Promise.all(
           trackIds.map(async (id) => {
             try {
-              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=90d`; // Get more history for better forecasting
-              const res = await fetch(url);
-              if (!res.ok) {
-                return null;
-              }
-              const data = await res.json();
-              return data;
+              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=90d&use_cache=true`;
+              await fetch(url);
             } catch (err) {
-              return null;
+              console.warn(`[StreamForecastTab] Failed to pre-load history for track ${id}:`, err);
             }
           })
         );
         
-        // Filter valid results and generate forecasts for each track
-        const validHistories = historyResults.filter(Boolean) as TrackHistory[];
-        const trackForecasts: ForecastPoint[][] = [];
+        // Now fetch forecasts using the analytics service (which uses the populated MongoDB data)
+        const daysToForecast = timePeriod === '7d' ? 7 : timePeriod === '30d' ? 30 : 90;
         
-        validHistories.forEach(trackHistory => {
-          if (trackHistory.stream_history && trackHistory.stream_history.length > 0) {
-            // Convert to our expected format
-            const historyPoints: HistoryPoint[] = trackHistory.stream_history.map(point => ({
-              date: point.date,
-              streams: point.streams
-            }));
-            
-            // Generate forecast for this track
-            const trackForecast = generateLinearForecast(historyPoints, daysToForecast);
-            trackForecasts.push(trackForecast);
-          }
+        const forecasts = await Promise.all(
+          trackIds.map(async (id) => {
+            try {
+              return await analyticsService.getSongStreamForecast(id as string, daysToForecast);
+            } catch (err) {
+              console.warn(`[StreamForecastTab] Failed to get forecast for track ${id}:`, err);
+              return [];
+            }
+          })
+        );
+        
+        // Aggregate forecasts by date
+        const dateMap = new Map<string, number>();
+        forecasts.forEach((trackForecast: PredictedStreamEntry[]) => {
+          trackForecast.forEach((point: PredictedStreamEntry) => {
+            const date = point.date;
+            dateMap.set(date, (dateMap.get(date) || 0) + point.predictedStreams);
+          });
         });
         
-        // Aggregate all track forecasts
-        const aggregatedForecast = aggregateForecasts(trackForecasts);
+        // Convert to array and sort by date
+        const aggregatedForecast = Array.from(dateMap.entries())
+          .map(([date, predictedStreams]) => ({ date, predictedStreams }))
+          .sort((a, b) => a.date.localeCompare(b.date));
         
         if (!cancelled) {
           setForecastData(aggregatedForecast);
+          console.log(`[StreamForecastTab] Generated forecast with ${aggregatedForecast.length} data points`);
         }
       } catch (e) {
         if (!cancelled) setApiError('Failed to fetch stream forecast.');
+        console.error('[StreamForecastTab] Error loading forecast:', e);
       } finally {
         if (!cancelled) setLoading(false);
       }
