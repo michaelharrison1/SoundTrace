@@ -1,0 +1,14 @@
+/* Main app background for logged-in users */
+body.logged-in-background::before {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url('/background.jpg');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+  opacity: 1;
+  pointer-events: none;
+  background-color: transparent;
+}
