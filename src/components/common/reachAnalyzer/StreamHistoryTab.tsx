@@ -217,7 +217,16 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
           }
         }
         
-        // Use daily_streams for new_streams field, total_streams for chart display
+        // Fix the first visible day's daily streams if it's showing as 0
+        // This happens because the aggregation logic skips the first data point
+        if (agg.length > 0 && agg[0].daily_streams === 0 && agg[0].total_streams > 0) {
+          agg[0] = {
+            ...agg[0],
+            daily_streams: agg[0].total_streams // Use total streams as daily streams for first day
+          };
+        }
+        
+        // Re-map with new_streams after fixing the first day
         agg = agg.map((d) => ({
           ...d,
           new_streams: d.daily_streams || 0 // Use calculated daily streams
