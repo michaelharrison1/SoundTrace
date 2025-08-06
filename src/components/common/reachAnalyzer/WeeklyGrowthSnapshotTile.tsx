@@ -189,7 +189,13 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         const validHistories = results.filter(Boolean) as TrackHistory[];
         
         // Use the same aggregation logic as StreamHistoryTab
-        const aggregatedData = aggregateHistories(validHistories);
+        let aggregatedData = aggregateHistories(validHistories);
+        
+        // Apply the same fix as StreamHistoryTab: hide the first data point if daily streams equals total streams
+        // This indicates it's the problematic first data point from StreamClout
+        if (aggregatedData.length > 0 && aggregatedData[0].daily_streams === aggregatedData[0].total_streams && aggregatedData[0].total_streams > 0) {
+          aggregatedData = aggregatedData.slice(1); // Remove the first data point
+        }
         
         // Calculate weekly totals using daily_streams (which contains the daily increments)
         let thisWeekTotal = 0;
