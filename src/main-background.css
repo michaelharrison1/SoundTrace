@@ -3,11 +3,23 @@ body.logged-in-background::before {
   content: '';
   position: fixed;
   z-index: -1;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: -100px; /* Extend above viewport to prevent grey area on overscroll */
+  left: -100px; /* Extend beyond left edge */
+  right: -100px; /* Extend beyond right edge */
+  bottom: -100px; /* Extend below viewport */
   background-image: url('/gifs/1.gif') !important;
   background-repeat: no-repeat !important;
   background-position: center center !important;
   background-size: cover !important;
   opacity: 1;
   pointer-events: none;
+}
+
+/* Also set body background as fallback */
+body.logged-in-background {
+  background-image: url('/gifs/1.gif') !important;
+  background-repeat: no-repeat !important;
+  background-position: center center !important;
+  background-size: cover !important;
+  background-attachment: fixed !important;
 }
