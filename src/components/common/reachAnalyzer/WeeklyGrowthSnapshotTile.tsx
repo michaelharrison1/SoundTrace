@@ -37,17 +37,30 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
       try {
         setWeeklyData(prev => ({ ...prev, isLoading: true, error: undefined }));
 
-        // Get current date and calculate week boundaries
+        // Get current date and calculate rolling 7-day periods
         const now = new Date();
-        const currentWeekStart = new Date(now);
-        currentWeekStart.setDate(now.getDate() - now.getDay()); // Start of this week (Sunday)
-        currentWeekStart.setHours(0, 0, 0, 0);
+        // Exclude today since data is incomplete
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        yesterday.setHours(23, 59, 59, 999);
+        
+        // This week: Last 7 complete days (yesterday back 7 days)
+        const thisWeekEnd = new Date(yesterday);
+        const thisWeekStart = new Date(yesterday);
+        thisWeekStart.setDate(yesterday.getDate() - 6); // 7 days including yesterday
+        thisWeekStart.setHours(0, 0, 0, 0);
 
-        const lastWeekStart = new Date(currentWeekStart);
-        lastWeekStart.setDate(currentWeekStart.getDate() - 7); // Start of last week
+        // Last week: 7 days before this week
+        const lastWeekEnd = new Date(thisWeekStart);
+        lastWeekEnd.setMilliseconds(-1); // End of last week (just before this week starts)
+        const lastWeekStart = new Date(lastWeekEnd);
+        lastWeekStart.setDate(lastWeekEnd.getDate() - 6); // 7 days before
+        lastWeekStart.setHours(0, 0, 0, 0);
 
-        const lastWeekEnd = new Date(currentWeekStart);
-        lastWeekEnd.setMilliseconds(-1); // End of last week
+        console.log('Weekly periods:', {
+          thisWeek: `${thisWeekStart.toISOString().split('T')[0]} to ${thisWeekEnd.toISOString().split('T')[0]}`,
+          lastWeek: `${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]}`
+        });
 
         // Collect all unique tracks from scanLogs
         const trackIdentifiers = new Set<string>();
@@ -107,20 +120,57 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           return;
         }
 
-        // Calculate weekly totals
+        // Convert cumulative streams to daily streams and calculate weekly totals
+        // Group by track first, then convert cumulative to daily streams
+        const trackStreamMap = new Map<string, Array<{date: Date, streams: number}>>();
+        
+        validStreamData.forEach(streamEntry => {
+          const streamDate = new Date(streamEntry.date);
+          const trackKey = `${streamEntry.track_id || 'unknown'}`;
+          
+          if (!trackStreamMap.has(trackKey)) {
+            trackStreamMap.set(trackKey, []);
+          }
+          
+          trackStreamMap.get(trackKey)!.push({
+            date: streamDate,
+            streams: streamEntry.streams || 0
+          });
+        });
+
         let thisWeekStreams = 0;
         let lastWeekStreams = 0;
 
-        validStreamData.forEach(streamEntry => {
-          const streamDate = new Date(streamEntry.date);
+        // Process each track separately to convert cumulative to daily streams
+        trackStreamMap.forEach((trackData, trackKey) => {
+          // Sort by date to ensure proper cumulative->daily conversion
+          trackData.sort((a, b) => a.date.getTime() - b.date.getTime());
           
-          if (streamDate >= currentWeekStart && streamDate <= now) {
-            // This week
-            thisWeekStreams += streamEntry.streams || 0;
-          } else if (streamDate >= lastWeekStart && streamDate <= lastWeekEnd) {
-            // Last week
-            lastWeekStreams += streamEntry.streams || 0;
+          // Convert cumulative streams to daily streams
+          const dailyStreams: Array<{date: Date, dailyStreams: number}> = [];
+          for (let i = 0; i < trackData.length; i++) {
+            const current = trackData[i];
+            const previous = i > 0 ? trackData[i - 1] : null;
+            
+            // Daily streams = current cumulative - previous cumulative
+            const dailyStreamCount = previous 
+              ? Math.max(0, current.streams - previous.streams) // Ensure non-negative
+              : current.streams; // First data point is treated as daily streams
+            
+            dailyStreams.push({
+              date: current.date,
+              dailyStreams: dailyStreamCount
+            });
           }
+          
+          // Sum daily streams for each week
+          dailyStreams.forEach(({ date, dailyStreams: daily }) => {
+            if (date >= thisWeekStart && date <= thisWeekEnd) {
+              thisWeekStreams += daily;
+            } else if (date >= lastWeekStart && date <= lastWeekEnd) {
+              lastWeekStreams += daily;
+            }
+          });
         });
 
         // Calculate percentage change
@@ -130,6 +180,12 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         } else if (thisWeekStreams > 0) {
           percentageChange = 100; // 100% increase from 0
         }
+
+        console.log('Weekly growth calculation:', {
+          thisWeekStreams,
+          lastWeekStreams,
+          percentageChange: percentageChange.toFixed(1)
+        });
 
         setWeeklyData({
           thisWeekStreams,
@@ -189,14 +245,14 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
       ) : (
         <div className="space-y-2 text-sm">
           <div className="bg-[#E0E0E0] win95-border-inset p-2">
-            <div className="text-xs text-gray-600 mb-1">This Week</div>
+            <div className="text-xs text-gray-600 mb-1">Last 7 Days</div>
             <div className="font-bold">
               {formatNumber(weeklyData.thisWeekStreams)} streams
             </div>
           </div>
           
           <div className="bg-[#E0E0E0] win95-border-inset p-2">
-            <div className="text-xs text-gray-600 mb-1">Last Week</div>
+            <div className="text-xs text-gray-600 mb-1">Previous 7 Days</div>
             <div className="font-bold">
               {formatNumber(weeklyData.lastWeekStreams)} streams
             </div>

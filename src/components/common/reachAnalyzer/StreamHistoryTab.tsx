@@ -24,13 +24,19 @@ interface TrackHistory {
 
 
 function aggregateHistories(histories: TrackHistory[]): { date: string; total_streams: number }[] {
+  // Get today's date to exclude incomplete data
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  
   // Aggregate by date
   const dateMap = new Map<string, number>();
   histories.forEach(hist => {
     if (hist.stream_history && Array.isArray(hist.stream_history)) {
       hist.stream_history.forEach(point => {
         const date = point.date.slice(0, 10); // YYYY-MM-DD
-        dateMap.set(date, (dateMap.get(date) || 0) + point.streams);
+        // Skip today's data since it's incomplete
+        if (date !== today) {
+          dateMap.set(date, (dateMap.get(date) || 0) + point.streams);
+        }
       });
     }
   });
