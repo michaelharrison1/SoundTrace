@@ -58,16 +58,13 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
     // Sort by date for proper cumulative->daily conversion
     trackData.sort((a, b) => a.date.localeCompare(b.date));
     
-    // Convert cumulative to daily for this track
-    for (let i = 0; i < trackData.length; i++) {
+    // Convert cumulative to daily for this track, skip first data point
+    for (let i = 1; i < trackData.length; i++) { // Start from index 1 to skip first data point
       const current = trackData[i];
-      const previous = i > 0 ? trackData[i - 1] : null;
+      const previous = trackData[i - 1];
       
       // Daily streams = current cumulative - previous cumulative
-      // For first data point, use the cumulative value (represents streams up to that point)
-      const dailyStreams = previous 
-        ? Math.max(0, current.streams - previous.streams) // Ensure non-negative
-        : current.streams; // First data point gets its full cumulative value
+      const dailyStreams = Math.max(0, current.streams - previous.streams); // Ensure non-negative
       
       // Add to daily aggregate (for new_streams field)
       const existingDaily = dailyAggregateMap.get(current.date) || 0;
@@ -83,7 +80,7 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
           trackKey,
           date: current.date,
           currentStreams: current.streams,
-          previousStreams: previous?.streams,
+          previousStreams: previous.streams,
           calculatedDaily: dailyStreams
         });
       }
