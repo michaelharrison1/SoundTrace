@@ -57,13 +57,187 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         lastWeekStart.setDate(lastWeekEnd.getDate() - 6); // 7 days before
         lastWeekStart.setHours(0, 0, 0, 0);
 
+  // Copy the exact aggregation logic from StreamHistoryTab
+  function aggregateStreamHistories(histories: any[]): { date: string; total_streams: number; daily_streams?: number }[] {
+    // Get today's date to exclude incomplete data
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Group data by track first, then convert cumulative to daily per track
+    const trackDataMap = new Map<string, Array<{date: string, streams: number}>>();
+    
+    histories.forEach(hist => {
+      if (hist.stream_history && Array.isArray(hist.stream_history)) {
+        const trackKey = hist.track_id || 'unknown';
+        if (!trackDataMap.has(trackKey)) {
+          trackDataMap.set(trackKey, []);
+        }
+        
+        hist.stream_history.forEach((point: any) => {
+          const date = point.date.slice(0, 10); // YYYY-MM-DD
+          // Skip today's data since it's incomplete
+          if (date !== today) {
+            trackDataMap.get(trackKey)!.push({
+              date: date,
+              streams: point.streams
+            });
+          }
+        });
+      }
+    });
+    
+    // Calculate both daily streams (for new_streams) and cumulative totals
+    const dailyAggregateMap = new Map<string, number>();
+    
+    trackDataMap.forEach((trackData) => {
+      // Sort by date for proper cumulative->daily conversion
+      trackData.sort((a, b) => a.date.localeCompare(b.date));
+      
+      // Convert cumulative to daily for this track, skip first data point
+      for (let i = 1; i < trackData.length; i++) {
+        const current = trackData[i];
+        const previous = trackData[i - 1];
+        
+        // Daily streams = current cumulative - previous cumulative
+        const dailyStreams = Math.max(0, current.streams - previous.streams);
+        
+        // Add to daily aggregate
+        const existingDaily = dailyAggregateMap.get(current.date) || 0;
+        dailyAggregateMap.set(current.date, existingDaily + dailyStreams);
+      }
+    });
+    
+    // For total_streams, create cumulative totals
+    const allTimeCumulativeMap = new Map<string, number>();
+    
+    trackDataMap.forEach((trackData) => {
+      trackData.sort((a, b) => a.date.localeCompare(b.date));
+      
+      trackData.forEach(point => {
+        const existing = allTimeCumulativeMap.get(point.date) || 0;
+        allTimeCumulativeMap.set(point.date, existing + point.streams);
+      });
+    });
+    
+    // Convert to result array with all-time totals and daily streams
+    const sortedDates = Array.from(new Set([...dailyAggregateMap.keys(), ...allTimeCumulativeMap.keys()])).sort();
+    
+    const result = sortedDates.map(date => {
+      return {
+        date,
+        total_streams: allTimeCumulativeMap.get(date) || 0,
+        daily_streams: dailyAggregateMap.get(date) || 0
+      };
+    }).filter(item => item.total_streams > 0 || item.daily_streams > 0);
+      
+    return result;
+  }
+
+  useEffect(() => {
+    if (scanLogs && scanLogs.length > 0) {
+      const fetchWeeklyData = async () => {
         console.log('Weekly periods (FIXED 7-DAY WINDOWS - NOT ROLLING):', {
           thisWeek: `${thisWeekStart.toISOString().split('T')[0]} to ${thisWeekEnd.toISOString().split('T')[0]} (7 days)`,
           lastWeek: `${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]} (7 days)`,
           expectingStreams: "~700k for this week if 100k/day average"
         });
 
-        // Collect all unique tracks from scanLogs
+        // Collect all unique tracks from scanLogs (same as StreamHistoryTab)
+        const trackIdentifiers = new Set<string>();
+        scanLogs.forEach(log => {
+          if (log.matches && log.matches.length > 0) {
+            log.matches.forEach((match: any) => {
+              if (match.platformLinks?.spotify) {
+                trackIdentifiers.add(match.platformLinks.spotify);
+              }
+            });
+          }
+        });
+
+        if (trackIdentifiers.size === 0) {
+          setWeeklyData({
+            thisWeekStreams: 0,
+            lastWeekStreams: 0,
+            percentageChange: 0,
+            isLoading: false
+          });
+          return;
+        }
+
+        try {
+          // Fetch stream history for all tracks (same API calls as StreamHistoryTab)
+          const historyPromises = Array.from(trackIdentifiers).map(async (trackId) => {
+            try {
+              const response = await fetch(`/api/streamclout/${encodeURIComponent(trackId)}/history?time_period=30d`);
+              if (!response.ok) return null;
+              const data = await response.json();
+              return {
+                track_id: trackId,
+                track_name: data.track_name || 'Unknown',
+                artist_name: data.artist_name || 'Unknown',
+                stream_history: data.stream_history || []
+              };
+            } catch (error) {
+              console.error(`Error fetching history for ${trackId}:`, error);
+              return null;
+            }
+          });
+
+          const allHistories = (await Promise.all(historyPromises)).filter(h => h !== null);
+          
+          // Use EXACT same aggregation logic as StreamHistoryTab
+          const aggregatedData = aggregateStreamHistories(allHistories);
+          
+          // Sum up last 7 days and previous 7 days using daily_streams
+          let weeklyThisTotal = 0;
+          let weeklyLastTotal = 0;
+
+          aggregatedData.forEach((entry: any) => {
+            const entryDate = new Date(entry.date);
+            if (entryDate >= thisWeekStart && entryDate <= thisWeekEnd) {
+              weeklyThisTotal += entry.daily_streams || 0;
+            } else if (entryDate >= lastWeekStart && entryDate <= lastWeekEnd) {
+              weeklyLastTotal += entry.daily_streams || 0;
+            }
+          });
+
+          console.log(`[WeeklyGrowth] Using StreamHistory logic - This week: ${weeklyThisTotal.toLocaleString()}, Last week: ${weeklyLastTotal.toLocaleString()}`);
+
+          // Calculate percentage change
+          let weeklyPercentageChange = 0;
+          if (weeklyLastTotal > 0) {
+            weeklyPercentageChange = ((weeklyThisTotal - weeklyLastTotal) / weeklyLastTotal) * 100;
+          } else if (weeklyThisTotal > 0) {
+            weeklyPercentageChange = 100;
+          }
+
+          setWeeklyData({
+            thisWeekStreams: weeklyThisTotal,
+            lastWeekStreams: weeklyLastTotal,
+            percentageChange: weeklyPercentageChange,
+            isLoading: false
+          });
+
+        } catch (error) {
+          console.error('[WeeklyGrowth] Error fetching weekly data:', error);
+          setWeeklyData({
+            thisWeekStreams: 0,
+            lastWeekStreams: 0,
+            percentageChange: 0,
+            isLoading: false
+          });
+        }
+      };
+
+      fetchWeeklyData();
+    } else {
+      setWeeklyData({
+        thisWeekStreams: 0,
+        lastWeekStreams: 0,
+        percentageChange: 0,
+        isLoading: false
+      });
+    }
+  }, [scanLogs]);        // Collect all unique tracks from scanLogs
         const trackIdentifiers = new Set<string>();
         scanLogs.forEach(log => {
           if (log.matches && log.matches.length > 0) {
