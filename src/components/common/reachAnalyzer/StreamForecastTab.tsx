@@ -234,7 +234,13 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={forecastData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={formatXAxis} />
+            <XAxis 
+              dataKey="date" 
+              tick={{ fontSize: 12 }} 
+              tickFormatter={formatXAxis}
+              interval={timePeriod === '30d' ? Math.max(0, Math.floor(forecastData.length / 8) - 1) : 'preserveEnd'}
+              minTickGap={15}
+            />
             <YAxis tick={{ fontSize: 12 }} tickFormatter={formatYAxis} />
             <Tooltip content={<CustomTooltip />} />
             <Line type="monotone" dataKey="predictedStreams" stroke="#00C800" strokeWidth={2} dot={false} />
