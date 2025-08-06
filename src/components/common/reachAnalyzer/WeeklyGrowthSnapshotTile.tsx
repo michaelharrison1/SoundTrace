@@ -149,15 +149,55 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           .slice(0, 5);
         console.log(`[WeeklyGrowth] Top 5 stream values:`, topStreamValues);
 
-        // Use simpler approach - sum daily streams for each week period
-        const dailyTotals = new Map<string, number>();
+        // CRITICAL FIX: Convert cumulative data to daily increments PER TRACK before summing
+        // Group data by track_id first, then convert cumulative to daily per track
+        const dataByTrack = new Map<string, Array<{date: string, streams: number}>>();
         validStreamData.forEach(entry => {
-          const date = entry.date;
-          const streams = entry.streams || 0;
-          if (!dailyTotals.has(date)) {
-            dailyTotals.set(date, 0);
+          const trackId = entry.track_id || 'unknown';
+          if (!dataByTrack.has(trackId)) {
+            dataByTrack.set(trackId, []);
           }
-          dailyTotals.set(date, dailyTotals.get(date)! + streams);
+          dataByTrack.get(trackId)!.push({
+            date: entry.date,
+            streams: entry.streams || 0
+          });
+        });
+
+        // Convert each track's data from cumulative to daily increments if needed
+        const dailyTotals = new Map<string, number>();
+        
+        dataByTrack.forEach((trackData, trackId) => {
+          // Sort by date for this track
+          trackData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          
+          // Check if this track's data appears to be cumulative
+          const avgStreamValue = trackData.reduce((sum, d) => sum + d.streams, 0) / trackData.length;
+          const isTrackCumulative = avgStreamValue > 10000000; // 10M+ suggests cumulative
+          
+          if (isTrackCumulative) {
+            // Convert cumulative to daily for this track
+            for (let i = 0; i < trackData.length; i++) {
+              const currentStreams = trackData[i].streams;
+              const previousStreams = i > 0 ? trackData[i - 1].streams : 0;
+              const dailyIncrement = Math.max(0, currentStreams - previousStreams);
+              
+              // Add to daily totals
+              const date = trackData[i].date;
+              if (!dailyTotals.has(date)) {
+                dailyTotals.set(date, 0);
+              }
+              dailyTotals.set(date, dailyTotals.get(date)! + dailyIncrement);
+            }
+          } else {
+            // Data is already daily, just sum it
+            trackData.forEach(entry => {
+              const date = entry.date;
+              if (!dailyTotals.has(date)) {
+                dailyTotals.set(date, 0);
+              }
+              dailyTotals.set(date, dailyTotals.get(date)! + entry.streams);
+            });
+          }
         });
 
         console.log(`[WeeklyGrowth] Daily totals sample (first 5):`, Array.from(dailyTotals.entries()).slice(0, 5));
@@ -182,126 +222,11 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           }
         });
 
-        console.log(`[WeeklyGrowth] Raw weekly totals: This week: ${thisWeekTotal.toLocaleString()} (${thisWeekDays} days), Last week: ${lastWeekTotal.toLocaleString()} (${lastWeekDays} days)`);
+        console.log(`[WeeklyGrowth] Final weekly totals after per-track processing: This week: ${thisWeekTotal.toLocaleString()} (${thisWeekDays} days), Last week: ${lastWeekTotal.toLocaleString()} (${lastWeekDays} days)`);
 
-        // The issue might be that we're summing cumulative values instead of daily increments
-        // Let's detect this and fix it
-        const avgThisWeek = thisWeekTotal / (thisWeekDays || 1);
-        const avgLastWeek = lastWeekTotal / (lastWeekDays || 1);
-
-        console.log(`[WeeklyGrowth] Daily averages: This week: ${avgThisWeek.toLocaleString()}, Last week: ${avgLastWeek.toLocaleString()}`);
-
-        // If averages suggest these are cumulative values, use a different approach
+        // Set final values (no additional conversion needed since we handled it per-track)
         let finalThisWeek = thisWeekTotal;
         let finalLastWeek = lastWeekTotal;
-        
-        // Better detection: look for patterns that indicate cumulative data
-        // 1. Check if values are consistently increasing day over day per track
-        // 2. Check if daily averages are unreasonably high (10M+ per day suggests cumulative)
-        let probablyCumulative = false;
-        
-        if (avgThisWeek > 10000000) { // 10M+ per day is definitely cumulative
-          probablyCumulative = true;
-          console.warn('[WeeklyGrowth] Daily average > 10M, definitely cumulative data');
-        } else {
-          // Check if data shows cumulative patterns by examining individual tracks
-          let cumulativeTrackCount = 0;
-          const trackDailyValues = new Map<string, number[]>();
-          
-          validStreamData.forEach(entry => {
-            const trackId = entry.track_id || 'unknown';
-            const streams = entry.streams || 0;
-            
-            if (!trackDailyValues.has(trackId)) {
-              trackDailyValues.set(trackId, []);
-            }
-            trackDailyValues.get(trackId)!.push(streams);
-          });
-          
-          // Check if tracks show consistently increasing values (cumulative pattern)
-          trackDailyValues.forEach((values, trackId) => {
-            if (values.length > 3) {
-              const sorted = [...values].sort((a, b) => a - b);
-              const increasing = values.every((val, i) => i === 0 || val >= values[i - 1] * 0.9); // Allow 10% variance
-              const highValues = values.some(v => v > 1000000); // Individual track > 1M
-              
-              if (increasing && highValues) {
-                cumulativeTrackCount++;
-              }
-            }
-          });
-          
-          if (cumulativeTrackCount > trackDailyValues.size * 0.5) {
-            probablyCumulative = true;
-            console.warn(`[WeeklyGrowth] ${cumulativeTrackCount}/${trackDailyValues.size} tracks show cumulative patterns`);
-          }
-        }
-        
-        if (probablyCumulative) {
-          console.warn('[WeeklyGrowth] Values appear to be cumulative, converting to daily increments');
-          
-          // Convert cumulative data to daily increments per track, then sum
-          const trackDailyIncrements = new Map<string, Map<string, number>>();
-          
-          validStreamData.forEach(entry => {
-            const trackId = entry.track_id || 'unknown';
-            const date = entry.date;
-            const streams = entry.streams || 0;
-            
-            if (!trackDailyIncrements.has(trackId)) {
-              trackDailyIncrements.set(trackId, new Map());
-            }
-            trackDailyIncrements.get(trackId)!.set(date, streams);
-          });
-          
-          // Calculate daily increments for each track
-          let thisWeekIncrements = 0;
-          let lastWeekIncrements = 0;
-          
-          trackDailyIncrements.forEach((trackData, trackId) => {
-            const sortedDates = Array.from(trackData.keys()).sort();
-            
-            for (let i = 1; i < sortedDates.length; i++) {
-              const currentDate = sortedDates[i];
-              const previousDate = sortedDates[i - 1];
-              const currentStreams = trackData.get(currentDate) || 0;
-              const previousStreams = trackData.get(previousDate) || 0;
-              const dailyIncrement = Math.max(0, currentStreams - previousStreams);
-              
-              const date = new Date(currentDate);
-              if (date >= thisWeekStart && date <= thisWeekEnd) {
-                thisWeekIncrements += dailyIncrement;
-              } else if (date >= lastWeekStart && date <= lastWeekEnd) {
-                lastWeekIncrements += dailyIncrement;
-              }
-            }
-          });
-          
-          finalThisWeek = thisWeekIncrements;
-          finalLastWeek = lastWeekIncrements;
-          
-          console.log(`[WeeklyGrowth] After cumulative->daily conversion: This week: ${finalThisWeek.toLocaleString()}, Last week: ${finalLastWeek.toLocaleString()}`);
-          
-        } else {
-          console.log('[WeeklyGrowth] Values appear to be daily totals, using direct sum');
-          
-          // Add debugging to understand the direct sum calculation
-          console.log(`[WeeklyGrowth] Direct sum details:`, {
-            totalDataPoints: validStreamData.length,
-            uniqueDates: new Set(validStreamData.map(d => d.date)).size,
-            uniqueTracks: new Set(validStreamData.map(d => d.track_id)).size,
-            avgStreamsPerDataPoint: validStreamData.reduce((sum, d) => sum + (d.streams || 0), 0) / validStreamData.length,
-            thisWeekDataPoints: validStreamData.filter(d => {
-              const date = new Date(d.date);
-              return date >= thisWeekStart && date <= thisWeekEnd;
-            }).length,
-            lastWeekDataPoints: validStreamData.filter(d => {
-              const date = new Date(d.date);
-              return date >= lastWeekStart && date <= lastWeekEnd;
-            }).length
-          });
-        }
-
         // Calculate percentage change
         let percentageChange = 0;
         if (finalLastWeek > 0) {
@@ -339,13 +264,7 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           percentageChange: percentageChange.toFixed(1),
           thisWeekRange: `${thisWeekStart.toISOString().split('T')[0]} to ${thisWeekEnd.toISOString().split('T')[0]}`,
           lastWeekRange: `${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]}`,
-          totalDataPoints: validStreamData.length,
-          approach: avgThisWeek > 1000000 ? 'cumulative-difference' : 'direct-sum',
-          sampleDataPoints: validStreamData.slice(0, 3).map(d => ({
-            date: d.date,
-            streams: d.streams,
-            track_id: d.track_id
-          }))
+          approach: 'per-track-cumulative-detection'
         });
 
         setWeeklyData({
