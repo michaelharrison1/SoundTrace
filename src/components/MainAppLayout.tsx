@@ -83,19 +83,11 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center center',
         backgroundSize: 'cover',
+        backgroundAttachment: 'fixed',
         overflow: 'hidden',
       }}
       className="flex flex-col items-center justify-start w-full"
     >
-      {/* Override any existing background styles */}
-      <style>{`
-        body.logged-in-background::before {
-          background-image: url(/gifs/1.gif) !important;
-          background-repeat: no-repeat !important;
-          background-position: center center !important;
-          background-size: cover !important;
-        }
-      `}</style>
       
       {/* Overlay to make content more readable */}
       <div
