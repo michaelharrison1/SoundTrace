@@ -57,9 +57,10 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         lastWeekStart.setDate(lastWeekEnd.getDate() - 6); // 7 days before
         lastWeekStart.setHours(0, 0, 0, 0);
 
-        console.log('Weekly periods:', {
-          thisWeek: `${thisWeekStart.toISOString().split('T')[0]} to ${thisWeekEnd.toISOString().split('T')[0]}`,
-          lastWeek: `${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]}`
+        console.log('Weekly periods (FIXED 7-DAY WINDOWS - NOT ROLLING):', {
+          thisWeek: `${thisWeekStart.toISOString().split('T')[0]} to ${thisWeekEnd.toISOString().split('T')[0]} (7 days)`,
+          lastWeek: `${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]} (7 days)`,
+          expectingStreams: "~700k for this week if 100k/day average"
         });
 
         // Collect all unique tracks from scanLogs
@@ -135,53 +136,90 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           dailyTotals.set(date, dailyTotals.get(date)! + streams);
         });
 
-        console.log(`[WeeklyGrowth] Daily totals sample:`, Array.from(dailyTotals.entries()).slice(-7));
+        console.log(`[WeeklyGrowth] Daily totals sample (first 5):`, Array.from(dailyTotals.entries()).slice(0, 5));
+        console.log(`[WeeklyGrowth] Daily totals sample (last 5):`, Array.from(dailyTotals.entries()).slice(-5));
 
         // Sum for each week using the daily totals
         let thisWeekTotal = 0;
         let lastWeekTotal = 0;
+        let thisWeekDays = 0;
+        let lastWeekDays = 0;
 
         dailyTotals.forEach((dailyStreams, dateStr) => {
           const date = new Date(dateStr);
           if (date >= thisWeekStart && date <= thisWeekEnd) {
             thisWeekTotal += dailyStreams;
+            thisWeekDays++;
+            console.log(`[WeeklyGrowth] This week day ${dateStr}: ${dailyStreams.toLocaleString()} streams`);
           } else if (date >= lastWeekStart && date <= lastWeekEnd) {
             lastWeekTotal += dailyStreams;
+            lastWeekDays++;
+            console.log(`[WeeklyGrowth] Last week day ${dateStr}: ${dailyStreams.toLocaleString()} streams`);
           }
         });
 
-        // Convert to reasonable daily averages if values are too high (likely cumulative)
-        const avgThisWeek = thisWeekTotal / 7; // Average per day this week
-        const avgLastWeek = lastWeekTotal / 7; // Average per day last week
+        console.log(`[WeeklyGrowth] Raw weekly totals: This week: ${thisWeekTotal.toLocaleString()} (${thisWeekDays} days), Last week: ${lastWeekTotal.toLocaleString()} (${lastWeekDays} days)`);
+
+        // The issue might be that we're summing cumulative values instead of daily increments
+        // Let's detect this and fix it
+        const avgThisWeek = thisWeekTotal / (thisWeekDays || 1);
+        const avgLastWeek = lastWeekTotal / (lastWeekDays || 1);
+
+        console.log(`[WeeklyGrowth] Daily averages: This week: ${avgThisWeek.toLocaleString()}, Last week: ${avgLastWeek.toLocaleString()}`);
 
         // If averages suggest these are cumulative values, use a different approach
         let finalThisWeek = thisWeekTotal;
         let finalLastWeek = lastWeekTotal;
         
         if (avgThisWeek > 1000000) { // If daily average > 1M, likely cumulative totals
-          console.warn('[WeeklyGrowth] Values appear to be cumulative, using growth approach');
-          // Use the difference approach - take latest value in each period
-          const thisWeekDates = Array.from(dailyTotals.keys()).filter(date => {
-            const d = new Date(date);
-            return d >= thisWeekStart && d <= thisWeekEnd;
-          }).sort();
+          console.warn('[WeeklyGrowth] Values appear to be cumulative, converting to daily increments');
           
-          const lastWeekDates = Array.from(dailyTotals.keys()).filter(date => {
-            const d = new Date(date);
-            return d >= lastWeekStart && d <= lastWeekEnd;
-          }).sort();
+          // Convert cumulative data to daily increments per track, then sum
+          const trackDailyIncrements = new Map<string, Map<string, number>>();
           
-          if (thisWeekDates.length > 1) {
-            const firstThisWeek = dailyTotals.get(thisWeekDates[0]) || 0;
-            const lastThisWeek = dailyTotals.get(thisWeekDates[thisWeekDates.length - 1]) || 0;
-            finalThisWeek = Math.abs(lastThisWeek - firstThisWeek);
-          }
+          validStreamData.forEach(entry => {
+            const trackId = entry.track_id || 'unknown';
+            const date = entry.date;
+            const streams = entry.streams || 0;
+            
+            if (!trackDailyIncrements.has(trackId)) {
+              trackDailyIncrements.set(trackId, new Map());
+            }
+            trackDailyIncrements.get(trackId)!.set(date, streams);
+          });
           
-          if (lastWeekDates.length > 1) {
-            const firstLastWeek = dailyTotals.get(lastWeekDates[0]) || 0;
-            const lastLastWeek = dailyTotals.get(lastWeekDates[lastWeekDates.length - 1]) || 0;
-            finalLastWeek = Math.abs(lastLastWeek - firstLastWeek);
-          }
+          // Calculate daily increments for each track
+          let thisWeekIncrements = 0;
+          let lastWeekIncrements = 0;
+          
+          trackDailyIncrements.forEach((trackData, trackId) => {
+            const sortedDates = Array.from(trackData.keys()).sort();
+            
+            for (let i = 1; i < sortedDates.length; i++) {
+              const currentDate = sortedDates[i];
+              const previousDate = sortedDates[i - 1];
+              const currentStreams = trackData.get(currentDate) || 0;
+              const previousStreams = trackData.get(previousDate) || 0;
+              const dailyIncrement = Math.max(0, currentStreams - previousStreams);
+              
+              const date = new Date(currentDate);
+              if (date >= thisWeekStart && date <= thisWeekEnd) {
+                thisWeekIncrements += dailyIncrement;
+              } else if (date >= lastWeekStart && date <= lastWeekEnd) {
+                lastWeekIncrements += dailyIncrement;
+              }
+            }
+          });
+          
+          finalThisWeek = thisWeekIncrements;
+          finalLastWeek = lastWeekIncrements;
+          
+          console.log(`[WeeklyGrowth] After cumulative->daily conversion: This week: ${finalThisWeek.toLocaleString()}, Last week: ${finalLastWeek.toLocaleString()}`);
+          
+        } else {
+          console.log('[WeeklyGrowth] Values appear to be daily totals, using direct sum');
+          // Values are already daily, but might be getting double-counted if multiple tracks have the same date
+          // Let's verify the calculation is correct
         }
 
         // Calculate percentage change

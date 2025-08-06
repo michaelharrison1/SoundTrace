@@ -105,15 +105,21 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
         
         console.log('[StreamForecast] Raw aggregated forecast:', aggregatedForecast.slice(0, 5));
         
-        // Filter out past dates and zero values, but be less strict about zero values
+        // Filter out past dates, but keep zeros except for the very last one if it's zero
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const beforeFilter = aggregatedForecast.length;
         
+        // First filter out past dates
         aggregatedForecast = aggregatedForecast.filter(point => {
           const pointDate = new Date(point.date);
-          return pointDate >= today && point.predictedStreams >= 0; // Allow small positive values, not just > 0
+          return pointDate >= today;
         });
+        
+        // Remove the last datapoint if it's zero (but keep other zeros)
+        if (aggregatedForecast.length > 0 && aggregatedForecast[aggregatedForecast.length - 1].predictedStreams === 0) {
+          aggregatedForecast = aggregatedForecast.slice(0, -1);
+        }
         
         console.log(`[StreamForecast] Filtered forecast: ${beforeFilter} -> ${aggregatedForecast.length} points`);
         
