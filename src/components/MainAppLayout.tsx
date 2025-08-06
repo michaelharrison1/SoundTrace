@@ -79,11 +79,10 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         minHeight: '100vh',
         minWidth: '100vw',
         width: '100%',
-        backgroundImage: 'url(/gifs/1.gif) !important',
-        backgroundRepeat: 'no-repeat !important',
-        backgroundPosition: 'center center !important',
-        backgroundSize: 'cover !important',
-        backgroundColor: '#008080', // Fallback Windows 95 teal
+        backgroundImage: 'url(/gifs/1.gif)',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center center',
+        backgroundSize: 'cover',
         overflow: 'hidden',
       }}
       className="flex flex-col items-center justify-start w-full"

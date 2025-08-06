@@ -23,7 +23,7 @@ interface TrackHistory {
 }
 
 
-function aggregateHistories(histories: TrackHistory[]): { date: string; total_streams: number }[] {
+function aggregateHistories(histories: TrackHistory[]): { date: string; total_streams: number; daily_streams?: number }[] {
   // Get today's date to exclude incomplete data
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
   
@@ -50,8 +50,9 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
     }
   });
   
-  // Convert cumulative to daily streams for each track, then aggregate by date
-  const dailyAggregateMap = new Map<string, number>();
+  // Calculate both daily streams (for new_streams) and cumulative totals (for total_streams display)
+  const dailyAggregateMap = new Map<string, number>(); // For new_streams calculation
+  const cumulativeAggregateMap = new Map<string, number>(); // For total_streams display
   
   trackDataMap.forEach((trackData, trackKey) => {
     // Sort by date for proper cumulative->daily conversion
@@ -63,13 +64,18 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
       const previous = i > 0 ? trackData[i - 1] : null;
       
       // Daily streams = current cumulative - previous cumulative
+      // For first data point, use the cumulative value (represents streams up to that point)
       const dailyStreams = previous 
         ? Math.max(0, current.streams - previous.streams) // Ensure non-negative
-        : 0; // First data point, can't calculate daily streams
+        : current.streams; // First data point gets its full cumulative value
       
-      // Add to daily aggregate
+      // Add to daily aggregate (for new_streams field)
       const existingDaily = dailyAggregateMap.get(current.date) || 0;
       dailyAggregateMap.set(current.date, existingDaily + dailyStreams);
+      
+      // Add cumulative streams to total aggregate (for chart display)
+      const existingCumulative = cumulativeAggregateMap.get(current.date) || 0;
+      cumulativeAggregateMap.set(current.date, existingCumulative + current.streams);
       
       // Debug logging for extreme values
       if (dailyStreams > 1000000) {
@@ -84,13 +90,18 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
     }
   });
   
-  // Convert to array and sort by date
-  const result = Array.from(dailyAggregateMap.entries())
-    .map(([date, total_streams]) => ({ date, total_streams }))
+  // Convert to array and sort by date, using CUMULATIVE totals for display
+  const result = Array.from(cumulativeAggregateMap.entries())
+    .map(([date, total_streams]) => ({ 
+      date, 
+      total_streams,
+      // Store daily streams for new_streams field later
+      daily_streams: dailyAggregateMap.get(date) || 0
+    }))
     .sort((a, b) => a.date.localeCompare(b.date));
     
   // Debug logging for final results
-  console.log(`[StreamHistory] Final aggregated daily streams:`, result.slice(-5)); // Show last 5 days
+  console.log(`[StreamHistory] Final aggregated streams:`, result.slice(-5)); // Show last 5 days
   
   return result;
 }
@@ -172,11 +183,10 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         );
         const valid = results.filter(Boolean) as TrackHistory[];
         let agg = aggregateHistories(valid);
-        // Note: agg now contains daily streams, not cumulative
-        // Add new_streams field for compatibility (same as total_streams now)
+        // Use daily_streams for new_streams field, total_streams for chart display
         agg = agg.map((d) => ({
           ...d,
-          new_streams: d.total_streams // Daily streams are already calculated correctly
+          new_streams: d.daily_streams || 0 // Use calculated daily streams
         }));
         if (!cancelled) setHistoryData(agg);
       } catch (e) {

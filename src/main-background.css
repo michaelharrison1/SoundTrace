@@ -10,5 +10,4 @@ body.logged-in-background::before {
   background-size: cover !important;
   opacity: 1;
   pointer-events: none;
-  background-color: #008080;
 }
