@@ -174,8 +174,9 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
       }
       try {
         const backendBase = import.meta.env.VITE_API_BASE_URL || '';
-        // Use 7d instead of 8d since StreamClout API only accepts 7d and 30d
-        const fetchTimePeriod = timePeriod === '7d' ? '7d' : timePeriod;
+        // Use 30d data for both 7d and 30d to avoid data inconsistencies
+        // StreamClout doesn't provide data beyond 30 days anyway
+        const fetchTimePeriod = '30d'; // Always use 30d data
         const results = await Promise.all(
           trackIds.map(async (id) => {
             try {
@@ -196,37 +197,19 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         
         // Filter to requested time period after aggregation (to maintain context for calculations)
         if (timePeriod === '7d') {
-          const eightDaysAgo = new Date();
-          eightDaysAgo.setDate(eightDaysAgo.getDate() - 8); // Load 8 days of data
-          const cutoffDate = eightDaysAgo.toISOString().split('T')[0];
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7); // True 7 days
+          const cutoffDate = sevenDaysAgo.toISOString().split('T')[0];
           agg = agg.filter(d => d.date >= cutoffDate);
-          
-          // Skip the first day (which has calculation issues) and show only the last 7 days
-          if (agg.length > 7) {
-            agg = agg.slice(-7); // Take last 7 days only
-          }
         } else if (timePeriod === '30d') {
-          const thirtyOneDaysAgo = new Date();
-          thirtyOneDaysAgo.setDate(thirtyOneDaysAgo.getDate() - 31); // Load 31 days of data
-          const cutoffDate = thirtyOneDaysAgo.toISOString().split('T')[0];
-          agg = agg.filter(d => d.date >= cutoffDate);
-          
-          // Skip the first day (which has calculation issues) and show only the last 30 days
-          if (agg.length > 30) {
-            agg = agg.slice(-30); // Take last 30 days only
+          // For 30d, hide the first data point if daily streams equals total streams
+          // This indicates it's the problematic first data point from StreamClout
+          if (agg.length > 0 && agg[0].daily_streams === agg[0].total_streams && agg[0].total_streams > 0) {
+            agg = agg.slice(1); // Remove the first data point
           }
         }
         
-        // Fix the first visible day's daily streams if it's showing as 0
-        // This happens because the aggregation logic skips the first data point
-        if (agg.length > 0 && agg[0].daily_streams === 0 && agg[0].total_streams > 0) {
-          agg[0] = {
-            ...agg[0],
-            daily_streams: agg[0].total_streams // Use total streams as daily streams for first day
-          };
-        }
-        
-        // Re-map with new_streams after fixing the first day
+        // Re-map with new_streams after processing
         agg = agg.map((d) => ({
           ...d,
           new_streams: d.daily_streams || 0 // Use calculated daily streams
