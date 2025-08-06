@@ -56,9 +56,9 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
 
   const getNavButtonClass = (viewType: ActiveView) => {
     const base = "px-3 py-1 text-black text-sm"; // VT323 default font size is larger
-    // Apply Win95 border styles dynamically
+    // Apply Win95 border styles dynamically with enhanced selection border
     const borderStyle = activeView === viewType
-        ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px]'
+        ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px] border border-black/30'
         : 'win95-border-outset hover:bg-gray-300';
     return `${base} ${borderStyle}`;
   };

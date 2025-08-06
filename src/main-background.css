@@ -1,25 +1,18 @@
-/* Main app background for logged-in users - OVERRIDE with 1.gif */
+/* Main app background for logged-in users - NO BACKGROUND */
 body.logged-in-background::before {
   content: '';
   position: fixed;
   z-index: -1;
-  top: -100px; /* Extend above viewport to prevent grey area on overscroll */
-  left: -100px; /* Extend beyond left edge */
-  right: -100px; /* Extend beyond right edge */
-  bottom: -100px; /* Extend below viewport */
-  background-image: url('/gifs/1.gif') !important;
-  background-repeat: no-repeat !important;
-  background-position: center center !important;
-  background-size: cover !important;
+  top: -100px;
+  left: -100px;
+  right: -100px;
+  bottom: -100px;
+  background: #C0C0C0; /* Win95 grey background instead */
   opacity: 1;
   pointer-events: none;
 }
 
 /* Also set body background as fallback */
 body.logged-in-background {
-  background-image: url('/gifs/1.gif') !important;
-  background-repeat: no-repeat !important;
-  background-position: center center !important;
-  background-size: cover !important;
-  background-attachment: fixed !important;
+  background: #C0C0C0 !important; /* Win95 grey background */
 }
