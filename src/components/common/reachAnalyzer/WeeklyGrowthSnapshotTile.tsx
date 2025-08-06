@@ -74,10 +74,20 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         // Fetch stream data for all tracks
         const streamPromises = Array.from(trackIdentifiers).map(async (trackUrl) => {
           try {
-            const response = await fetch(`/api/streamclout?trackUrl=${encodeURIComponent(trackUrl)}&timePeriod=30`);
+            // Extract Spotify track ID from URL (e.g., "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC" -> "4uLU6hMCjMI75M1A2tKUQC")
+            const trackIdMatch = trackUrl.match(/\/track\/([a-zA-Z0-9]+)/);
+            if (!trackIdMatch) {
+              console.warn(`Could not extract track ID from URL: ${trackUrl}`);
+              return null;
+            }
+            const trackId = trackIdMatch[1];
+            
+            // Use the correct API endpoint that matches the backend route
+            const backendBase = import.meta.env.VITE_API_BASE_URL || '';
+            const response = await fetch(`${backendBase}/api/streamclout/tracks/${trackId}/history?time_period=30d&use_cache=true`);
             if (!response.ok) return null;
             const data = await response.json();
-            return data.streamHistory || [];
+            return data.stream_history || [];
           } catch (error) {
             console.warn(`Failed to fetch stream data for ${trackUrl}:`, error);
             return null;
