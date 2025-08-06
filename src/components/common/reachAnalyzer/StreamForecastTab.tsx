@@ -11,7 +11,6 @@ interface StreamForecastTabProps {
 }
 
 const TIME_PERIODS = [
-  { label: '7 days', value: '7d' }, // Shows 7 days but internally uses 6 days to match stream history
   { label: '30 days', value: '30d' },
   { label: '90 days', value: '90d' },
 ];
@@ -207,11 +206,6 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
       <div className="flex flex-col items-center justify-center mb-2 relative">
         <h4 className="text-base font-semibold text-black text-center">Stream Forecast</h4>
         <div style={{ position: 'absolute', right: 0, top: 0, display: 'flex', gap: 0 }}>
-          <Win95Button
-            active={timePeriod === '7d'}
-            onClick={() => setTimePeriod('7d')}
-            aria-label="7 days"
-          >7 days</Win95Button>
           <Win95Button
             active={timePeriod === '30d'}
             onClick={() => setTimePeriod('30d')}

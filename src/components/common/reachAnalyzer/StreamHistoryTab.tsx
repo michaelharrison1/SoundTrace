@@ -174,8 +174,8 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
       }
       try {
         const backendBase = import.meta.env.VITE_API_BASE_URL || '';
-        // For 7d view, fetch 8d to get context for first day's daily calculation
-        const fetchTimePeriod = timePeriod === '7d' ? '8d' : timePeriod;
+        // Use 7d instead of 8d since StreamClout API only accepts 7d and 30d
+        const fetchTimePeriod = timePeriod === '7d' ? '7d' : timePeriod;
         const results = await Promise.all(
           trackIds.map(async (id) => {
             try {

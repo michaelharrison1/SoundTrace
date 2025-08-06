@@ -96,7 +96,7 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
             const trackId = trackIdMatch[1];
             
             // Use the correct API endpoint that matches the backend route
-            // Use 14d to get enough context for the 2-week comparison
+            // Use 30d to get enough data for proper weekly comparison
             const backendBase = import.meta.env.VITE_API_BASE_URL || '';
             const response = await fetch(`${backendBase}/api/streamclout/tracks/${trackId}/history?time_period=30d&use_cache=true`);
             if (!response.ok) return null;
@@ -112,6 +112,7 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         const validStreamData = allStreamResults.filter(data => data !== null).flat();
 
         if (validStreamData.length === 0) {
+          console.warn('[WeeklyGrowth] No valid stream data found');
           setWeeklyData({
             thisWeekStreams: 0,
             lastWeekStreams: 0,
@@ -121,103 +122,83 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           return;
         }
 
-        // Convert cumulative streams to daily streams and calculate weekly totals
-        // Group by track first, then convert cumulative to daily streams
-        const trackStreamMap = new Map<string, Array<{date: Date, streams: number}>>();
-        
-        // Filter data to only include dates within our analysis window (last 14 days)
-        const analysisWindowStart = new Date(lastWeekStart);
-        const analysisWindowEnd = new Date(thisWeekEnd);
-        
-        validStreamData.forEach(streamEntry => {
-          const streamDate = new Date(streamEntry.date);
-          const trackKey = `${streamEntry.track_id || 'unknown'}`;
-          
-          // Only include data within our analysis window or 1 day before (for context)
-          const contextStart = new Date(analysisWindowStart);
-          contextStart.setDate(contextStart.getDate() - 1);
-          
-          if (streamDate >= contextStart && streamDate <= analysisWindowEnd) {
-            if (!trackStreamMap.has(trackKey)) {
-              trackStreamMap.set(trackKey, []);
-            }
-            
-            trackStreamMap.get(trackKey)!.push({
-              date: streamDate,
-              streams: streamEntry.streams || 0
-            });
+        console.log(`[WeeklyGrowth] Processing ${validStreamData.length} stream data points`);
+
+        // Use simpler approach - sum daily streams for each week period
+        const dailyTotals = new Map<string, number>();
+        validStreamData.forEach(entry => {
+          const date = entry.date;
+          const streams = entry.streams || 0;
+          if (!dailyTotals.has(date)) {
+            dailyTotals.set(date, 0);
+          }
+          dailyTotals.set(date, dailyTotals.get(date)! + streams);
+        });
+
+        console.log(`[WeeklyGrowth] Daily totals sample:`, Array.from(dailyTotals.entries()).slice(-7));
+
+        // Sum for each week using the daily totals
+        let thisWeekTotal = 0;
+        let lastWeekTotal = 0;
+
+        dailyTotals.forEach((dailyStreams, dateStr) => {
+          const date = new Date(dateStr);
+          if (date >= thisWeekStart && date <= thisWeekEnd) {
+            thisWeekTotal += dailyStreams;
+          } else if (date >= lastWeekStart && date <= lastWeekEnd) {
+            lastWeekTotal += dailyStreams;
           }
         });
 
-        let thisWeekStreams = 0;
-        let lastWeekStreams = 0;
+        // Convert to reasonable daily averages if values are too high (likely cumulative)
+        const avgThisWeek = thisWeekTotal / 7; // Average per day this week
+        const avgLastWeek = lastWeekTotal / 7; // Average per day last week
 
-        // Process each track separately to convert cumulative to daily streams
-        trackStreamMap.forEach((trackData, trackKey) => {
-          // Sort by date to ensure proper cumulative->daily conversion
-          trackData.sort((a, b) => a.date.getTime() - b.date.getTime());
+        // If averages suggest these are cumulative values, use a different approach
+        let finalThisWeek = thisWeekTotal;
+        let finalLastWeek = lastWeekTotal;
+        
+        if (avgThisWeek > 1000000) { // If daily average > 1M, likely cumulative totals
+          console.warn('[WeeklyGrowth] Values appear to be cumulative, using growth approach');
+          // Use the difference approach - take latest value in each period
+          const thisWeekDates = Array.from(dailyTotals.keys()).filter(date => {
+            const d = new Date(date);
+            return d >= thisWeekStart && d <= thisWeekEnd;
+          }).sort();
           
-          // Convert cumulative streams to daily streams
-          const dailyStreams: Array<{date: Date, dailyStreams: number}> = [];
-          for (let i = 0; i < trackData.length; i++) {
-            const current = trackData[i];
-            const previous = i > 0 ? trackData[i - 1] : null;
-            
-            // Daily streams = current cumulative - previous cumulative
-            // Skip first data point for weekly growth calculation (can't calculate daily change)
-            const dailyStreamCount = previous 
-              ? Math.max(0, current.streams - previous.streams) // Ensure non-negative
-              : 0; // First data point, skip for weekly growth calculation
-            
-            // Debug extreme values
-            if (dailyStreamCount > 1000000) {
-              console.warn(`[WeeklyGrowth] Extreme daily streams detected for ${trackKey}:`, {
-                date: current.date.toISOString().split('T')[0],
-                currentStreams: current.streams,
-                previousStreams: previous?.streams,
-                calculatedDaily: dailyStreamCount,
-                isWithinThisWeek: current.date >= thisWeekStart && current.date <= thisWeekEnd,
-                isWithinLastWeek: current.date >= lastWeekStart && current.date <= lastWeekEnd
-              });
-              // Skip extreme values that are likely data errors
-              return;
-            }
-            
-            // Only include in weekly calculation if we have a previous data point
-            if (previous) {
-              dailyStreams.push({
-                date: current.date,
-                dailyStreams: dailyStreamCount
-              });
-            }
+          const lastWeekDates = Array.from(dailyTotals.keys()).filter(date => {
+            const d = new Date(date);
+            return d >= lastWeekStart && d <= lastWeekEnd;
+          }).sort();
+          
+          if (thisWeekDates.length > 1) {
+            const firstThisWeek = dailyTotals.get(thisWeekDates[0]) || 0;
+            const lastThisWeek = dailyTotals.get(thisWeekDates[thisWeekDates.length - 1]) || 0;
+            finalThisWeek = Math.abs(lastThisWeek - firstThisWeek);
           }
           
-          // Sum daily streams for each week
-          dailyStreams.forEach(({ date, dailyStreams: daily }) => {
-            if (date >= thisWeekStart && date <= thisWeekEnd) {
-              thisWeekStreams += daily;
-            } else if (date >= lastWeekStart && date <= lastWeekEnd) {
-              lastWeekStreams += daily;
-            }
-          });
-        });
+          if (lastWeekDates.length > 1) {
+            const firstLastWeek = dailyTotals.get(lastWeekDates[0]) || 0;
+            const lastLastWeek = dailyTotals.get(lastWeekDates[lastWeekDates.length - 1]) || 0;
+            finalLastWeek = Math.abs(lastLastWeek - firstLastWeek);
+          }
+        }
 
         // Calculate percentage change
         let percentageChange = 0;
-        if (lastWeekStreams > 0) {
-          percentageChange = ((thisWeekStreams - lastWeekStreams) / lastWeekStreams) * 100;
-        } else if (thisWeekStreams > 0) {
+        if (finalLastWeek > 0) {
+          percentageChange = ((finalThisWeek - finalLastWeek) / finalLastWeek) * 100;
+        } else if (finalThisWeek > 0) {
           percentageChange = 100; // 100% increase from 0
         }
 
         // Add sanity check for unreasonable values
         const maxReasonableWeeklyStreams = 10000000; // 10M streams per week seems like a reasonable upper limit
-        if (thisWeekStreams > maxReasonableWeeklyStreams || lastWeekStreams > maxReasonableWeeklyStreams) {
+        if (finalThisWeek > maxReasonableWeeklyStreams || finalLastWeek > maxReasonableWeeklyStreams) {
           console.error('[WeeklyGrowth] Detected unreasonable weekly stream values, using fallback:', {
-            thisWeekStreams,
-            lastWeekStreams,
-            totalDataPoints: validStreamData.length,
-            tracksProcessed: trackStreamMap.size
+            thisWeekStreams: finalThisWeek,
+            lastWeekStreams: finalLastWeek,
+            totalDataPoints: validStreamData.length
           });
           
           // Fallback: Use a simpler calculation based on average daily streams
@@ -235,13 +216,13 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         }
 
         console.log('Weekly growth calculation:', {
-          thisWeekStreams,
-          lastWeekStreams,
+          thisWeekStreams: finalThisWeek,
+          lastWeekStreams: finalLastWeek,
           percentageChange: percentageChange.toFixed(1),
           thisWeekRange: `${thisWeekStart.toISOString().split('T')[0]} to ${thisWeekEnd.toISOString().split('T')[0]}`,
           lastWeekRange: `${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]}`,
-          totalTracks: trackStreamMap.size,
           totalDataPoints: validStreamData.length,
+          approach: avgThisWeek > 1000000 ? 'cumulative-difference' : 'direct-sum',
           sampleDataPoints: validStreamData.slice(0, 3).map(d => ({
             date: d.date,
             streams: d.streams,
@@ -250,8 +231,8 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         });
 
         setWeeklyData({
-          thisWeekStreams,
-          lastWeekStreams,
+          thisWeekStreams: finalThisWeek,
+          lastWeekStreams: finalLastWeek,
           percentageChange,
           isLoading: false
         });
