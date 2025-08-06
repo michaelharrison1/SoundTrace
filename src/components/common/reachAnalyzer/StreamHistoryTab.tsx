@@ -84,40 +84,29 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
     }
   });
   
-  // Convert daily aggregates back to cumulative totals for display
-  const sortedDates = Array.from(dailyAggregateMap.keys()).sort();
-  let cumulativeTotal = 0;
+  // For total_streams, we want to show the actual cumulative total from each track
+  // Create a map of all dates and their all-time cumulative totals
+  const allTimeCumulativeMap = new Map<string, number>();
   
-  // Get the starting cumulative total from the earliest date across all tracks
-  const earliestDate = sortedDates[0];
-  if (earliestDate) {
-    trackDataMap.forEach((trackData) => {
-      const earliestPoint = trackData.find(point => point.date === earliestDate);
-      if (earliestPoint) {
-        // Find the previous day's cumulative for this track to establish baseline
-        const previousPoint = trackData.find(point => {
-          const pointDate = new Date(point.date);
-          const targetDate = new Date(earliestDate);
-          targetDate.setDate(targetDate.getDate() - 1);
-          return point.date === targetDate.toISOString().split('T')[0];
-        });
-        if (previousPoint) {
-          cumulativeTotal += previousPoint.streams;
-        }
-      }
+  trackDataMap.forEach((trackData) => {
+    trackData.sort((a, b) => a.date.localeCompare(b.date));
+    
+    trackData.forEach(point => {
+      const existing = allTimeCumulativeMap.get(point.date) || 0;
+      allTimeCumulativeMap.set(point.date, existing + point.streams);
     });
-  }
+  });
+  
+  // Convert to result array with all-time totals and daily streams
+  const sortedDates = Array.from(new Set([...dailyAggregateMap.keys(), ...allTimeCumulativeMap.keys()])).sort();
   
   const result = sortedDates.map(date => {
-    const dailyStreams = dailyAggregateMap.get(date) || 0;
-    cumulativeTotal += dailyStreams;
-    
     return {
       date,
-      total_streams: cumulativeTotal,
-      daily_streams: dailyStreams
+      total_streams: allTimeCumulativeMap.get(date) || 0, // All-time cumulative total
+      daily_streams: dailyAggregateMap.get(date) || 0     // Daily new streams
     };
-  });
+  }).filter(item => item.total_streams > 0 || item.daily_streams > 0); // Remove empty entries
     
   // Debug logging for final results
   console.log(`[StreamHistory] Final aggregated streams:`, result.slice(-5)); // Show last 5 days
@@ -127,7 +116,7 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
 
 
 const TIME_PERIODS = [
-  { label: '7 days', value: '7d' },
+  { label: '7 days', value: '7d' }, // Shows 7 days but actually displays 6 days to avoid first-day issues
   { label: '30 days', value: '30d' },
 ];
 
@@ -207,9 +196,9 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         
         // Filter to requested time period after aggregation (to maintain context for calculations)
         if (timePeriod === '7d') {
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          const cutoffDate = sevenDaysAgo.toISOString().split('T')[0];
+          const sixDaysAgo = new Date();
+          sixDaysAgo.setDate(sixDaysAgo.getDate() - 6); // Actually 6 days to avoid first-day calculation issues
+          const cutoffDate = sixDaysAgo.toISOString().split('T')[0];
           agg = agg.filter(d => d.date >= cutoffDate);
         }
         

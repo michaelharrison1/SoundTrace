@@ -11,7 +11,7 @@ interface StreamForecastTabProps {
 }
 
 const TIME_PERIODS = [
-  { label: '7 days', value: '7d' },
+  { label: '7 days', value: '7d' }, // Shows 7 days but internally uses 6 days to match stream history
   { label: '30 days', value: '30d' },
   { label: '90 days', value: '90d' },
 ];
@@ -104,13 +104,19 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
           .map(([date, predictedStreams]) => ({ date, predictedStreams }))
           .sort((a, b) => a.date.localeCompare(b.date));
         
-        // Filter out past dates and zero values
+        console.log('[StreamForecast] Raw aggregated forecast:', aggregatedForecast.slice(0, 5));
+        
+        // Filter out past dates and zero values, but be less strict about zero values
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const beforeFilter = aggregatedForecast.length;
+        
         aggregatedForecast = aggregatedForecast.filter(point => {
           const pointDate = new Date(point.date);
-          return pointDate >= today && point.predictedStreams > 0;
+          return pointDate >= today && point.predictedStreams >= 0; // Allow small positive values, not just > 0
         });
+        
+        console.log(`[StreamForecast] Filtered forecast: ${beforeFilter} -> ${aggregatedForecast.length} points`);
         
         if (!cancelled) {
           setForecastData(aggregatedForecast);
