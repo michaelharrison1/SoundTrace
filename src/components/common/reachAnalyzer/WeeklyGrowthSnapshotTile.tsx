@@ -125,6 +125,30 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
 
         console.log(`[WeeklyGrowth] Processing ${validStreamData.length} stream data points`);
 
+        // Add comprehensive data analysis
+        const uniqueTracks = new Set(validStreamData.map(d => d.track_id || 'unknown'));
+        const uniqueDates = new Set(validStreamData.map(d => d.date));
+        const totalStreams = validStreamData.reduce((sum, d) => sum + (d.streams || 0), 0);
+        
+        console.log(`[WeeklyGrowth] Data overview:`, {
+          totalDataPoints: validStreamData.length,
+          uniqueTracks: uniqueTracks.size,
+          uniqueDates: uniqueDates.size,
+          totalStreamsAcrossAllData: totalStreams.toLocaleString(),
+          avgStreamsPerDataPoint: Math.round(totalStreams / validStreamData.length),
+          dateRange: {
+            earliest: Math.min(...Array.from(uniqueDates).map(d => new Date(d).getTime())),
+            latest: Math.max(...Array.from(uniqueDates).map(d => new Date(d).getTime()))
+          }
+        });
+        
+        // Show top 5 highest stream values to detect outliers
+        const topStreamValues = validStreamData
+          .map(d => ({ date: d.date, track_id: d.track_id, streams: d.streams || 0 }))
+          .sort((a, b) => b.streams - a.streams)
+          .slice(0, 5);
+        console.log(`[WeeklyGrowth] Top 5 stream values:`, topStreamValues);
+
         // Use simpler approach - sum daily streams for each week period
         const dailyTotals = new Map<string, number>();
         validStreamData.forEach(entry => {
@@ -171,7 +195,49 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         let finalThisWeek = thisWeekTotal;
         let finalLastWeek = lastWeekTotal;
         
-        if (avgThisWeek > 1000000) { // If daily average > 1M, likely cumulative totals
+        // Better detection: look for patterns that indicate cumulative data
+        // 1. Check if values are consistently increasing day over day per track
+        // 2. Check if daily averages are unreasonably high (10M+ per day suggests cumulative)
+        let probablyCumulative = false;
+        
+        if (avgThisWeek > 10000000) { // 10M+ per day is definitely cumulative
+          probablyCumulative = true;
+          console.warn('[WeeklyGrowth] Daily average > 10M, definitely cumulative data');
+        } else {
+          // Check if data shows cumulative patterns by examining individual tracks
+          let cumulativeTrackCount = 0;
+          const trackDailyValues = new Map<string, number[]>();
+          
+          validStreamData.forEach(entry => {
+            const trackId = entry.track_id || 'unknown';
+            const streams = entry.streams || 0;
+            
+            if (!trackDailyValues.has(trackId)) {
+              trackDailyValues.set(trackId, []);
+            }
+            trackDailyValues.get(trackId)!.push(streams);
+          });
+          
+          // Check if tracks show consistently increasing values (cumulative pattern)
+          trackDailyValues.forEach((values, trackId) => {
+            if (values.length > 3) {
+              const sorted = [...values].sort((a, b) => a - b);
+              const increasing = values.every((val, i) => i === 0 || val >= values[i - 1] * 0.9); // Allow 10% variance
+              const highValues = values.some(v => v > 1000000); // Individual track > 1M
+              
+              if (increasing && highValues) {
+                cumulativeTrackCount++;
+              }
+            }
+          });
+          
+          if (cumulativeTrackCount > trackDailyValues.size * 0.5) {
+            probablyCumulative = true;
+            console.warn(`[WeeklyGrowth] ${cumulativeTrackCount}/${trackDailyValues.size} tracks show cumulative patterns`);
+          }
+        }
+        
+        if (probablyCumulative) {
           console.warn('[WeeklyGrowth] Values appear to be cumulative, converting to daily increments');
           
           // Convert cumulative data to daily increments per track, then sum
@@ -218,8 +284,22 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           
         } else {
           console.log('[WeeklyGrowth] Values appear to be daily totals, using direct sum');
-          // Values are already daily, but might be getting double-counted if multiple tracks have the same date
-          // Let's verify the calculation is correct
+          
+          // Add debugging to understand the direct sum calculation
+          console.log(`[WeeklyGrowth] Direct sum details:`, {
+            totalDataPoints: validStreamData.length,
+            uniqueDates: new Set(validStreamData.map(d => d.date)).size,
+            uniqueTracks: new Set(validStreamData.map(d => d.track_id)).size,
+            avgStreamsPerDataPoint: validStreamData.reduce((sum, d) => sum + (d.streams || 0), 0) / validStreamData.length,
+            thisWeekDataPoints: validStreamData.filter(d => {
+              const date = new Date(d.date);
+              return date >= thisWeekStart && date <= thisWeekEnd;
+            }).length,
+            lastWeekDataPoints: validStreamData.filter(d => {
+              const date = new Date(d.date);
+              return date >= lastWeekStart && date <= lastWeekEnd;
+            }).length
+          });
         }
 
         // Calculate percentage change
