@@ -116,7 +116,7 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
 
 
 const TIME_PERIODS = [
-  { label: '7 days', value: '7d' }, // Shows 7 days but actually displays 6 days to avoid first-day issues
+  { label: '7 days', value: '7d' }, // Now shows true 7 days
   { label: '30 days', value: '30d' },
 ];
 
@@ -196,9 +196,9 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         
         // Filter to requested time period after aggregation (to maintain context for calculations)
         if (timePeriod === '7d') {
-          const sixDaysAgo = new Date();
-          sixDaysAgo.setDate(sixDaysAgo.getDate() - 6); // Actually 6 days to avoid first-day calculation issues
-          const cutoffDate = sixDaysAgo.toISOString().split('T')[0];
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7); // True 7 days
+          const cutoffDate = sevenDaysAgo.toISOString().split('T')[0];
           agg = agg.filter(d => d.date >= cutoffDate);
         }
         
