@@ -225,7 +225,7 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
         </div>
         <p className="text-xs text-gray-600 text-center mt-1">Predicted daily Spotify streams for all your matched tracks.</p>
         {avgDailyForecast !== null && (
-          <div className="text-xs text-center mt-1 text-orange-600 font-medium">
+          <div className="text-xs text-center mt-1 text-green-600 font-medium">
             Average predicted daily streams: {avgDailyForecast.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
         )}
@@ -237,7 +237,7 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
             <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={formatXAxis} />
             <YAxis tick={{ fontSize: 12 }} tickFormatter={formatYAxis} />
             <Tooltip content={<CustomTooltip />} />
-            <Line type="monotone" dataKey="predictedStreams" stroke="#FFA500" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="predictedStreams" stroke="#00C800" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
