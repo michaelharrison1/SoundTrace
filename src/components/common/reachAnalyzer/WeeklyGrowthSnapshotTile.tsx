@@ -126,33 +126,6 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
       try {
         setWeeklyData(prev => ({ ...prev, isLoading: true, error: undefined }));
 
-        // Get current date and calculate 7-day periods
-        const now = new Date();
-        // Exclude today since data is incomplete
-        const yesterday = new Date(now);
-        yesterday.setDate(now.getDate() - 1);
-        yesterday.setHours(23, 59, 59, 999);
-        
-        // This week (Last 7 Days): Use same logic as StreamHistoryTab for consistency
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const thisWeekStart = new Date(sevenDaysAgo);
-        thisWeekStart.setHours(0, 0, 0, 0);
-        const thisWeekEnd = new Date(yesterday);
-
-        // Previous week: 7 days before the current 7-day period
-        const fourteenDaysAgo = new Date();
-        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-        const lastWeekStart = new Date(fourteenDaysAgo);
-        lastWeekStart.setHours(0, 0, 0, 0);
-        const lastWeekEnd = new Date(sevenDaysAgo);
-        lastWeekEnd.setHours(23, 59, 59, 999);
-
-        console.log('Weekly periods (ALIGNED WITH STREAM HISTORY):', {
-          thisWeek: `${thisWeekStart.toISOString().split('T')[0]} to ${thisWeekEnd.toISOString().split('T')[0]} (7 days)`,
-          lastWeek: `${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]} (7 days)`
-        });
-
         // Get all unique Spotify track IDs (same approach as StreamHistoryTab)
         const trackIds = Array.from(new Set(
           scanLogs.flatMap(log =>
@@ -199,19 +172,29 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           aggregatedData = aggregatedData.slice(1); // Remove the first data point
         }
         
-        // Calculate weekly totals using daily_streams (which contains the daily increments)
-        let thisWeekTotal = 0;
-        let lastWeekTotal = 0;
-
-        aggregatedData.forEach(({ date, daily_streams }) => {
-          const dateObj = new Date(date + 'T00:00:00.000Z');
-          
-          if (dateObj >= thisWeekStart && dateObj <= thisWeekEnd) {
-            thisWeekTotal += daily_streams || 0;
-          } else if (dateObj >= lastWeekStart && dateObj <= lastWeekEnd) {
-            lastWeekTotal += daily_streams || 0;
-          }
+        // For "Last 7 Days", use EXACTLY the same filtering logic as StreamHistoryTab 7d view
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7); // True 7 days - same as StreamHistoryTab
+        const streamHistoryCutoffDate = sevenDaysAgo.toISOString().split('T')[0];
+        const last7DaysData = aggregatedData.filter(d => d.date >= streamHistoryCutoffDate);
+        
+        // For "Previous 7 Days", get the 7 days before that
+        const fourteenDaysAgo = new Date();
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+        const previous7DaysCutoffDate = fourteenDaysAgo.toISOString().split('T')[0];
+        const previous7DaysData = aggregatedData.filter(d => d.date >= previous7DaysCutoffDate && d.date < streamHistoryCutoffDate);
+        
+        console.log('Weekly data processing:', {
+          totalDataPoints: aggregatedData.length,
+          last7DaysPoints: last7DaysData.length,
+          previous7DaysPoints: previous7DaysData.length,
+          last7DaysDateRange: last7DaysData.length > 0 ? `${last7DaysData[0].date} to ${last7DaysData[last7DaysData.length - 1].date}` : 'none',
+          previous7DaysDateRange: previous7DaysData.length > 0 ? `${previous7DaysData[0].date} to ${previous7DaysData[previous7DaysData.length - 1].date}` : 'none'
         });
+        
+        // Calculate weekly totals using daily_streams (which contains the daily increments)
+        const thisWeekTotal = last7DaysData.reduce((sum, { daily_streams }) => sum + (daily_streams || 0), 0);
+        const lastWeekTotal = previous7DaysData.reduce((sum, { daily_streams }) => sum + (daily_streams || 0), 0);
 
         console.log('Weekly totals:', {
           thisWeekStreams: thisWeekTotal.toLocaleString(),
