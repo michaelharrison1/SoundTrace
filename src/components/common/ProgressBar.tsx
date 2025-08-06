@@ -36,18 +36,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         {isIndeterminate ? (
           // Indeterminate progress: Wave of light blue moving over black blocks
           <div className="h-full relative bg-[#C0C0C0] flex items-center">
-            {/* Static black background blocks */}
+            {/* Static black background that fills the entire width */}
             <div className="absolute inset-0 p-0.5 flex items-center">
-              {[...Array(blockCount)].map((_, i) => (
-                <div
-                  key={`bg-${i}`}
-                  className="flex-shrink-0 h-3/4 bg-black"
-                  style={{ 
-                    width: `${blockWidth}px`, 
-                    marginRight: i < blockCount - 1 ? `${blockGap}px` : '0px',
-                  }}
-                />
-              ))}
+              <div className="h-3/4 w-full bg-black" />
             </div>
             {/* Moving light blue wave */}
             <div className="win95-progress-marquee h-full flex items-center absolute inset-0 p-0.5">
