@@ -100,9 +100,17 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
         });
         
         // Convert to array and sort by date
-        const aggregatedForecast = Array.from(dateMap.entries())
+        let aggregatedForecast = Array.from(dateMap.entries())
           .map(([date, predictedStreams]) => ({ date, predictedStreams }))
           .sort((a, b) => a.date.localeCompare(b.date));
+        
+        // Filter out past dates and zero values
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        aggregatedForecast = aggregatedForecast.filter(point => {
+          const pointDate = new Date(point.date);
+          return pointDate >= today && point.predictedStreams > 0;
+        });
         
         if (!cancelled) {
           setForecastData(aggregatedForecast);

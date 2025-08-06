@@ -27,6 +27,8 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
   // Get today's date to exclude incomplete data
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
   
+  console.log(`[StreamHistory] Processing ${histories.length} track histories`);
+  
   // Group data by track first, then convert cumulative to daily per track
   const trackDataMap = new Map<string, Array<{date: string, streams: number}>>();
   
@@ -163,10 +165,12 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
       }
       try {
         const backendBase = import.meta.env.VITE_API_BASE_URL || '';
+        // For 7d view, fetch 8d to get context for first day's daily calculation
+        const fetchTimePeriod = timePeriod === '7d' ? '8d' : timePeriod;
         const results = await Promise.all(
           trackIds.map(async (id) => {
             try {
-              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=${timePeriod}&use_cache=true`;
+              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=${fetchTimePeriod}&use_cache=true`;
               const res = await fetch(url);
               if (!res.ok) {
                 return null;
@@ -180,6 +184,15 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         );
         const valid = results.filter(Boolean) as TrackHistory[];
         let agg = aggregateHistories(valid);
+        
+        // Filter to requested time period after aggregation (to maintain context for calculations)
+        if (timePeriod === '7d') {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          const cutoffDate = sevenDaysAgo.toISOString().split('T')[0];
+          agg = agg.filter(d => d.date >= cutoffDate);
+        }
+        
         // Use daily_streams for new_streams field, total_streams for chart display
         agg = agg.map((d) => ({
           ...d,

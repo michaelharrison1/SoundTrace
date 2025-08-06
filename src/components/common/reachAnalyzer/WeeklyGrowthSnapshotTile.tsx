@@ -158,6 +158,16 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
               ? Math.max(0, current.streams - previous.streams) // Ensure non-negative
               : 0; // First data point, skip for weekly growth calculation
             
+            // Debug extreme values
+            if (dailyStreamCount > 1000000) {
+              console.warn(`[WeeklyGrowth] Extreme daily streams detected for ${trackKey}:`, {
+                date: current.date.toISOString().split('T')[0],
+                currentStreams: current.streams,
+                previousStreams: previous?.streams,
+                calculatedDaily: dailyStreamCount
+              });
+            }
+            
             // Only include in weekly calculation if we have a previous data point
             if (previous) {
               dailyStreams.push({
@@ -188,7 +198,15 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         console.log('Weekly growth calculation:', {
           thisWeekStreams,
           lastWeekStreams,
-          percentageChange: percentageChange.toFixed(1)
+          percentageChange: percentageChange.toFixed(1),
+          thisWeekRange: `${thisWeekStart.toISOString().split('T')[0]} to ${thisWeekEnd.toISOString().split('T')[0]}`,
+          lastWeekRange: `${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]}`,
+          totalTracks: trackStreamMap.size,
+          sampleDataPoints: validStreamData.slice(0, 3).map(d => ({
+            date: d.date,
+            streams: d.streams,
+            track_id: d.track_id
+          }))
         });
 
         setWeeklyData({
