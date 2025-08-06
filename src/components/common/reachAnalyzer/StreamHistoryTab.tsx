@@ -194,35 +194,27 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         const valid = results.filter(Boolean) as TrackHistory[];
         let agg = aggregateHistories(valid);
         
-        // Add a synthetic previous data point before filtering for display purposes only
-        // This helps the graph show the first real data point properly
-        if (agg.length > 0) {
-          const firstDataPoint = agg[0];
-          const firstDate = new Date(firstDataPoint.date);
-          const syntheticDate = new Date(firstDate);
-          syntheticDate.setDate(firstDate.getDate() - 1);
-          
-          const syntheticPoint = {
-            date: syntheticDate.toISOString().split('T')[0],
-            total_streams: 0, // Start from 0 to show proper growth
-            daily_streams: firstDataPoint.total_streams || 0 // Set the first real day's streams as daily increment
-          };
-          
-          agg.unshift(syntheticPoint); // Add to beginning of array
-          
-          // Fix the first real data point to show its proper daily streams
-          agg[1] = {
-            ...agg[1],
-            daily_streams: agg[1].total_streams || 0
-          };
-        }
-        
         // Filter to requested time period after aggregation (to maintain context for calculations)
         if (timePeriod === '7d') {
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7); // True 7 days
-          const cutoffDate = sevenDaysAgo.toISOString().split('T')[0];
+          const eightDaysAgo = new Date();
+          eightDaysAgo.setDate(eightDaysAgo.getDate() - 8); // Load 8 days of data
+          const cutoffDate = eightDaysAgo.toISOString().split('T')[0];
           agg = agg.filter(d => d.date >= cutoffDate);
+          
+          // Skip the first day (which has calculation issues) and show only the last 7 days
+          if (agg.length > 7) {
+            agg = agg.slice(-7); // Take last 7 days only
+          }
+        } else if (timePeriod === '30d') {
+          const thirtyOneDaysAgo = new Date();
+          thirtyOneDaysAgo.setDate(thirtyOneDaysAgo.getDate() - 31); // Load 31 days of data
+          const cutoffDate = thirtyOneDaysAgo.toISOString().split('T')[0];
+          agg = agg.filter(d => d.date >= cutoffDate);
+          
+          // Skip the first day (which has calculation issues) and show only the last 30 days
+          if (agg.length > 30) {
+            agg = agg.slice(-30); // Take last 30 days only
+          }
         }
         
         // Use daily_streams for new_streams field, total_streams for chart display
