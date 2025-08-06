@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { TrackScanLog } from '../../../types';
+import ProgressBar from '../ProgressBar';
 
 interface WeeklyGrowthSnapshotTileProps {
   scanLogs?: TrackScanLog[];
@@ -263,8 +264,8 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
       </div>
       
       {weeklyData.isLoading ? (
-        <div className="text-center py-4 text-sm text-gray-600">
-          Loading weekly data...
+        <div className="py-2">
+          <ProgressBar text="Loading weekly data..." />
         </div>
       ) : weeklyData.error ? (
         <div className="text-center py-4 text-sm text-red-600">

@@ -649,7 +649,7 @@ const renderNote = () => note ? (
             ))}
           </div>
           <div className="tab-content-wrapper p-0.5 pt-0 bg-[#C0C0C0]">
-            <React.Suspense fallback={<div className="p-4 text-center text-gray-500">Loading...</div>}>
+            <React.Suspense fallback={<div className="p-4 text-center"><ProgressBar text="Loading components..." /></div>}>
               <div className="tab-content win95-border-inset bg-[#C0C0C0] p-3 min-h-[350px] flex flex-col" role="tabpanel" aria-labelledby={`tab-${activeMonitorTab}`}> 
                 {renderTabContent()}
               </div>
@@ -657,7 +657,7 @@ const renderNote = () => note ? (
           </div>
         </div>
         <div className="w-64 p-2">
-          <React.Suspense fallback={<div className="p-2 text-center text-gray-500">Loading...</div>}>
+          <React.Suspense fallback={<div className="p-2 text-center"><ProgressBar text="Loading weekly data..." /></div>}>
             <WeeklyGrowthSnapshotTile scanLogs={scanLogs} />
           </React.Suspense>
         </div>

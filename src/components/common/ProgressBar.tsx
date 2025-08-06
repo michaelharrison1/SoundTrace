@@ -3,35 +3,68 @@ import React from 'react';
 
 interface ProgressBarProps {
   text?: string;
+  percent?: number; // For determinant progress bars (0-100)
+  isIndeterminate?: boolean; // For moving Windows 95 style bars
   className?: string;
   textClassName?: string;
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ text, className, textClassName }) => {
-  // Using a fixed number of blocks (e.g., 20) for smoother appearance.
-  // Each block will be 5% of the container (which is 200% of viewport).
-  const numberOfBlocks = 20;
+const ProgressBar: React.FC<ProgressBarProps> = ({ 
+  text, 
+  percent, 
+  isIndeterminate = true, // Default to indeterminate for loading states
+  className, 
+  textClassName 
+}) => {
+  // Authentic Windows 95 progress bar styling
+  const barHeight = 20; // Classic Windows 95 height
+  const blockCount = 20;
+  const blockWidth = 8;
+  const blockGap = 2;
+
+  // For determinate progress, calculate filled blocks
+  const filledBlocks = percent !== undefined ? Math.floor((percent / 100) * blockCount) : 0;
 
   return (
-    <div className={`w-full ${className || ''}`} aria-live="polite">
+    <div className={`w-full ${className || ''}`} role="progressbar" aria-busy="true" aria-label={text || "Loading progress"}>
       {text && <p className={`text-black text-sm mb-1 text-center ${textClassName || ''}`}>{text}</p>}
-      <div
-        className="h-5 bg-white win95-border-inset p-0.5" // Ensure this has the inset border
-        role="progressbar"
-        aria-label={text || "Loading progress"}
-        aria-busy="true"
+      
+      <div 
+        className="win95-border-inset bg-[#C0C0C0] p-0.5 relative overflow-hidden"
+        style={{ height: `${barHeight}px` }}
       >
-        <div className="h-full w-full overflow-hidden bg-white relative"> {/* Inner container for blocks */}
-          <div className="absolute top-0 left-0 h-full progress-bar-blocks-container flex">
-            {[...Array(numberOfBlocks * 2)].map((_, i) => ( // *2 because container is 200% width
+        {isIndeterminate ? (
+          // Indeterminate progress: Moving blocks animation (Windows 95 style)
+          <div className="h-full relative bg-[#C0C0C0]">
+            <div className="win95-progress-marquee h-full flex items-center">
+              {[...Array(Math.ceil(blockCount * 1.5))].map((_, i) => (
+                <div
+                  key={i}
+                  className="flex-shrink-0 h-3/4 bg-[#000080] win95-progress-block"
+                  style={{ 
+                    width: `${blockWidth}px`, 
+                    marginRight: `${blockGap}px`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          // Determinate progress: Fill blocks based on percentage
+          <div className="h-full flex items-center bg-[#C0C0C0]">
+            {[...Array(blockCount)].map((_, i) => (
               <div
                 key={i}
-                className="progress-bar-block" // Class defined in index.html for consistent styling
-                style={{ width: `${100 / (numberOfBlocks * 2)}%` }} // e.g., 2.5% if 20 blocks in 200% view
-              ></div>
+                className={`flex-shrink-0 h-3/4 ${i < filledBlocks ? 'bg-[#000080]' : 'bg-[#C0C0C0]'}`}
+                style={{ 
+                  width: `${blockWidth}px`, 
+                  marginRight: i < blockCount - 1 ? `${blockGap}px` : '0px',
+                  border: i < filledBlocks ? '1px solid #000040' : '1px solid #A0A0A0',
+                }}
+              />
             ))}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

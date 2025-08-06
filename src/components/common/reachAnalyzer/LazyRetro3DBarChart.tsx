@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { Retro3DBarChartDatum } from './Retro3DBarChart';
+import ProgressBar from '../ProgressBar';
 
 // Lazy load the Three.js component to reduce initial bundle size
 const Retro3DBarChart = lazy(() => import('./Retro3DBarChart'));
@@ -23,12 +24,11 @@ const LazyRetro3DBarChart: React.FC<LazyRetro3DBarChartProps> = (props) => {
   return (
     <Suspense fallback={
       <div 
-        className="flex items-center justify-center bg-gray-100 rounded-lg border-2 border-dashed border-gray-300"
+        className="win95-border-inset bg-[#C0C0C0] p-4 flex flex-col items-center justify-center"
         style={{ height: props.height || 350, width: props.width || 700 }}
       >
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-sm text-gray-600">Loading 3D Chart...</p>
+        <div className="w-full max-w-xs">
+          <ProgressBar text="Loading 3D Chart..." />
         </div>
       </div>
     }>
