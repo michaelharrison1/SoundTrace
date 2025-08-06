@@ -26,7 +26,7 @@ const UrlInputForms: React.FC<UrlInputFormsProps> = ({
       if (!parsedUrl.hostname.includes("open.spotify.com") || !parsedUrl.pathname.includes("/playlist/")) {
          throw new Error("Invalid Spotify Playlist URL.");
       }
-    } catch (e) {
+    } catch {
       setSpotifyPlaylistError("Invalid Spotify Playlist URL format. Must be like https://open.spotify.com/playlist/...");
       return;
     }

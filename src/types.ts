@@ -184,9 +184,9 @@ export interface ScanJob {
   updatedAt: string;
 }
 
-export interface JobCreationResponse extends ScanJob {}
+export type JobCreationResponse = ScanJob;
 export interface AllJobsResponse { jobs: ScanJob[]; }
-export interface SingleJobResponse extends ScanJob {}
+export type SingleJobResponse = ScanJob;
 export interface FileUploadResponse {
   message: string;
   fileState: JobFileState;

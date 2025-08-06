@@ -1,6 +1,4 @@
 
-import { User } from '../types';
-
 // Ensure VITE_API_BASE_URL is set in your environment
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
 const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
@@ -87,9 +85,9 @@ export const authService = {
         credentials: 'include', // Crucial for sending the HttpOnly soundtrace_session_token cookie
       });
       if (!response.ok) {
-        const errorBody = await response.text().catch(()=>'Could not read error response body');
+        await response.text().catch(()=>'Could not read error response body');
       }
-    } catch (error) {
+    } catch {
       // Silent error handling
     }
   },

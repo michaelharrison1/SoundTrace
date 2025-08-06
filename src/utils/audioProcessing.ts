@@ -97,12 +97,12 @@ const generateSingleSnippetFromBuffer = async (
         const snippetFile = new File([wavBlob], snippetFileName, { type: 'audio/wav' });
         return snippetFile;
 
-    } catch (error) {
+    } catch {
         return null;
     }
 };
 
-export const generateSnippetsForFile = async (file: File, numberOfSegmentsToScan: number): Promise<File[] | null> => {
+export const generateSnippetsForFile = async (file: File): Promise<File[] | null> => {
     let mainAudioContext: AudioContext | null = null;
     try {
       mainAudioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
@@ -121,11 +121,11 @@ export const generateSnippetsForFile = async (file: File, numberOfSegmentsToScan
 
       return snippets;
 
-    } catch (error) {
+    } catch {
       return null;
     } finally {
         if (mainAudioContext && mainAudioContext.state !== 'closed') {
-            mainAudioContext.close().catch(e => {});
+            mainAudioContext.close().catch(() => {});
         }
     }
 };

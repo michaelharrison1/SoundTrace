@@ -35,7 +35,7 @@ const AutoDetectInputForms: React.FC<AutoDetectInputFormsProps> = ({
       }
 
       return 'unknown Spotify URL';
-    } catch (e) {
+    } catch {
       return 'invalid URL';
     }
   }, []);

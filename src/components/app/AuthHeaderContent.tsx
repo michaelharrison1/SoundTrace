@@ -1,11 +1,9 @@
 
 import React from 'react';
 import Button from '../common/Button';
-import LogoutIcon from '../icons/LogoutIcon';
 import keyIcon from '../icons/key_32x32.png';
 import { User } from '../../types';
 import { useSpotifyPlayer } from '../../contexts/SpotifyContext';
-import SpotifyIcon from '../icons/SpotifyIcon';
 import connectSpotifyIcon from '../icons/ConnectSpotify.png';
 
 
@@ -50,7 +48,7 @@ const AuthHeaderContent: React.FC<AuthHeaderContentProps> = ({currentUser, authV
   const handleFullLogout = async () => {
     if (isSpotifyConnected) { 
         try { await spotifyDisconnectHook(); } 
-        catch (error) { /* Silent handling */ }
+        catch { /* Silent handling */ }
     }
     onLogout(); 
   };

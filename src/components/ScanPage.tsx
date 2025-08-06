@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useRef } from 'react';
-import { User, TrackScanLog, JobFileState, ScanJob, JobCreationResponse } from '../types';
+import { User, JobFileState, ScanJob, JobCreationResponse } from '../types';
 import FileUpload from './FileUpload';
 import AutoDetectInputForms from './scanPage/AutoDetectInputForms';
 import UrlInputForms from './scanPage/UrlInputForms';
@@ -15,7 +15,7 @@ interface ScanPageProps {
   onLogout: () => void;
 }
 
-const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => {
+const ScanPage: React.FC<ScanPageProps> = ({ onJobCreated, onLogout }) => {
   const [isInitiatingJob, setIsInitiatingJob] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [currentOperationMessage, setCurrentOperationMessage] = useState<string>('');

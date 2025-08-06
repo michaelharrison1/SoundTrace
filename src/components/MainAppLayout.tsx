@@ -6,7 +6,6 @@ import ScanPage from './ScanPage';
 import DashboardViewPage from './DashboardViewPage';
 import JobConsole from './jobConsole/JobConsole';
 import ProgressBar from './common/ProgressBar';
-import UploadIcon from './icons/UploadIcon'; // Assuming this icon exists
 
 interface MainAppLayoutProps {
   user: User;
@@ -35,7 +34,6 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
 }) => {
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [redirectToJobConsole, setRedirectToJobConsole] = useState<boolean>(false);
-  const [newJobId, setNewJobId] = useState<string | null>(null);
 
   // Effect to handle redirection to job console
   useEffect(() => {
@@ -47,9 +45,6 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
 
   // Function to handle job creation and redirect to job console
   const handleJobCreated = useCallback((job?: ScanJob | Partial<ScanJob>) => {
-    if (job?.id) {
-      setNewJobId(job.id);
-    }
     setRedirectToJobConsole(true);
     onJobUpdate(job);
   }, [onJobUpdate]);

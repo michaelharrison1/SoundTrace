@@ -1,13 +1,6 @@
 // List of available gif filenames in public/gifs (now 1.gif to 34.gif)
 const GIFS = Array.from({ length: 34 }, (_, i) => `${i + 1}.gif`);
 
-// IMPORTANT: For Vite/React, GIFs must be in the public directory for direct URL access
-// Move your gifs to 'public/gifs/' and use '/gifs/filename.gif' as the URL
-function getRandomGifUrl() {
-  const idx = Math.floor(Math.random() * GIFS.length);
-  return `/gifs/${GIFS[idx]}`;
-}
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './components/customScrollbars.css';
 import './main-background.css';
@@ -19,10 +12,7 @@ import ProgressBar from './components/common/ProgressBar';
 import { SpotifyProvider, SpotifyCallbackReceiver } from './contexts/SpotifyContext';
 import { Win95ModalProvider } from './components/common/Win95ModalProvider';
 import { authService } from './services/authService';
-import MainAppMenu from './components/MainAppMenu';
 import AppIntroduction from './components/app/AppIntroduction';
-import PrivacyPolicyPage from './components/PrivacyPolicyPage';
-import TermsOfServicePage from './components/TermsOfServicePage';
 import { scanLogService } from './services/scanLogService';
 
 

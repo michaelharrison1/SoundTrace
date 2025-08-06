@@ -21,7 +21,7 @@ export interface PredictedStreamEntry {
 const getAuthToken = () => {
     try {
         return localStorage.getItem('authToken');
-    } catch (error) {
+    } catch {
         return null;
     }
 };
@@ -31,7 +31,7 @@ const handleAnalyticsApiResponse = async (response: Response) => {
     let errorData: { message?: string } = {};
     try {
       errorData = await response.json();
-    } catch (e) {
+    } catch {
       // Ignore JSON parsing errors
     }
     const errorMessage = errorData.message || `Analytics API request failed with status ${response.status}: ${response.statusText || 'Unknown error'}`;
@@ -46,7 +46,7 @@ const handleAnalyticsApiResponse = async (response: Response) => {
   if (contentType?.includes("application/json")) return response.json();
   // If not JSON, and not 204, it might be an issue or plain text response.
   // For now, we'll assume JSON or empty. If plain text is valid, handle it here.
-  return response.text().then(text => {
+  return response.text().then(() => {
     return null;
   });
 };

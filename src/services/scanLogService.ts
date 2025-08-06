@@ -1,5 +1,5 @@
 
-import { TrackScanLog, ScanJob, JobCreationResponse, AllJobsResponse, SingleJobResponse, JobFileState, FileUploadResponse, JobType } from '../types';
+import { TrackScanLog, ScanJob, JobCreationResponse, AllJobsResponse, SingleJobResponse, FileUploadResponse } from '../types';
 
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
@@ -7,13 +7,13 @@ const JOBS_BASE_URL = `${API_BASE_URL}/api/scan-jobs`;
 const LOGS_BASE_URL = `${API_BASE_URL}/api/scan-logs`;
 
 const getAuthToken = () => {
-  try { return localStorage.getItem('authToken'); } catch (error) { return null; }
+  try { return localStorage.getItem('authToken'); } catch { return null; }
 };
 
 const handleApiResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     let errorData: { message?: string } = {};
-    try { errorData = await response.json(); } catch (e) { /* ignore */ }
+    try { errorData = await response.json(); } catch { /* ignore */ }
     const errorMessage = errorData.message || `Request failed: ${response.status} ${response.statusText || 'Unknown error'}`;
     const error = new Error(errorMessage); (error as unknown as { status?: number }).status = response.status;
     if (response.status === 499) (error as unknown as { isCancellation?: boolean }).isCancellation = true;
@@ -57,11 +57,11 @@ export const scanLogService = {
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try { resolve(JSON.parse(xhr.responseText)); }
-                catch (e) { reject(new Error("Invalid JSON response from server after file upload.")); }
+                catch { reject(new Error("Invalid JSON response from server after file upload.")); }
             } else {
                 let errorMsg = `File upload failed: ${xhr.status}`;
                 try { const errResp = JSON.parse(xhr.responseText); if (errResp.message) errorMsg = errResp.message; }
-                catch (e) { /* use default */ }
+                catch { /* use default */ }
                 const error = new Error(errorMsg); (error as any).status = xhr.status;
                 reject(error);
             }

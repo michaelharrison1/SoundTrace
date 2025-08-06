@@ -1,5 +1,4 @@
 // Service to interact with your backend's Spotify auth endpoints
-import { SpotifyPlaylist } from '../types';
 
 // Ensure VITE_API_BASE_URL is set in your environment for production.
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
@@ -27,7 +26,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
     let errorData: { message?: string } = {};
     try {
       errorData = await response.json();
-    } catch (e) {
+    } catch {
       // If response is not JSON, use status text or a generic message
     }
     const errorMessage = errorData.message || `Request to ${url} failed with status ${response.status}: ${response.statusText || 'Unknown server error'}`;

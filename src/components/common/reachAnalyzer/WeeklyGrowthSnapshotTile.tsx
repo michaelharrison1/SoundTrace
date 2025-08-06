@@ -155,7 +155,7 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
               }
               const data = await res.json();
               return data;
-            } catch (err) {
+            } catch {
               return null;
             }
           })
@@ -203,7 +203,7 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           isLoading: false
         });
 
-      } catch (error) {
+      } catch {
         setWeeklyData(prev => ({
           ...prev,
           isLoading: false,
