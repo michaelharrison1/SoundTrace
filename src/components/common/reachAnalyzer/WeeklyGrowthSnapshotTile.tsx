@@ -133,20 +133,22 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         yesterday.setDate(now.getDate() - 1);
         yesterday.setHours(23, 59, 59, 999);
         
-        // This week: Last 7 complete days (yesterday back 7 days)
-        const thisWeekEnd = new Date(yesterday);
-        const thisWeekStart = new Date(yesterday);
-        thisWeekStart.setDate(yesterday.getDate() - 6); // 7 days including yesterday
+        // This week (Last 7 Days): Use same logic as StreamHistoryTab for consistency
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const thisWeekStart = new Date(sevenDaysAgo);
         thisWeekStart.setHours(0, 0, 0, 0);
+        const thisWeekEnd = new Date(yesterday);
 
-        // Last week: 7 days before this week
-        const lastWeekEnd = new Date(thisWeekStart);
-        lastWeekEnd.setMilliseconds(-1); // End of last week (just before this week starts)
-        const lastWeekStart = new Date(lastWeekEnd);
-        lastWeekStart.setDate(lastWeekEnd.getDate() - 6); // 7 days before
+        // Previous week: 7 days before the current 7-day period
+        const fourteenDaysAgo = new Date();
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+        const lastWeekStart = new Date(fourteenDaysAgo);
         lastWeekStart.setHours(0, 0, 0, 0);
+        const lastWeekEnd = new Date(sevenDaysAgo);
+        lastWeekEnd.setHours(23, 59, 59, 999);
 
-        console.log('Weekly periods (FIXED 7-DAY WINDOWS):', {
+        console.log('Weekly periods (ALIGNED WITH STREAM HISTORY):', {
           thisWeek: `${thisWeekStart.toISOString().split('T')[0]} to ${thisWeekEnd.toISOString().split('T')[0]} (7 days)`,
           lastWeek: `${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]} (7 days)`
         });
