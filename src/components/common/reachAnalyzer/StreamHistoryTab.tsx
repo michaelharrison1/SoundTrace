@@ -109,7 +109,7 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         const results = await Promise.all(
           trackIds.map(async (id) => {
             try {
-              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=${timePeriod}`;
+              const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=${timePeriod}&use_cache=true`;
               const res = await fetch(url);
               if (!res.ok) {
                 return null;
