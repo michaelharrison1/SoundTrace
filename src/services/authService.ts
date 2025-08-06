@@ -1,7 +1,7 @@
 
 import { User } from '../types';
 
-// Ensure VITE_API_BASE_URL is set in your environment for production.
+// Ensure VITE_API_BASE_URL is set in your environment
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
 const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
 
@@ -22,9 +22,8 @@ const handleAuthApiResponse = async (response: Response): Promise<LoginResponse>
     }
 
     if (!data.token || !data.userId || !data.username) {
-        console.error('Auth response missing expected fields:', data);
         const error = new Error('Authentication response from server was incomplete.');
-        (error as unknown as { status?: number }).status = response.status; // Or a generic 500-like client error
+        (error as any).status = response.status;
         throw error;
     }
     return data as LoginResponse;
@@ -72,7 +71,6 @@ export const authService = {
   logout: async (): Promise<void> => {
     const token = localStorage.getItem('authToken'); // This is the JWT, not the session cookie
     if (!BACKEND_URL) {
-      console.warn('Backend URL not configured. Cannot call logout endpoint.');
       return;
     }
 
@@ -90,10 +88,9 @@ export const authService = {
       });
       if (!response.ok) {
         const errorBody = await response.text().catch(()=>'Could not read error response body');
-        console.error('Backend logout call failed:', response.status, errorBody);
       }
     } catch (error) {
-      console.error('Error calling backend logout:', error);
+      // Silent error handling
     }
   },
 };

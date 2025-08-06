@@ -22,7 +22,7 @@ export const acrCloudService = {
           if (errorData && errorData.message) {
             errorMessage = errorData.message;
           }
-        } catch (e) {
+        } catch {
           // Ignore if error response is not JSON
         }
         throw new Error(errorMessage);
@@ -31,7 +31,6 @@ export const acrCloudService = {
       const result: SnippetScanResult = await response.json(); // Backend returns SnippetScanResult
       return result;
     } catch (error: unknown) {
-      console.error('Error in scanWithAcrCloud:', error);
       let msg = 'An unexpected error occurred while communicating with the server.';
       if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as { message?: string }).message === 'string') {
         msg = (error as { message?: string }).message!;

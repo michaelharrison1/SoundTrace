@@ -18,13 +18,12 @@ export interface PredictedStreamEntry {
 }
 
 
-const getAuthToken = (): string | null => {
-  try {
-    return localStorage.getItem('authToken');
-  } catch (error) {
-    console.error("Error accessing authToken from localStorage:", error);
-    return null;
-  }
+const getAuthToken = () => {
+    try {
+        return localStorage.getItem('authToken');
+    } catch (error) {
+        return null;
+    }
 };
 
 const handleAnalyticsApiResponse = async (response: Response) => {
@@ -33,6 +32,7 @@ const handleAnalyticsApiResponse = async (response: Response) => {
     try {
       errorData = await response.json();
     } catch (e) {
+      // Ignore JSON parsing errors
     }
     const errorMessage = errorData.message || `Analytics API request failed with status ${response.status}: ${response.statusText || 'Unknown error'}`;
     const error = new Error(errorMessage);
@@ -47,11 +47,7 @@ const handleAnalyticsApiResponse = async (response: Response) => {
   // If not JSON, and not 204, it might be an issue or plain text response.
   // For now, we'll assume JSON or empty. If plain text is valid, handle it here.
   return response.text().then(text => {
-    // If expecting JSON but got text, it might indicate an issue if text is not empty.
-    if (text) { 
-        console.warn("Expected JSON response from analytics API but received text:", text.substring(0, 100));
-    }
-    return null; // Or throw error if plain text is unexpected.
+    return null;
   });
 };
 

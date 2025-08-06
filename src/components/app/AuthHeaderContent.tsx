@@ -50,7 +50,7 @@ const AuthHeaderContent: React.FC<AuthHeaderContentProps> = ({currentUser, authV
   const handleFullLogout = async () => {
     if (isSpotifyConnected) { 
         try { await spotifyDisconnectHook(); } 
-        catch (error) { console.error("Error during Spotify disconnect on logout (non-critical):", error); }
+        catch (error) { /* Silent handling */ }
     }
     onLogout(); 
   };

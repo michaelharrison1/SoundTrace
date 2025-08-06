@@ -35,7 +35,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
                           error.message.toLowerCase().includes('not authenticated') ||
                           error.message.toLowerCase().includes('authorization denied')));
     if (isAuthError) {
-      console.warn("[ScanPage] Authentication error detected. Logging out.", error?.message);
       onLogout();
       return true;
     }
@@ -50,7 +49,6 @@ const ScanPage: React.FC<ScanPageProps> = ({ user, onJobCreated, onLogout }) => 
   };
 
   const handleJobInitiationError = (err: any, operation: string) => {
-    console.error(`[ScanPage] Error during ${operation}:`, err);
     if (handleAuthError(err)) return;
     const message = `Failed to ${operation}: ${err.message || 'Unknown server error.'}`;
     setError(message);

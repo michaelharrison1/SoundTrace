@@ -3,7 +3,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import formidable from 'formidable';
 import crypto from 'crypto';
 import fs from 'fs';
-import path from 'path';
 import { SnippetScanResult, AcrCloudMatch } from '../src/types'; // Corrected path and type
 
 // Vercel specific config to disable body parsing for formidable
@@ -16,16 +15,15 @@ export const config = {
 const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024; // 4MB, applies to the incoming (potentially snippet) file
 
 // Helper function to map ACRCloud music data to AcrCloudMatch type
-const mapToAcrCloudMatch = (track: any): AcrCloudMatch => {
+const mapToAcrCloudMatch = (track: Record<string, any>): AcrCloudMatch => {
   // Extract the primary Spotify artist ID if available
   const spotifyArtistId = track.external_metadata?.spotify?.artists?.[0]?.id;
   const spotifyTrackId = track.external_metadata?.spotify?.track?.id; // Extract Spotify track ID
-  const spotifyAlbumId = track.external_metadata?.spotify?.track?.album?.id; // Extract Spotify album ID
 
   return {
     id: track.acrid,
     title: track.title || 'Unknown Title',
-    artist: track.artists?.map((a: any) => a.name).join(', ') || 'Unknown Artist',
+    artist: track.artists?.map((a: Record<string, any>) => a.name).join(', ') || 'Unknown Artist',
     album: track.album?.name || 'Unknown Album',
     releaseDate: track.release_date || 'N/A',
     matchConfidence: track.score || 0,
@@ -51,14 +49,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { ACR_CLOUD_HOST, ACR_CLOUD_ACCESS_KEY, ACR_CLOUD_ACCESS_SECRET } = process.env;
 
   if (!ACR_CLOUD_HOST || !ACR_CLOUD_ACCESS_KEY || !ACR_CLOUD_ACCESS_SECRET) {
-    console.error('ACRCloud environment variables not set.');
     return res.status(500).json({ message: 'Server configuration error for audio scanning.' });
   }
 
   const form = formidable({ maxFileSize: MAX_FILE_SIZE_BYTES });
 
   try {
-    const [fields, files] = await form.parse(req);
+    const [, files] = await form.parse(req);
     const audioFile = files.audioFile?.[0];
 
     if (!audioFile) {
@@ -114,7 +111,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             if (errorJson.status && errorJson.status.msg) {
                 friendlyMessage = `ACRCloud: ${errorJson.status.msg}`;
             }
-        } catch(e) { /* ignore parse error if not json */ }
+        } catch {
+          // ignore parse error if not json
+        }
         return res.status(acrApiResponse.status || 500).json({ message: friendlyMessage });
     }
 

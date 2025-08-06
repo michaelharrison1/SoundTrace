@@ -50,8 +50,6 @@ const getSpotifyAccessToken = async (): Promise<string> => {
   });
 
   if (!response.ok) {
-    const errorBody = await response.text();
-    console.error('Spotify Auth Error:', response.status, errorBody);
     throw new Error(`Spotify authentication failed: ${response.statusText}`);
   }
 
@@ -90,7 +88,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(404).json({ message: `Artist with ID '${artistId}' not found on Spotify.` });
       }
       const errorBody = await artistResponse.text();
-      console.error('Spotify API Error:', artistResponse.status, errorBody);
       // Try to parse to see if Spotify provides a structured error
       let spotifyErrorMessage = `Failed to fetch artist details from Spotify: ${artistResponse.statusText}`;
       try {
@@ -98,7 +95,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (spotifyErrorJson.error && spotifyErrorJson.error.message) {
           spotifyErrorMessage = `Spotify API: ${spotifyErrorJson.error.message}`;
         }
-      } catch (e) { /* ignore if not json */ }
+      } catch {
+        // ignore if not json
+      }
 
       return res.status(artistResponse.status).json({ message: spotifyErrorMessage });
     }
@@ -112,12 +111,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       genres: artistData.genres,
     });
 
-  } catch (error: any) {
-    console.error('Error in /api/spotify-artist-details:', error.message);
+  } catch (error: unknown) {
     let clientMessage = 'Failed to fetch Spotify artist details.';
-    if (error.message.includes('Spotify API credentials')) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('Spotify API credentials')) {
         clientMessage = 'Server configuration error for Spotify API.';
-    } else if (error.message.includes('Spotify authentication failed')) {
+    } else if (errorMessage.includes('Spotify authentication failed')) {
         clientMessage = 'Could not authenticate with Spotify API.';
     }
     // Only return the clientMessage to avoid leaking internal details.

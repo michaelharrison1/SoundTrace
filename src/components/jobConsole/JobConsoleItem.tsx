@@ -90,7 +90,6 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
       await scanLogService.deleteJob(job.id);
       onJobAction(); 
     } catch (err: any) {
-      console.error("Error deleting job:", err);
       if (handleAuthError(err)) return;
       setError(err.message || "Failed to delete job.");
     } finally {
@@ -107,7 +106,6 @@ const JobConsoleItem: React.FC<JobConsoleItemProps> = ({
       const updatedJob = await scanLogService.resumeJob(job.id);
       onJobAction(updatedJob);
     } catch (err: any) {
-      console.error("Error resuming job:", err);
       if (handleAuthError(err)) return;
       setError(err.message || "Failed to resume job.");
     } finally {

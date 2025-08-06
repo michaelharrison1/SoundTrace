@@ -66,14 +66,12 @@ const generateSingleSnippetFromBuffer = async (
     try {
         const actualStartTime = Math.max(0, startTimeInSeconds);
         if (actualStartTime >= originalBuffer.duration) {
-            console.warn(`[audioProcessing] Start time ${actualStartTime}s is beyond audio duration ${originalBuffer.duration}s for ${originalFileName}`);
             return null;
         }
 
         const durationToExtract = Math.min(SNIPPET_DURATION_SECONDS, originalBuffer.duration - actualStartTime);
 
         if (durationToExtract < 1) { // Avoid snippets shorter than 1 second
-             console.warn(`[audioProcessing] Calculated duration too short (${durationToExtract}s) for ${originalFileName} at start ${actualStartTime}s`);
             return null;
         }
 
@@ -100,7 +98,6 @@ const generateSingleSnippetFromBuffer = async (
         return snippetFile;
 
     } catch (error) {
-        console.error(`[audioProcessing] Error processing segment ${segmentIndex} for ${originalFileName} at ${startTimeInSeconds}s:`, error);
         return null;
     }
 };
@@ -119,18 +116,16 @@ export const generateSnippetsForFile = async (file: File, numberOfSegmentsToScan
       if (firstSnippet) {
         snippets.push(firstSnippet);
       } else {
-        console.warn(`[audioProcessing] Could not generate snippet for ${file.name}.`);
         return null; // If the snippet fails, treat as an error for this file
       }
 
       return snippets;
 
     } catch (error) {
-      console.error(`[audioProcessing] General error processing file ${file.name}:`, error);
       return null;
     } finally {
         if (mainAudioContext && mainAudioContext.state !== 'closed') {
-            mainAudioContext.close().catch(e => console.warn("[audioProcessing] Error closing main AudioContext:", e));
+            mainAudioContext.close().catch(e => {});
         }
     }
 };

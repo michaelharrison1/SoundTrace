@@ -184,22 +184,9 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         const previous7DaysCutoffDate = fourteenDaysAgo.toISOString().split('T')[0];
         const previous7DaysData = aggregatedData.filter(d => d.date >= previous7DaysCutoffDate && d.date < streamHistoryCutoffDate);
         
-        console.log('Weekly data processing:', {
-          totalDataPoints: aggregatedData.length,
-          last7DaysPoints: last7DaysData.length,
-          previous7DaysPoints: previous7DaysData.length,
-          last7DaysDateRange: last7DaysData.length > 0 ? `${last7DaysData[0].date} to ${last7DaysData[last7DaysData.length - 1].date}` : 'none',
-          previous7DaysDateRange: previous7DaysData.length > 0 ? `${previous7DaysData[0].date} to ${previous7DaysData[previous7DaysData.length - 1].date}` : 'none'
-        });
-        
         // Calculate weekly totals using daily_streams (which contains the daily increments)
         const thisWeekTotal = last7DaysData.reduce((sum, { daily_streams }) => sum + (daily_streams || 0), 0);
         const lastWeekTotal = previous7DaysData.reduce((sum, { daily_streams }) => sum + (daily_streams || 0), 0);
-
-        console.log('Weekly totals:', {
-          thisWeekStreams: thisWeekTotal.toLocaleString(),
-          lastWeekStreams: lastWeekTotal.toLocaleString()
-        });
 
         // Calculate percentage change
         let percentageChange = 0;
@@ -217,7 +204,6 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         });
 
       } catch (error) {
-        console.error('Error fetching weekly growth data:', error);
         setWeeklyData(prev => ({
           ...prev,
           isLoading: false,
@@ -227,7 +213,9 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
     };
 
     fetchWeeklyGrowthData();
-  }, [scanLogs]);  const formatNumber = (num: number): string => {
+  }, [scanLogs]);
+  
+  const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
     } else if (num >= 1000) {

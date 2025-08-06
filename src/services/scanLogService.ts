@@ -6,8 +6,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
 const JOBS_BASE_URL = `${API_BASE_URL}/api/scan-jobs`;
 const LOGS_BASE_URL = `${API_BASE_URL}/api/scan-logs`;
 
-const getAuthToken = (): string | null => {
-  try { return localStorage.getItem('authToken'); } catch (error) { console.error("Error accessing authToken:", error); return null; }
+const getAuthToken = () => {
+  try { return localStorage.getItem('authToken'); } catch (error) { return null; }
 };
 
 const handleApiResponse = async <T>(response: Response): Promise<T> => {
