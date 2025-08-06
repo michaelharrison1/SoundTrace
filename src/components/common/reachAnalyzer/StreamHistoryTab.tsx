@@ -194,6 +194,29 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         const valid = results.filter(Boolean) as TrackHistory[];
         let agg = aggregateHistories(valid);
         
+        // Add a synthetic previous data point before filtering for display purposes only
+        // This helps the graph show the first real data point properly
+        if (agg.length > 0) {
+          const firstDataPoint = agg[0];
+          const firstDate = new Date(firstDataPoint.date);
+          const syntheticDate = new Date(firstDate);
+          syntheticDate.setDate(firstDate.getDate() - 1);
+          
+          const syntheticPoint = {
+            date: syntheticDate.toISOString().split('T')[0],
+            total_streams: 0, // Start from 0 to show proper growth
+            daily_streams: firstDataPoint.total_streams || 0 // Set the first real day's streams as daily increment
+          };
+          
+          agg.unshift(syntheticPoint); // Add to beginning of array
+          
+          // Fix the first real data point to show its proper daily streams
+          agg[1] = {
+            ...agg[1],
+            daily_streams: agg[1].total_streams || 0
+          };
+        }
+        
         // Filter to requested time period after aggregation (to maintain context for calculations)
         if (timePeriod === '7d') {
           const sevenDaysAgo = new Date();
@@ -207,24 +230,6 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
           ...d,
           new_streams: d.daily_streams || 0 // Use calculated daily streams
         }));
-        
-        // Add a synthetic previous data point for display purposes only
-        // This helps the graph show the first real data point properly without affecting calculations
-        if (agg.length > 0) {
-          const firstDataPoint = agg[0];
-          const firstDate = new Date(firstDataPoint.date);
-          const syntheticDate = new Date(firstDate);
-          syntheticDate.setDate(firstDate.getDate() - 1);
-          
-          const syntheticPoint = {
-            date: syntheticDate.toISOString().split('T')[0],
-            total_streams: 0, // Start from 0 to show proper growth
-            daily_streams: 0,
-            new_streams: 0
-          };
-          
-          agg.unshift(syntheticPoint); // Add to beginning of array
-        }
         
         if (!cancelled) setHistoryData(agg);
       } catch (e) {
