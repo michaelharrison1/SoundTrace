@@ -207,6 +207,25 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
           ...d,
           new_streams: d.daily_streams || 0 // Use calculated daily streams
         }));
+        
+        // Add a synthetic previous data point for display purposes only
+        // This helps the graph show the first real data point properly without affecting calculations
+        if (agg.length > 0) {
+          const firstDataPoint = agg[0];
+          const firstDate = new Date(firstDataPoint.date);
+          const syntheticDate = new Date(firstDate);
+          syntheticDate.setDate(firstDate.getDate() - 1);
+          
+          const syntheticPoint = {
+            date: syntheticDate.toISOString().split('T')[0],
+            total_streams: 0, // Start from 0 to show proper growth
+            daily_streams: 0,
+            new_streams: 0
+          };
+          
+          agg.unshift(syntheticPoint); // Add to beginning of array
+        }
+        
         if (!cancelled) setHistoryData(agg);
       } catch (e) {
         if (!cancelled) setApiError('Failed to fetch stream history.');
