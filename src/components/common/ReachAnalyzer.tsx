@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import ProgressBar from './ProgressBar';
 import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, AggregatedSongData } from '../../types';
 // Lazy-load heavy/non-critical components for performance
-const CollaborationRadarGraph = React.lazy(() => import('./CollaborationRadarGraph'));
+const CollaborationRadarGraph = React.lazy(() => import('./reachAnalyzer/CollaborationRadarGraph'));
 const StreamHistoryTab = React.lazy(() => import('./reachAnalyzer/StreamHistoryTab'));
 const StreamForecastTab = React.lazy(() => import('./reachAnalyzer/StreamForecastTab'));
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
