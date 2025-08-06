@@ -79,15 +79,25 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         minHeight: '100vh',
         minWidth: '100vw',
         width: '100%',
-        backgroundImage: 'url(/gifs/1.gif)',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center center',
-        backgroundSize: 'cover',
+        backgroundImage: 'url(/gifs/1.gif) !important',
+        backgroundRepeat: 'no-repeat !important',
+        backgroundPosition: 'center center !important',
+        backgroundSize: 'cover !important',
         backgroundColor: '#008080', // Fallback Windows 95 teal
         overflow: 'hidden',
       }}
       className="flex flex-col items-center justify-start w-full"
     >
+      {/* Override any existing background styles */}
+      <style>{`
+        body.logged-in-background::before {
+          background-image: url(/gifs/1.gif) !important;
+          background-repeat: no-repeat !important;
+          background-position: center center !important;
+          background-size: cover !important;
+        }
+      `}</style>
+      
       {/* Overlay to make content more readable */}
       <div
         style={{

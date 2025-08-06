@@ -155,7 +155,7 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
             // Daily streams = current cumulative - previous cumulative
             const dailyStreamCount = previous 
               ? Math.max(0, current.streams - previous.streams) // Ensure non-negative
-              : current.streams; // First data point is treated as daily streams
+              : 0; // First data point, can't calculate daily streams (no previous day)
             
             dailyStreams.push({
               date: current.date,
