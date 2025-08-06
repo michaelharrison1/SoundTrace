@@ -4,7 +4,7 @@ import ProgressBar from '../ProgressBar';
 import Button from '../Button';
 import { DailyAnalyticsSnapshot, HistoricalSongStreamEntry } from '../../../types';
 import { formatFollowersDisplay } from './reachAnalyzerUtils'; 
-import { ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush, Line, Rectangle as RechartsRectangle } from 'recharts';
+import { ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush, Line, Rectangle as RechartsRectangle } from 'recharts';
 
 
 type TimeWindow = '30d' | '1y' | 'all';

@@ -71,7 +71,7 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
             try {
               const url = `${backendBase}/api/streamclout/tracks/${id}/history?time_period=${historyTimePeriod}&use_cache=true`;
               await fetch(url);
-            } catch (err) {
+            } catch {
               // Silently fail - forecasting will handle missing data gracefully
             }
           })
@@ -126,7 +126,7 @@ const StreamForecastTab: React.FC<StreamForecastTabProps> = ({ scanLogs, isLoadi
         if (!cancelled) {
           setForecastData(aggregatedForecast);
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) setApiError('Failed to fetch stream forecast.');
       } finally {
         if (!cancelled) setLoading(false);

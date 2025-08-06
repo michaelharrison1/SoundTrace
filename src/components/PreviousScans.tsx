@@ -8,9 +8,6 @@ import Button from './common/Button';
 import ArtistFollowers from './common/ArtistFollowers';
 import { useSpotifyPlayer } from '../contexts/SpotifyContext';
 // import UploadIcon from './icons/UploadIcon';
-import MusicNoteIcon from './icons/MusicNoteIcon';
-import SpotifyIcon from './icons/SpotifyIcon';
-import Win95SpotifyIcon from './icons/Win95SpotifyIcon';
 
 
 type SortableColumn =
@@ -52,7 +49,6 @@ const formatPlatformSource = (source: PlatformSource): string => {
     case 'file_upload_batch_item': return 'File Upload';
     case 'spotify_playlist_import_item': return 'Spotify Import';
     default:
-      const _exhaustiveCheck: never = source;
       return "Unknown Source";
   }
 };

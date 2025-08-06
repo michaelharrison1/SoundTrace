@@ -88,7 +88,7 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         const valid = results.filter(Boolean) as TrackHistory[];
         const agg = aggregateHistories(valid);
         if (!cancelled) setHistoryData(agg);
-      } catch (e) {
+      } catch {
         if (!cancelled) setApiError('Failed to fetch stream history.');
       } finally {
         if (!cancelled) setLoading(false);

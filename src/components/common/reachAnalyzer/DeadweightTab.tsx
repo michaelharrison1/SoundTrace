@@ -51,7 +51,7 @@ const DeadweightTab: React.FC = () => {
           }
         }
         setTracks(trackData.filter(t => t.velocity < 0.1 * avg));
-      } catch (err: any) {
+      } catch {
         setError('Failed to load deadweight tracks.');
       } finally {
         setLoading(false);

@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { TrackScanLog, AcrCloudMatch } from '../../types';
+import { TrackScanLog } from '../../types';
 
 interface CollaborationRadarGraphProps {
   scanLogs: TrackScanLog[];
@@ -8,12 +8,6 @@ interface CollaborationRadarGraphProps {
 
 interface CollaborationData {
   [beatName: string]: string[]; // Beat name -> list of artist names
-}
-
-interface ArtistPair {
-  artist1: string;
-  artist2: string;
-  commonBeats: number;
 }
 
 const CollaborationRadarGraph: React.FC<CollaborationRadarGraphProps> = ({ scanLogs }) => {

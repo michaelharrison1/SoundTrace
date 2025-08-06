@@ -20,7 +20,7 @@ const AIPersonaTab: React.FC = () => {
       try {
         const res = await axios.get('/api/v1/openai/analyze');
         setPersona(res.data);
-      } catch (err: any) {
+      } catch {
         setError('Failed to load persona.');
       } finally {
         setLoading(false);

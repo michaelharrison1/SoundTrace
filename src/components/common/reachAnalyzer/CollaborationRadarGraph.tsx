@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { TrackScanLog, AcrCloudMatch } from '../../../types';
+import { TrackScanLog } from '../../../types';
 
 interface CollaborationRadarGraphProps {
   scanLogs: TrackScanLog[];

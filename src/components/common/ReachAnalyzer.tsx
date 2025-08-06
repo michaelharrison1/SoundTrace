@@ -1,22 +1,17 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import ProgressBar from './ProgressBar';
-import { User, TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, AggregatedSongData, TrackScanLogStatus } from '../../types';
-import ArtistFollowers from './ArtistFollowers';
+import { TrackScanLog, AcrCloudMatch, SpotifyFollowerResult, DailyAnalyticsSnapshot, AggregatedSongData } from '../../types';
 // Lazy-load heavy/non-critical components for performance
 const CollaborationRadarGraph = React.lazy(() => import('./CollaborationRadarGraph'));
-import Button from '../common/Button';
-import TotalReachDisplay from './reachAnalyzer/TotalReachDisplay';
 const StreamHistoryTab = React.lazy(() => import('./reachAnalyzer/StreamHistoryTab'));
 const StreamForecastTab = React.lazy(() => import('./reachAnalyzer/StreamForecastTab'));
 import ArtistStatsTable from './reachAnalyzer/ArtistStatsTable';
 import BeatStatsTable from './reachAnalyzer/BeatStatsTable';
-import { MAX_BAR_SLOTS, LINE_ANIMATION_DURATION_MS, calculateBarConfig, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
-const SongStreamDetail = React.lazy(() => import('./reachAnalyzer/SongStreamDetail'));
+import { LINE_ANIMATION_DURATION_MS, formatFollowersDisplay } from './reachAnalyzer/reachAnalyzerUtils';
 const EstimatedRevenueTab = React.lazy(() => import('./reachAnalyzer/EstimatedRevenueTab'));
 // ...existing code...
 // ...existing code...
 const WeeklyGrowthSnapshotTile = React.lazy(() => import('./reachAnalyzer/WeeklyGrowthSnapshotTile'));
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 
 interface ReachAnalyzerProps {

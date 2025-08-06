@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { TrackScanLog } from '../../../types';
 import ProgressBar from '../ProgressBar';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { useRef, useEffect as useEffectReact } from 'react';
 
 interface StreamHistoryTabProps {
   scanLogs: TrackScanLog[];
@@ -216,7 +215,7 @@ const StreamHistoryTab: React.FC<StreamHistoryTabProps> = ({ scanLogs, isLoading
         }));
         
         if (!cancelled) setHistoryData(agg);
-      } catch (e) {
+      } catch {
         if (!cancelled) setApiError('Failed to fetch stream history.');
       } finally {
         if (!cancelled) setLoading(false);
