@@ -1,4 +1,4 @@
-/* Main app background for logged-in users - NO BACKGROUND */
+/* Main app background for logged-in users - WITH 1.gif */
 body.logged-in-background::before {
   content: '';
   position: fixed;
@@ -7,12 +7,25 @@ body.logged-in-background::before {
   left: -100px;
   right: -100px;
   bottom: -100px;
-  background: #C0C0C0; /* Win95 grey background instead */
+  background-image: url('/gifs/1.gif');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
   opacity: 1;
   pointer-events: none;
 }
 
 /* Also set body background as fallback */
 body.logged-in-background {
-  background: #C0C0C0 !important; /* Win95 grey background */
+  background-image: url('/gifs/1.gif') !important;
+  background-repeat: no-repeat !important;
+  background-position: center center !important;
+  background-size: cover !important;
+  background-attachment: fixed !important;
+  overscroll-behavior: none !important; /* Prevent overscroll bouncing */
+}
+
+/* Also prevent overscroll on html element for broader coverage */
+html {
+  overscroll-behavior: none;
 }
