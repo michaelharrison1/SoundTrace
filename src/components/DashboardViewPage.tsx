@@ -169,7 +169,7 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
         setFollowerResults(newFollowerResults);
         setTotalFollowers(sumFollowers);
         if (errorsEncountered > 0 && successfulFetches === 0 && uniqueArtistIds.length > 0) setFollowerFetchError("Could not load any artist data.");
-        else if (errorsEncountered > 0) setFollowerFetchError("Could not load data for some artists. Total might be inaccurate.");
+        else if (errorsEncountered > 0) setFollowerFetchError("Could not load data for some artists. Please reload the website.");
         else setFollowerFetchError(null);
         setIsFollowerLoading(false);
       }
