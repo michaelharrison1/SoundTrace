@@ -16,11 +16,11 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   className, 
   textClassName 
 }) => {
-  // Authentic Windows 95 progress bar styling
+  // Authentic Windows 95 progress bar styling with retro light blue
   const barHeight = 20; // Classic Windows 95 height
-  const blockCount = 20;
-  const blockWidth = 8;
-  const blockGap = 2;
+  const blockCount = 16; // Fewer blocks for wider appearance
+  const blockWidth = 12; // Wider blocks
+  const blockGap = 1; // Minimal gap
 
   // For determinate progress, calculate filled blocks
   const filledBlocks = percent !== undefined ? Math.floor((percent / 100) * blockCount) : 0;
@@ -34,13 +34,27 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         style={{ height: `${barHeight}px` }}
       >
         {isIndeterminate ? (
-          // Indeterminate progress: Moving blocks animation (Windows 95 style)
-          <div className="h-full relative bg-[#C0C0C0]">
-            <div className="win95-progress-marquee h-full flex items-center">
-              {[...Array(Math.ceil(blockCount * 1.5))].map((_, i) => (
+          // Indeterminate progress: Wave of light blue moving over black blocks
+          <div className="h-full relative bg-[#C0C0C0] flex items-center">
+            {/* Static black background blocks */}
+            <div className="absolute inset-0 p-0.5 flex items-center">
+              {[...Array(blockCount)].map((_, i) => (
                 <div
-                  key={i}
-                  className="flex-shrink-0 h-3/4 bg-[#000080] win95-progress-block"
+                  key={`bg-${i}`}
+                  className="flex-shrink-0 h-3/4 bg-black"
+                  style={{ 
+                    width: `${blockWidth}px`, 
+                    marginRight: i < blockCount - 1 ? `${blockGap}px` : '0px',
+                  }}
+                />
+              ))}
+            </div>
+            {/* Moving light blue wave */}
+            <div className="win95-progress-marquee h-full flex items-center absolute inset-0 p-0.5">
+              {[...Array(Math.ceil(blockCount * 0.4))].map((_, i) => (
+                <div
+                  key={`wave-${i}`}
+                  className="flex-shrink-0 h-3/4 bg-[#00FFFF] win95-progress-block"
                   style={{ 
                     width: `${blockWidth}px`, 
                     marginRight: `${blockGap}px`,
@@ -51,15 +65,17 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           </div>
         ) : (
           // Determinate progress: Fill blocks based on percentage
-          <div className="h-full flex items-center bg-[#C0C0C0]">
+          <div className="h-full flex items-center bg-[#C0C0C0] p-0.5">
             {[...Array(blockCount)].map((_, i) => (
               <div
                 key={i}
-                className={`flex-shrink-0 h-3/4 ${i < filledBlocks ? 'bg-[#000080]' : 'bg-[#C0C0C0]'}`}
+                className={`flex-shrink-0 h-3/4 ${i < filledBlocks ? 'bg-[#00FFFF]' : 'bg-black'}`}
                 style={{ 
                   width: `${blockWidth}px`, 
                   marginRight: i < blockCount - 1 ? `${blockGap}px` : '0px',
-                  border: i < filledBlocks ? '1px solid #000040' : '1px solid #A0A0A0',
+                  boxShadow: i < filledBlocks 
+                    ? 'inset 1px 1px 0px rgba(255,255,255,0.3), inset -1px -1px 0px rgba(0,0,0,0.3)' 
+                    : 'none',
                 }}
               />
             ))}
