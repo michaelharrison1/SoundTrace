@@ -56,9 +56,9 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
 
   const getNavButtonClass = (viewType: ActiveView) => {
     const base = "px-3 py-1 text-black text-sm"; // VT323 default font size is larger
-    // Apply Win95 border styles dynamically with enhanced selection border
+    // Apply Win95 border styles dynamically with enhanced 3D selection border
     const borderStyle = activeView === viewType
-        ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px] border border-black/30'
+        ? 'win95-border-inset !shadow-none translate-x-[1px] translate-y-[1px] border-2 border-black/50 shadow-inner'
         : 'win95-border-outset hover:bg-gray-300';
     return `${base} ${borderStyle}`;
   };
@@ -88,7 +88,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
       <div style={{ position: 'relative', zIndex: 1, width: '100%' }} className="flex flex-col items-center justify-start w-full">
         {/* Top navigation bar with Win95 border and margin */}
         <div
-          className="mt-6 mb-4 flex justify-center w-full"
+          className="mt-3 mb-4 flex justify-center w-full"
           style={{ width: '100%' }}
         >
         <nav
