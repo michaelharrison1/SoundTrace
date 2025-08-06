@@ -154,11 +154,14 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         const dataByTrack = new Map<string, Array<{date: string, streams: number}>>();
         validStreamData.forEach(entry => {
           const trackId = entry.track_id || 'unknown';
+          // NORMALIZE DATE: Convert timestamps to YYYY-MM-DD format to avoid duplicates
+          const normalizedDate = entry.date.split('T')[0]; // Extract just the date part
+          
           if (!dataByTrack.has(trackId)) {
             dataByTrack.set(trackId, []);
           }
           dataByTrack.get(trackId)!.push({
-            date: entry.date,
+            date: normalizedDate,
             streams: entry.streams || 0
           });
         });
@@ -167,30 +170,38 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         const dailyTotals = new Map<string, number>();
         
         dataByTrack.forEach((trackData, trackId) => {
-          // Sort by date for this track
-          trackData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          // Consolidate multiple entries for the same date (sum them)
+          const dateStreamsMap = new Map<string, number>();
+          trackData.forEach(entry => {
+            const currentTotal = dateStreamsMap.get(entry.date) || 0;
+            dateStreamsMap.set(entry.date, Math.max(currentTotal, entry.streams)); // Use max for cumulative data
+          });
+          
+          // Convert to array and sort by date
+          const consolidatedData = Array.from(dateStreamsMap.entries()).map(([date, streams]) => ({ date, streams }));
+          consolidatedData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           
           // Check if this track's data appears to be cumulative
-          const avgStreamValue = trackData.reduce((sum, d) => sum + d.streams, 0) / trackData.length;
+          const avgStreamValue = consolidatedData.reduce((sum, d) => sum + d.streams, 0) / consolidatedData.length;
           const isTrackCumulative = avgStreamValue > 10000000; // 10M+ suggests cumulative
           
           if (isTrackCumulative) {
             // Convert cumulative to daily for this track
-            for (let i = 0; i < trackData.length; i++) {
-              const currentStreams = trackData[i].streams;
-              const previousStreams = i > 0 ? trackData[i - 1].streams : 0;
+            for (let i = 0; i < consolidatedData.length; i++) {
+              const currentStreams = consolidatedData[i].streams;
+              const previousStreams = i > 0 ? consolidatedData[i - 1].streams : 0;
               const dailyIncrement = Math.max(0, currentStreams - previousStreams);
               
               // Add to daily totals
-              const date = trackData[i].date;
+              const date = consolidatedData[i].date;
               if (!dailyTotals.has(date)) {
                 dailyTotals.set(date, 0);
               }
               dailyTotals.set(date, dailyTotals.get(date)! + dailyIncrement);
             }
           } else {
-            // Data is already daily, just sum it
-            trackData.forEach(entry => {
+            // Data is already daily, just sum the consolidated data
+            consolidatedData.forEach(entry => {
               const date = entry.date;
               if (!dailyTotals.has(date)) {
                 dailyTotals.set(date, 0);
