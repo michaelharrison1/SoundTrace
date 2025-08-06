@@ -82,7 +82,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         backgroundImage: 'url(/gifs/1.gif)',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center center',
-        backgroundSize: 'cover',
+        backgroundSize: '110%',
         backgroundAttachment: 'fixed',
         overflow: 'hidden',
       }}
