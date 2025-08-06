@@ -54,7 +54,6 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
   
   // Calculate both daily streams (for new_streams) and cumulative totals (for total_streams display)
   const dailyAggregateMap = new Map<string, number>(); // For new_streams calculation
-  const cumulativeAggregateMap = new Map<string, number>(); // For total_streams display
   
   trackDataMap.forEach((trackData, trackKey) => {
     // Sort by date for proper cumulative->daily conversion
@@ -72,10 +71,6 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
       const existingDaily = dailyAggregateMap.get(current.date) || 0;
       dailyAggregateMap.set(current.date, existingDaily + dailyStreams);
       
-      // Add cumulative streams to total aggregate (for chart display)
-      const existingCumulative = cumulativeAggregateMap.get(current.date) || 0;
-      cumulativeAggregateMap.set(current.date, existingCumulative + current.streams);
-      
       // Debug logging for extreme values
       if (dailyStreams > 1000000) {
         console.warn(`[StreamHistory] Extreme daily streams detected:`, {
@@ -89,15 +84,40 @@ function aggregateHistories(histories: TrackHistory[]): { date: string; total_st
     }
   });
   
-  // Convert to array and sort by date, using CUMULATIVE totals for display
-  const result = Array.from(cumulativeAggregateMap.entries())
-    .map(([date, total_streams]) => ({ 
-      date, 
-      total_streams,
-      // Store daily streams for new_streams field later
-      daily_streams: dailyAggregateMap.get(date) || 0
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  // Convert daily aggregates back to cumulative totals for display
+  const sortedDates = Array.from(dailyAggregateMap.keys()).sort();
+  let cumulativeTotal = 0;
+  
+  // Get the starting cumulative total from the earliest date across all tracks
+  const earliestDate = sortedDates[0];
+  if (earliestDate) {
+    trackDataMap.forEach((trackData) => {
+      const earliestPoint = trackData.find(point => point.date === earliestDate);
+      if (earliestPoint) {
+        // Find the previous day's cumulative for this track to establish baseline
+        const previousPoint = trackData.find(point => {
+          const pointDate = new Date(point.date);
+          const targetDate = new Date(earliestDate);
+          targetDate.setDate(targetDate.getDate() - 1);
+          return point.date === targetDate.toISOString().split('T')[0];
+        });
+        if (previousPoint) {
+          cumulativeTotal += previousPoint.streams;
+        }
+      }
+    });
+  }
+  
+  const result = sortedDates.map(date => {
+    const dailyStreams = dailyAggregateMap.get(date) || 0;
+    cumulativeTotal += dailyStreams;
+    
+    return {
+      date,
+      total_streams: cumulativeTotal,
+      daily_streams: dailyStreams
+    };
+  });
     
   // Debug logging for final results
   console.log(`[StreamHistory] Final aggregated streams:`, result.slice(-5)); // Show last 5 days

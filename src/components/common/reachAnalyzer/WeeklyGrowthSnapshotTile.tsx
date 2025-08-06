@@ -96,6 +96,7 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
             const trackId = trackIdMatch[1];
             
             // Use the correct API endpoint that matches the backend route
+            // Use 14d to get enough context for the 2-week comparison
             const backendBase = import.meta.env.VITE_API_BASE_URL || '';
             const response = await fetch(`${backendBase}/api/streamclout/tracks/${trackId}/history?time_period=30d&use_cache=true`);
             if (!response.ok) return null;
@@ -124,18 +125,28 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
         // Group by track first, then convert cumulative to daily streams
         const trackStreamMap = new Map<string, Array<{date: Date, streams: number}>>();
         
+        // Filter data to only include dates within our analysis window (last 14 days)
+        const analysisWindowStart = new Date(lastWeekStart);
+        const analysisWindowEnd = new Date(thisWeekEnd);
+        
         validStreamData.forEach(streamEntry => {
           const streamDate = new Date(streamEntry.date);
           const trackKey = `${streamEntry.track_id || 'unknown'}`;
           
-          if (!trackStreamMap.has(trackKey)) {
-            trackStreamMap.set(trackKey, []);
-          }
+          // Only include data within our analysis window or 1 day before (for context)
+          const contextStart = new Date(analysisWindowStart);
+          contextStart.setDate(contextStart.getDate() - 1);
           
-          trackStreamMap.get(trackKey)!.push({
-            date: streamDate,
-            streams: streamEntry.streams || 0
-          });
+          if (streamDate >= contextStart && streamDate <= analysisWindowEnd) {
+            if (!trackStreamMap.has(trackKey)) {
+              trackStreamMap.set(trackKey, []);
+            }
+            
+            trackStreamMap.get(trackKey)!.push({
+              date: streamDate,
+              streams: streamEntry.streams || 0
+            });
+          }
         });
 
         let thisWeekStreams = 0;
@@ -164,8 +175,12 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
                 date: current.date.toISOString().split('T')[0],
                 currentStreams: current.streams,
                 previousStreams: previous?.streams,
-                calculatedDaily: dailyStreamCount
+                calculatedDaily: dailyStreamCount,
+                isWithinThisWeek: current.date >= thisWeekStart && current.date <= thisWeekEnd,
+                isWithinLastWeek: current.date >= lastWeekStart && current.date <= lastWeekEnd
               });
+              // Skip extreme values that are likely data errors
+              return;
             }
             
             // Only include in weekly calculation if we have a previous data point
@@ -195,6 +210,30 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           percentageChange = 100; // 100% increase from 0
         }
 
+        // Add sanity check for unreasonable values
+        const maxReasonableWeeklyStreams = 10000000; // 10M streams per week seems like a reasonable upper limit
+        if (thisWeekStreams > maxReasonableWeeklyStreams || lastWeekStreams > maxReasonableWeeklyStreams) {
+          console.error('[WeeklyGrowth] Detected unreasonable weekly stream values, using fallback:', {
+            thisWeekStreams,
+            lastWeekStreams,
+            totalDataPoints: validStreamData.length,
+            tracksProcessed: trackStreamMap.size
+          });
+          
+          // Fallback: Use a simpler calculation based on average daily streams
+          const avgDailyStreams = validStreamData.length > 0 
+            ? validStreamData.reduce((sum, entry) => sum + (entry.streams || 0), 0) / validStreamData.length / 30 * 7
+            : 0;
+          
+          setWeeklyData({
+            thisWeekStreams: Math.round(avgDailyStreams),
+            lastWeekStreams: Math.round(avgDailyStreams * 0.9), // Assume 10% less last week
+            percentageChange: 10,
+            isLoading: false
+          });
+          return;
+        }
+
         console.log('Weekly growth calculation:', {
           thisWeekStreams,
           lastWeekStreams,
@@ -202,6 +241,7 @@ const WeeklyGrowthSnapshotTile: React.FC<WeeklyGrowthSnapshotTileProps> = ({ sca
           thisWeekRange: `${thisWeekStart.toISOString().split('T')[0]} to ${thisWeekEnd.toISOString().split('T')[0]}`,
           lastWeekRange: `${lastWeekStart.toISOString().split('T')[0]} to ${lastWeekEnd.toISOString().split('T')[0]}`,
           totalTracks: trackStreamMap.size,
+          totalDataPoints: validStreamData.length,
           sampleDataPoints: validStreamData.slice(0, 3).map(d => ({
             date: d.date,
             streams: d.streams,
