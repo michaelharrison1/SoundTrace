@@ -79,17 +79,35 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         minHeight: '100vh',
         minWidth: '100vw',
         width: '100%',
-        backgroundImage: 'none',
-        backgroundColor: '#008080', // Windows 95 teal
+        backgroundImage: 'url(/gifs/1.gif)',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center center',
+        backgroundSize: 'cover',
+        backgroundColor: '#008080', // Fallback Windows 95 teal
         overflow: 'hidden',
       }}
       className="flex flex-col items-center justify-start w-full"
     >
-      {/* Top navigation bar with Win95 border and margin */}
+      {/* Overlay to make content more readable */}
       <div
-        className="mt-6 mb-4 flex justify-center w-full"
-        style={{ width: '100%' }}
-      >
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 128, 128, 0.3)', // Light teal overlay
+          zIndex: 0,
+        }}
+      />
+      
+      {/* Content with higher z-index */}
+      <div style={{ position: 'relative', zIndex: 1, width: '100%' }} className="flex flex-col items-center justify-start w-full">
+        {/* Top navigation bar with Win95 border and margin */}
+        <div
+          className="mt-6 mb-4 flex justify-center w-full"
+          style={{ width: '100%' }}
+        >
         <nav
           className="flex items-center space-x-0.5 bg-[#C0C0C0] win95-border-outset px-2 py-1"
           style={{
@@ -176,6 +194,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
           </div>
         </div>
       )}
+      </div> {/* Close the content wrapper div */}
     </div>
   );
 };
