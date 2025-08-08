@@ -45,7 +45,8 @@ export const calculateBarConfig = (followers: number | null | undefined, level: 
    barUnit = Math.max(baseUnit, barUnit); // Ensure barUnit is at least the baseUnit for the level
 
 
-  if (barUnit >= 1000000) unitLabel = `${(barUnit / 1000000).toFixed(barUnit % 1000000 === 0 ? 0 : 1)}M`;
+  if (barUnit >= 1000000000) unitLabel = `${(barUnit / 1000000000).toFixed(barUnit % 1000000000 === 0 ? 0 : 1)}B`;
+  else if (barUnit >= 1000000) unitLabel = `${(barUnit / 1000000).toFixed(barUnit % 1000000 === 0 ? 0 : 1)}M`;
   else if (barUnit >= 1000) unitLabel = `${(barUnit / 1000).toFixed(barUnit % 1000 === 0 ? 0 : 1)}K`;
   else unitLabel = `${barUnit}`;
 
@@ -70,6 +71,7 @@ export const formatFollowersDisplay = (count: number | null | undefined, isLoadi
     if (isLoading && typeof count === 'undefined') return "Loading...";
     if (typeof count === 'undefined') return "Loading...";
     if (count === null) return "N/A";
+    if (count >= 1000000000) return `${(count / 1000000000).toFixed(1)}B`;
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
     return count.toString();

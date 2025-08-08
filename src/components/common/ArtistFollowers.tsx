@@ -12,6 +12,7 @@ const ArtistFollowers: React.FC<ArtistFollowersProps> = ({ followers, isLoading,
     if (isLoading) return '...';
     if (error) return 'N/A';
     if (typeof count === 'undefined' || count === null) return 'N/A';
+    if (count >= 1000000000) return `${(count / 1000000000).toFixed(1)}B`;
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
     if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
     return count.toString();

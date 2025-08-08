@@ -382,7 +382,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
             </Button>
             {scanLogs.length > 0 && (
               <Button onClick={handleClearAllConfirm} size="sm" className="p-1 !text-xs hover:bg-gray-300 win95-button-sm" aria-label="Clear all scan records" title="Delete Everything" disabled={isDeleting}>
-                <img src="/icons/trash.png" alt="Delete Everything" className="h-4 w-4 inline-block align-middle" />
+                Delete All
               </Button>
             )}
           </div>
@@ -478,7 +478,11 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                       <DataCell className="text-center">
                         {typeof row.matchDetails.streamCount === 'number' ? (
                             <>
-                                {row.matchDetails.streamCount.toLocaleString()}
+                                {row.matchDetails.streamCount >= 1000000000 
+                                  ? `${(row.matchDetails.streamCount / 1000000000).toFixed(1)}B` 
+                                  : row.matchDetails.streamCount >= 1000000
+                                    ? `${(row.matchDetails.streamCount / 1000000).toFixed(1)}M`
+                                    : row.matchDetails.streamCount.toLocaleString()}
                                 {row.matchDetails.streamCountTimestamp && (
                                     <div className="text-[10px] text-gray-500 leading-tight">
                                         {new Date(row.matchDetails.streamCountTimestamp).toLocaleDateString()}
@@ -492,7 +496,7 @@ const PreviousScans: React.FC<PreviousScansProps> = ({ scanLogs, followerResults
                     </>
                   ) : ( <td colSpan={8} className="px-2 py-1.5 text-center text-gray-500 italic"> {row.statusMessage || "No match data"} {row.statusMessage && `for "${row.originalFileName}"`} </td> )}
                    <DataCell title={row.originalFileName}> {row.originalFileName} {row.statusMessage && row.isMatchRow && <div className="text-[10px] text-yellow-600 italic leading-tight">{row.statusMessage}</div>} </DataCell>
-                  <DataCell className="text-center"> <Button onClick={() => handleSingleDelete(row.logId, row.originalFileName)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300 win95-button-sm" title={`Delete scan record for ${row.originalFileName}`} disabled={isDeleting}> <img src="/icons/trash.png" alt="Delete" className="h-3 w-3 inline-block align-middle" /> </Button> </DataCell>
+                  <DataCell className="text-center"> <Button onClick={() => handleSingleDelete(row.logId, row.originalFileName)} size="sm" className="p-0.5 !text-xs hover:bg-gray-300 win95-button-sm" title={`Delete scan record for ${row.originalFileName}`} disabled={isDeleting}>Delete</Button> </DataCell>
                   <DataCell className="text-center text-xs">{formatPlatformSource(row.platformSource)}</DataCell>
                 </tr>
               )})}
