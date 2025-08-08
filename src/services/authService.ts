@@ -91,4 +91,45 @@ export const authService = {
       // Silent error handling
     }
   },
+  
+  deleteAccount: async (password?: string): Promise<void> => {
+    const token = localStorage.getItem('authToken');
+    if (!BACKEND_URL) {
+      const configError = new Error('Backend URL is not configured. Cannot delete account.');
+      (configError as unknown as { status?: number }).status = 500;
+      throw configError;
+    }
+
+    try {
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      // Body will include password if provided for extra security
+      const body = password ? JSON.stringify({ password }) : undefined;
+      
+      const response = await fetch(`${BACKEND_URL}/api/auth/account`, {
+        method: 'DELETE',
+        headers,
+        body,
+        credentials: 'include', // Crucial for sending the HttpOnly session cookie
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ 
+          message: `Failed to delete account. Status: ${response.status}` 
+        }));
+        
+        const error = new Error(errorData.message || 'Failed to delete account');
+        (error as unknown as { status?: number }).status = response.status;
+        throw error;
+      }
+    } catch (err) {
+      if ((err as Error).message) {
+        throw err;
+      }
+      throw new Error('Failed to delete account due to a network error');
+    }
+  },
 };

@@ -6,6 +6,7 @@ import ScanPage from './ScanPage';
 import DashboardViewPage from './DashboardViewPage';
 import JobConsole from './jobConsole/JobConsole';
 import ProgressBar from './common/ProgressBar';
+import AccountSettings from './AccountSettings';
 
 interface MainAppLayoutProps {
   user: User;
@@ -34,6 +35,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
 }) => {
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [redirectToJobConsole, setRedirectToJobConsole] = useState<boolean>(false);
+  const [showAccountSettings, setShowAccountSettings] = useState<boolean>(false);
 
   // Effect to handle redirection to job console
   useEffect(() => {
@@ -121,6 +123,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         <MainAppMenu
           onLogout={onLogout}
           onSpotifyConnect={() => window.open('https://accounts.spotify.com/en/login', '_blank')}
+          onOpenAccountSettings={() => setShowAccountSettings(true)}
           user={user}
           navStyle={true}
         />
@@ -173,6 +176,22 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
         </div>
       )}
       </div> {/* Close the content wrapper div */}
+
+      {/* Account Settings Modal */}
+      {showAccountSettings && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          style={{ backdropFilter: 'blur(2px)' }}
+        >
+          <div className="w-full max-w-md px-4">
+            <AccountSettings 
+              user={user}
+              onAccountDeleted={onLogout}
+              onClose={() => setShowAccountSettings(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

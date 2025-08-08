@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 interface MainAppMenuProps {
   onLogout: () => void;
   onSpotifyConnect: () => void;
+  onOpenAccountSettings?: () => void;
   user: any;
   navStyle?: boolean;
 }
@@ -33,7 +34,7 @@ const menuItemStyle: React.CSSProperties = {
   boxShadow: '0 1px 2px #eee',
 };
 
-const MainAppMenu: React.FC<MainAppMenuProps> = ({ onLogout, onSpotifyConnect, user, navStyle }) => {
+const MainAppMenu: React.FC<MainAppMenuProps> = ({ onLogout, onSpotifyConnect, onOpenAccountSettings, user, navStyle }) => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +67,12 @@ const MainAppMenu: React.FC<MainAppMenuProps> = ({ onLogout, onSpotifyConnect, u
             <img src="/icons/ConnectSpotify.png" alt="Connect Spotify" style={{ width: 18, height: 18, marginRight: 8, verticalAlign: 'middle', display: 'inline-block' }} />
             Spotify Connect
           </div>
+          {onOpenAccountSettings && (
+            <div style={menuItemStyle} onClick={() => { onOpenAccountSettings(); setOpen(false); }}>
+              <img src="/win95icons/user.png" alt="Account Settings" style={{ width: 18, height: 18, marginRight: 8, verticalAlign: 'middle', display: 'inline-block' }} />
+              Account Settings
+            </div>
+          )}
           <div style={menuItemStyle} onClick={onLogout}>
             <img src="/icons/key_32x32.png" alt="Logout" style={{ width: 16, height: 16, marginRight: 8, verticalAlign: 'middle', display: 'inline-block' }} />
             Logout
