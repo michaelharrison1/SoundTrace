@@ -1,5 +1,5 @@
 
-// Ensure VITE_API_BASE_URL is set in your environment
+// make sure VITE_API_BASE_URL is set
 const defaultApiBaseUrl = 'https://api.soundtrace.uk';
 const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
 
@@ -67,15 +67,15 @@ export const authService = {
   },
 
   logout: async (): Promise<void> => {
-    const token = localStorage.getItem('authToken'); // This is the JWT, not the session cookie
+    const token = localStorage.getItem('authToken'); // jwt token, not the session cookie
     if (!BACKEND_URL) {
       return;
     }
 
     try {
       const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      // The authMiddleware primarily checks for the HttpOnly cookie.
-      // Sending the Bearer token is secondary but good for consistency if middleware checks both.
+      // middleware mostly checks httponly cookie
+      // bearer token is backup
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }

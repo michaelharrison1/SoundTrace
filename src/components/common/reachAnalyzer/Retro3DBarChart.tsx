@@ -1,7 +1,7 @@
 import React, { useRef, useLayoutEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
-// Import only what we need from Three.js to reduce bundle size
+// minimal three.js imports for smaller bundle
 import { Mesh } from 'three';
 
 export interface Retro3DBarChartDatum {

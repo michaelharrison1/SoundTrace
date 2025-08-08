@@ -30,7 +30,7 @@ const mapToAcrCloudMatch = (track: Record<string, any>): AcrCloudMatch => {
     spotifyArtistId: spotifyArtistId,
     spotifyTrackId: spotifyTrackId, // Include the extracted track ID
     // StreamClout related fields like streamCount, coverArtUrl are now populated by the backend.
-    // This frontend API just passes what ACRCloud provides.
+    // frontend api just passes acrcloud data
     // The internalSpotifyAlbumId is not needed here as this API's purpose is not enrichment.
     platformLinks: {
       spotify: spotifyTrackId

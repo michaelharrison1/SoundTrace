@@ -18,7 +18,7 @@ import { scanLogService } from './services/scanLogService';
 
 export type AuthView = 'login' | 'register';
 
-// Define and export AppWindow type based on usage in child components
+// appwindow type for child components
 export interface AppWindow {
   id: string;
   title: string;

@@ -37,7 +37,7 @@ export function generateLinearForecast(
     return results;
   }
 
-  // Sort by date to ensure proper order
+  // sort by date
   const sortedHistory = [...history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   
   // Calculate daily increments (new streams per day)

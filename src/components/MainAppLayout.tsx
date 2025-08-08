@@ -37,7 +37,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
   const [redirectToJobConsole, setRedirectToJobConsole] = useState<boolean>(false);
   const [showAccountSettings, setShowAccountSettings] = useState<boolean>(false);
 
-  // Effect to handle redirection to job console
+  // redirect to job console when needed
   useEffect(() => {
     if (redirectToJobConsole) {
       setActiveView('jobs');
@@ -45,7 +45,7 @@ const MainAppLayout: React.FC<MainAppLayoutProps> = ({
     }
   }, [redirectToJobConsole]);
 
-  // Function to handle job creation and redirect to job console
+  // creates job and redirects to console
   const handleJobCreated = useCallback((job?: ScanJob | Partial<ScanJob>) => {
     setRedirectToJobConsole(true);
     onJobUpdate(job);

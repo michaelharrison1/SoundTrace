@@ -98,7 +98,7 @@ const ScanPage: React.FC<ScanPageProps> = ({ onJobCreated, onLogout }) => {
     resetPageMessages(); setIsInitiatingJob(true); setCurrentOperationMessage("Adding Spotify track to log...");
     try {
       const newLog = await scanLogService.addSpotifyTrackToLog(link);
-      // Create a partial job object to trigger redirection
+      // partial job for redirect
       onJobCreated({ id: newLog.logId, jobName: newLog.originalFileName });
       setManualAddMessage(`Successfully added "${newLog.originalFileName}" to log.`);
       setCompletionMessage(null);

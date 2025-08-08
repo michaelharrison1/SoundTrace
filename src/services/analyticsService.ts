@@ -5,7 +5,7 @@ const defaultApiBaseUrl = 'https://api.soundtrace.uk';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl;
 const ANALYTICS_BASE_URL = `${API_BASE_URL}/api/analytics`;
 
-// This interface represents historical data points for a single song's streams.
+// historical data points for a song's streams
 export interface HistoricalSongStreamEntry {
   date: string; // YYYY-MM-DD
   streams: number;
@@ -44,8 +44,8 @@ const handleAnalyticsApiResponse = async (response: Response) => {
   }
   const contentType = response.headers.get("content-type");
   if (contentType?.includes("application/json")) return response.json();
-  // If not JSON, and not 204, it might be an issue or plain text response.
-  // For now, we'll assume JSON or empty. If plain text is valid, handle it here.
+  // handle non-json responses
+  // assume json or empty for now
   return response.text().then(() => {
     return null;
   });

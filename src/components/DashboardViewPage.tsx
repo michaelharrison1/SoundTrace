@@ -59,14 +59,14 @@ const DashboardViewPage: React.FC<DashboardViewPageProps> = ({ user, previousSca
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const completedScans = useMemo(() => {
-    // First get all completed job IDs
+    // get completed job ids
     const completedJobIds = new Set(
       jobs.filter(job => job.status === 'completed' || job.status === 'completed_with_errors').map(job => job.id)
     );
     
     // Filter scans that either:
-    // 1. Belong to a completed job, OR
-    // 2. Have status 'imported_spotify_track', 'completed_match_found', or 'scanned_match_found'
+    // scans that: 1. belong to completed job or 
+    // 2. have status imported/completed
     return previousScans.filter(scan => 
       completedJobIds.has(scan.scanJobId) || 
       ['imported_spotify_track', 'completed_match_found', 'scanned_match_found'].includes(scan.status)
