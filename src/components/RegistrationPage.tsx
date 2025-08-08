@@ -4,12 +4,14 @@ import { User } from '../types';
 import { authService } from '../services/authService';
 import Button from './common/Button';
 import ProgressBar from './common/ProgressBar';
+import { AuthView } from '../App';
 
 interface RegistrationPageProps {
   onRegister: (user: User) => void;
+  onSwitchView?: (view: AuthView) => void;
 }
 
-const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister }) => {
+const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister, onSwitchView }) => {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -135,6 +137,20 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onRegister }) => {
             <p className="mt-1 text-xs text-center text-gray-700">
               This may take up to a minute.
             </p>
+          </div>
+        )}
+        
+        {!isLoading && onSwitchView && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-black mb-2">Already have an account?</p>
+            <Button 
+              type="button" 
+              size="sm" 
+              onClick={() => onSwitchView('login')} 
+              className="px-4"
+            >
+              Login
+            </Button>
           </div>
         )}
       </div>

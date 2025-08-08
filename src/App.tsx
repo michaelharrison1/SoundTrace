@@ -283,9 +283,15 @@ const AppContentInternal: React.FC = React.memo(() => {
                 <AppIntroduction />
                 <div className="w-full md:w-1/3 order-2 md:order-2 flex flex-col">
                   {authView === 'login' ? (
-                    <LoginPage onLogin={handleLoginRegistrationSuccess} />
+                    <LoginPage 
+                      onLogin={handleLoginRegistrationSuccess} 
+                      onSwitchView={setAuthView}
+                    />
                   ) : (
-                    <RegistrationPage onRegister={handleLoginRegistrationSuccess} />
+                    <RegistrationPage 
+                      onRegister={handleLoginRegistrationSuccess} 
+                      onSwitchView={setAuthView}
+                    />
                   )}
                 </div>
               </div>

@@ -4,12 +4,14 @@ import { User } from '../types';
 import { authService } from '../services/authService';
 import Button from './common/Button';
 import ProgressBar from './common/ProgressBar';
+import { AuthView } from '../App';
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
+  onSwitchView?: (view: AuthView) => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSwitchView }) => {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -105,9 +107,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         )}
 
         {!isLoading && (
-            <p className="mt-2 text-xs text-center text-blue-800">
-                Demo: user <span className="font-semibold text-black">producer</span>, pass <span className="font-semibold text-black">password123</span>
-            </p>
+            <>
+              <p className="mt-2 text-xs text-center text-blue-800">
+                  Demo: user <span className="font-semibold text-black">producer</span>, pass <span className="font-semibold text-black">password123</span>
+              </p>
+              {onSwitchView && (
+                <div className="mt-4 text-center">
+                  <p className="text-sm text-black mb-2">Don't have an account?</p>
+                  <Button 
+                    type="button" 
+                    size="sm" 
+                    onClick={() => onSwitchView('register')} 
+                    className="px-4"
+                  >
+                    Register
+                  </Button>
+                </div>
+              )}
+            </>
         )}
       </div>
     </div>
